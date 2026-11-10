@@ -5,3 +5,5 @@ dist/
 .claude/worktrees/
 .claude/settings.local.json
 graphify-out/cache/
+spikes/**/sandbox/
+spikes/**/node_modules/
