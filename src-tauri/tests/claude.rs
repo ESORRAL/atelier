@@ -231,6 +231,36 @@ async fn bridge_death_during_permission_crashes() {
 }
 
 #[tokio::test]
+async fn permission_answered_once_and_models_timeout_withdrawn() {
+    let (mut c, cwd) = claude("races");
+    c.set_models_timeout(Duration::from_millis(300));
+    let (sink, mut rx) = sink();
+    let key = c
+        .start_with_bridge(args(&cwd), &fake_bridge(), sink)
+        .await
+        .unwrap();
+
+    c.send(&key, "perm".into()).await.unwrap();
+    let pids = pids(&until(&mut rx, is_state(SessionState::WaitingPermission)).await);
+    let (a, b) = tokio::join!(
+        c.permission_respond(&key, "r1".into(), "allow_once".into(), None),
+        c.permission_respond(&key, "r1".into(), "deny".into(), None),
+    );
+    assert!(a.is_ok(), "{a:?}");
+    assert!(b.unwrap_err().contains("déjà traitée"));
+    until(&mut rx, is_state(SessionState::Idle)).await;
+
+    c.send(&key, "mute-models".into()).await.unwrap();
+    until(&mut rx, is_state(SessionState::Idle)).await;
+    assert!(c.models(&key).await.is_err());
+    // The timed-out waiter was withdrawn: this reply is not swallowed by it.
+    assert_eq!(c.models(&key).await.unwrap()[0]["value"], "haiku");
+
+    c.close(&key).await.unwrap();
+    assert_gone(&pids);
+}
+
+#[tokio::test]
 async fn unknown_key_and_missing_claude() {
     let (c, cwd) = claude("errors");
     assert_eq!(

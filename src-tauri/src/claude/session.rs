@@ -34,7 +34,8 @@ struct Session {
     core: Mutex<Core>,
     sink: Sink,
     stdin: tokio::sync::Mutex<Option<ChildStdin>>,
-    models: Mutex<VecDeque<oneshot::Sender<Value>>>,
+    /// Waiting `session_models` calls, oldest first, each with an id to withdraw it.
+    models: Mutex<VecDeque<(u64, oneshot::Sender<Value>)>>,
     kill: Mutex<Option<oneshot::Sender<()>>>,
     task: Mutex<Option<JoinHandle<()>>>,
 }
@@ -44,6 +45,7 @@ pub struct Claude {
     store: Arc<Mutex<Store>>,
     sessions: Mutex<HashMap<String, Arc<Session>>>,
     counter: AtomicU64,
+    models_timeout: Duration,
 }
 
 fn now_ms() -> u64 {
@@ -126,9 +128,12 @@ impl Session {
         res.map_err(|e| format!("Le pont Claude ne répond plus : {e}"))
     }
 
-    /// `close`, up to `deadline` for the bridge to leave, then SIGKILL to its group.
-    async fn shutdown(&self, deadline: tokio::time::Instant) {
-        let _ = self.write(json!({"type": "close"})).await;
+    /// `close` (unless already sent), up to `deadline` for the bridge to leave, then SIGKILL to
+    /// its group. Bounded even if the bridge is frozen and the stdin write never completes.
+    async fn shutdown(&self, deadline: tokio::time::Instant, send_close: bool) {
+        if send_close {
+            self.send_close(deadline).await;
+        }
         let handle = self.task.lock().ok().and_then(|mut t| t.take());
         let Some(mut handle) = handle else { return };
         if tokio::time::timeout_at(deadline, &mut handle)
@@ -143,13 +148,26 @@ impl Session {
     }
 }
 
+impl Session {
+    async fn send_close(&self, deadline: tokio::time::Instant) {
+        let _ = tokio::time::timeout_at(deadline, self.write(json!({"type": "close"}))).await;
+    }
+}
+
 impl Claude {
     pub fn new(store: Store) -> Claude {
         Claude {
             store: Arc::new(Mutex::new(store)),
             sessions: Mutex::new(HashMap::new()),
             counter: AtomicU64::new(0),
+            models_timeout: MODELS_TIMEOUT,
         }
+    }
+
+    /// Shorter `session_models` timeout, for tests.
+    #[doc(hidden)]
+    pub fn set_models_timeout(&mut self, timeout: Duration) {
+        self.models_timeout = timeout;
     }
 
     fn with_store<T>(&self, f: impl FnOnce(&Store) -> std::io::Result<T>) -> Result<T, String> {
@@ -277,7 +295,16 @@ impl Claude {
         if let Some(r) = args.resume {
             start["resume"] = r.into();
         }
-        session.write(start).await?;
+        if let Err(e) = session.write(start).await {
+            // No key reaches the UI: nobody could close this bridge later.
+            session
+                .shutdown(tokio::time::Instant::now() + CLOSE_GRACE, false)
+                .await;
+            if let Ok(mut all) = self.sessions.lock() {
+                all.remove(&key);
+            }
+            return Err(e);
+        }
         Ok(key)
     }
 
@@ -304,15 +331,26 @@ impl Claude {
 
     pub async fn models(&self, key: &str) -> Result<Value, String> {
         let s = self.get(key)?;
+        let id = self.counter.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = oneshot::channel();
         s.models
             .lock()
             .map_err(|_| "Session indisponible")?
-            .push_back(tx);
-        s.write(json!({"type": "list_models"})).await?;
-        match tokio::time::timeout(MODELS_TIMEOUT, rx).await {
-            Ok(Ok(models)) => Ok(models),
-            _ => Err("Liste des modèles indisponible".into()),
+            .push_back((id, tx));
+        let answer = match s.write(json!({"type": "list_models"})).await {
+            Ok(()) => tokio::time::timeout(self.models_timeout, rx).await.ok(),
+            Err(_) => None,
+        };
+        match answer {
+            Some(Ok(models)) => Ok(models),
+            _ => {
+                // shortcut: the protocol has no request id, so a reply arriving after this
+                // timeout still goes to the next waiter; add one to `list_models` if it matters.
+                if let Ok(mut m) = s.models.lock() {
+                    m.retain(|(i, _)| *i != id);
+                }
+                Err("Liste des modèles indisponible".into())
+            }
         }
     }
 
@@ -327,8 +365,8 @@ impl Claude {
         if !matches!(decision.as_str(), "allow_once" | "allow_always" | "deny") {
             return Err(format!("Décision invalide : {decision}"));
         }
-        let pending = s.core.lock().map(|c| c.is_pending(&request_id));
-        if !pending.unwrap_or(false) {
+        let claimed = s.core.lock().map(|mut c| c.claim(&request_id));
+        if !claimed.unwrap_or(false) {
             return Err("Demande de permission inconnue ou déjà traitée".into());
         }
         let mut msg =
@@ -343,7 +381,8 @@ impl Claude {
 
     pub async fn close(&self, key: &str) -> Result<(), String> {
         let s = self.get(key)?;
-        s.shutdown(tokio::time::Instant::now() + CLOSE_GRACE).await;
+        s.shutdown(tokio::time::Instant::now() + CLOSE_GRACE, true)
+            .await;
         if let Ok(mut all) = self.sessions.lock() {
             all.remove(key);
         }
@@ -356,12 +395,12 @@ impl Claude {
             Ok(mut m) => m.drain().map(|(_, s)| s).collect(),
             Err(_) => return,
         };
-        for s in &all {
-            let _ = s.write(json!({"type": "close"})).await;
-        }
         let deadline = tokio::time::Instant::now() + CLOSE_GRACE;
         for s in &all {
-            s.shutdown(deadline).await;
+            s.send_close(deadline).await;
+        }
+        for s in &all {
+            s.shutdown(deadline, false).await;
         }
     }
 
@@ -394,7 +433,7 @@ fn handle_line(s: &Session, store: &Mutex<Store>, line: &str) {
     if msg["type"] == "models" {
         let waiter = s.models.lock().ok().and_then(|mut m| m.pop_front());
         if let Some(tx) = waiter {
-            let _ = tx.send(msg["models"].clone());
+            let _ = tx.1.send(msg["models"].clone());
         }
         return;
     }

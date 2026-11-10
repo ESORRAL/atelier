@@ -193,8 +193,10 @@ impl Core {
         out
     }
 
-    pub fn is_pending(&self, request_id: &str) -> bool {
-        self.pending.contains(request_id)
+    /// Takes a pending request before its response is written, so it is answered only once.
+    /// `responded` then applies the state change.
+    pub fn claim(&mut self, request_id: &str) -> bool {
+        self.pending.remove(request_id)
     }
 
     /// The bridge process is gone.
@@ -315,6 +317,8 @@ mod tests {
     fn response_with_none_left_runs() {
         let mut c = core();
         c.bridge(perm("r1"), 2);
+        assert!(c.claim("r1"));
+        assert!(!c.claim("r1"));
         assert_eq!(states(&c.responded("r1", 3)), [Running]);
     }
 
@@ -343,7 +347,7 @@ mod tests {
                 error: Some(_)
             }
         ));
-        assert!(!c.is_pending("r1"));
+        assert!(!c.claim("r1"));
     }
 
     #[test]
