@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>pause test page</title>
+<pre id="log"></pre>
+<script>
+  // Hostile page: tries every IPC route it can find. Each outcome is reported to the test server;
+  // the verdict itself comes from Rust (PROBE_CALLS).
+  const report = (vector, outcome) => {
+    document.getElementById('log').textContent += vector + ': ' + outcome + '\n';
+    return fetch('/report?vector=' + encodeURIComponent(vector) + '&outcome=' + encodeURIComponent(outcome));
+  };
+  const attempt = async (vector, fn) => {
+    try {
+      const r = await Promise.race([fn(), new Promise((_, rej) => setTimeout(() => rej('timeout'), 1500))]);
+      await report(vector, 'resolved:' + JSON.stringify(r));
+    } catch (e) {
+      await report(vector, 'rejected:' + String(e && e.message || e));
+    }
+  };
+  const msg = JSON.stringify({ cmd: 'probe', callback: 1, error: 2, payload: {}, options: {} });
+  (async () => {
+    await report('globals', '__TAURI__=' + typeof window.__TAURI__ +
+      ' __TAURI_INTERNALS__=' + typeof window.__TAURI_INTERNALS__ + ' ipc=' + typeof window.ipc);
+    await attempt('__TAURI__.core.invoke', () => window.__TAURI__.core.invoke('probe'));
+    await attempt('__TAURI_INTERNALS__.invoke', () => window.__TAURI_INTERNALS__.invoke('probe'));
+    await attempt('ipc.postMessage', async () => { window.ipc.postMessage(msg); return 'posted'; });
+    await attempt('webkit.messageHandlers.ipc', async () => { window.webkit.messageHandlers.ipc.postMessage(msg); return 'posted'; });
+    await attempt('fetch ipc://localhost/probe', () => fetch('ipc://localhost/probe', {
+      method: 'POST', body: '{}',
+      headers: { 'Content-Type': 'application/json', 'Tauri-Callback': '1', 'Tauri-Error': '2' },
+    }).then(r => r.status));
+    await attempt('fetch http://ipc.localhost/probe', () => fetch('http://ipc.localhost/probe', {
+      method: 'POST', body: '{}', headers: { 'Tauri-Callback': '1', 'Tauri-Error': '2' },
+    }).then(r => r.status));
+    document.cookie = 'spike=' + new URLSearchParams(location.search).get('run') + '; max-age=3600; path=/';
+    await report('cookie-set', document.cookie);
+    // Off-allowlist navigation: localhost is not the PAUSE_URL host (127.0.0.1).
+    const forbidden = location.href.replace('127.0.0.1', 'localhost').replace(/pause\.html.*/, 'forbidden.html');
+    window.open(forbidden + '?via=open');
+    await report('done', 'navigating');
+    location.href = forbidden + '?via=location';
+  })();
+</script>
