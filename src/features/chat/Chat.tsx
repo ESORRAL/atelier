@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Folder, Stop, PaperPlaneRight } from "@phosphor-icons/react";
 import {
@@ -33,7 +33,20 @@ const STATE_LABEL: Record<string, string> = {
 const errText = (e: unknown) => (typeof e === "string" ? e : "Une erreur est survenue.");
 const euro = (usd: number) => `${usd.toFixed(4)} $`;
 
-export default function Chat({ slot }: { slot?: HTMLElement | null }) {
+/** What the app shell shows about the current session (right panel). */
+export type ChatInfo = { key: string | null; cwd: string; model: string | null; costUsd: number; state: string | null };
+/** Imperative actions the shell's command palette can trigger. */
+export type ChatControls = { newSession: () => void; interrupt: () => void };
+
+type ChatProps = {
+  slot?: HTMLElement | null;
+  onInfo?: (info: ChatInfo) => void;
+  onEvent?: (e: SessionEvent) => void; // every raw event of the current session
+  onSessionReset?: () => void; // a new session is starting: clear any event log
+  controlsRef?: RefObject<ChatControls | null>;
+};
+
+export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRef }: ChatProps) {
   const [s, dispatch] = useReducer(reduce, initialState);
   const [key, setKey] = useState<string | null>(null);
   const [cwd, setCwd] = useState("");
@@ -49,6 +62,8 @@ export default function Chat({ slot }: { slot?: HTMLElement | null }) {
   const token = useRef(0); // identifies the current session; stale channels are ignored
   const log = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
 
   const refresh = useCallback(() => sessionsList().then(setSessions, () => {}), []);
   useEffect(() => {
@@ -66,6 +81,7 @@ export default function Chat({ slot }: { slot?: HTMLElement | null }) {
   // Token buffer flushed at most once per frame (DESIGN.md §5.2).
   const makeOnEvent = useCallback((mine: number) => (e: SessionEvent) => {
     if (mine !== token.current) return;
+    onEventRef.current?.(e);
     queue.current.push(e);
     if (!frame.current) {
       frame.current = requestAnimationFrame(() => {
@@ -96,7 +112,10 @@ export default function Chat({ slot }: { slot?: HTMLElement | null }) {
     setKey(null);
     setModels([]);
     dispatch({ kind: "reset" });
+    onSessionReset?.();
     try {
+      // Re-read so defaults saved in Réglages apply to this new session.
+      settings.current = await settingsGet().catch(() => settings.current);
       if (resumeFrom) {
         const past = await sessionHistory(resumeFrom.key);
         // Pending permission requests of a past session are obsolete.
@@ -129,6 +148,22 @@ export default function Chat({ slot }: { slot?: HTMLElement | null }) {
     sessionSend(key, text).catch((e) => setLocalError(errText(e)));
   };
   const interrupt = () => key && sessionInterrupt(key).catch((e) => setLocalError(errText(e)));
+  const newSession = () => {
+    token.current++; // stale channels are ignored from now on
+    queue.current = [];
+    const k = keyRef.current;
+    keyRef.current = null;
+    setKey(null);
+    setModels([]);
+    setLocalError(null);
+    dispatch({ kind: "reset" });
+    onSessionReset?.();
+    if (k) sessionClose(k).catch(() => {}).then(refresh);
+  };
+  if (controlsRef) controlsRef.current = { newSession, interrupt };
+  useEffect(() => {
+    onInfo?.({ key, cwd, model: s.model, costUsd: s.costUsd, state: s.sessionState ? STATE_LABEL[s.sessionState] : null });
+  }, [onInfo, key, cwd, s.model, s.costUsd, s.sessionState]);
   const busy = s.sessionState === "running" || s.sessionState === "waiting_permission";
 
   const last = s.messages[s.messages.length - 1];

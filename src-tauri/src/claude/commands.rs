@@ -21,7 +21,13 @@ pub async fn session_start(
     resume: Option<String>,
     on_event: Channel<SessionEvent>,
 ) -> Res<String> {
+    let bridge = bridge_path(app.path().resource_dir().ok())?;
+    eprintln!("[claude] bridge: {}", bridge.display());
+    let tracker = std::sync::Mutex::new(crate::notify::Tracker::default());
+    let key_cell = Arc::new(std::sync::OnceLock::<String>::new());
+    let cell = key_cell.clone();
     let sink = Arc::new(move |ev: SessionEvent| {
+        crate::notify::on_event(&app, &tracker, &cell, &ev);
         if let Err(e) = on_event.send(ev) {
             eprintln!("[claude] channel: {e}");
         }
@@ -32,9 +38,9 @@ pub async fn session_start(
         permission_mode,
         resume,
     };
-    let bridge = bridge_path(app.path().resource_dir().ok())?;
-    eprintln!("[claude] bridge: {}", bridge.display());
-    claude.start_with_bridge(args, &bridge, sink).await
+    let key = claude.start_with_bridge(args, &bridge, sink).await?;
+    let _ = key_cell.set(key.clone());
+    Ok(key)
 }
 
 #[tauri::command]

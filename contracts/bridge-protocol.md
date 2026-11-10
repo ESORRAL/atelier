@@ -1,6 +1,6 @@
 # Contrat — protocole du pont (`bridge/` ↔ cœur Rust)
 
-Version 1. Écrit d'après les captures réelles de `spikes/bridge/` (SDK 0.3.322, CLI 2.1.322).
+Version 1.1 (`requestId` sur `list_models` / `models`). Version 1 écrite d'après les captures réelles de `spikes/bridge/` (SDK 0.3.322, CLI 2.1.322).
 Seul l'architecte modifie ce fichier.
 
 ## Principes
@@ -28,7 +28,7 @@ Le pont n'accepte aucun argument. Son premier message attendu est `start`. Il es
 | `interrupt` | — | interrompt la réponse en cours ; la session reste utilisable |
 | `set_model` | `model` | change de modèle pour les tours suivants |
 | `set_permission_mode` | `mode` | mêmes valeurs que `start.permissionMode` |
-| `list_models` | — | demande la liste ; réponse `models` |
+| `list_models` | `requestId` | demande la liste ; réponse `models` avec le même `requestId` |
 | `permission_response` | `requestId`, `decision`, `message?` | répond à une `permission_request` (§3) |
 | `close` | — | termine proprement ; le pont répond `closed` puis sort avec le code 0 |
 
@@ -44,7 +44,7 @@ démarrer en `auto`.
 | `sdk` | `message` | un message du SDK, intact |
 | `permission_request` | `requestId`, `toolName`, `input`, `toolUseID`, `displayName?`, `description?`, `blockedPath?`, `canAlways` | une approbation est requise ; le pont attend sans délai |
 | `permission_cancelled` | `requestId` | la demande n'a plus lieu d'être (interruption, session arrêtée) |
-| `models` | `models` | tableau renvoyé par `supportedModels()`, intact |
+| `models` | `requestId`, `models` | tableau renvoyé par `supportedModels()`, intact ; une réponse sans demande en attente est ignorée |
 | `error` | `message`, `fatal` | `fatal: true` : le pont sort ensuite avec un code non nul |
 | `closed` | — | fin propre |
 
