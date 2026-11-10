@@ -1,7 +1,7 @@
 ---
 id: TASK-004
 title: Échafaudage Tauri 2 + React/TypeScript, commandes et CI
-status: blocked        # attend les paquets apt de développement Tauri (installation par l'utilisateur)
+status: review
 phase: 1
 agent: core
 model: sonnet
