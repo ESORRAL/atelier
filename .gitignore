@@ -7,3 +7,4 @@ dist/
 graphify-out/cache/
 spikes/**/sandbox/
 spikes/**/node_modules/
+spikes/**/target/
