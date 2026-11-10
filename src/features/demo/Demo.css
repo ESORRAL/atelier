@@ -1,0 +1,42 @@
+.demo {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-6);
+}
+
+.demo section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.demo h2 {
+  font-size: var(--text-lg);
+  line-height: var(--lh-lg);
+}
+
+.demo__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.demo__swatch {
+  padding: var(--space-4) var(--space-5);
+  border: var(--space-1) solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.demo__btn {
+  justify-self: start;
+  padding: var(--space-3) var(--space-5);
+  border: var(--space-1) solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+  color: var(--color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.demo__btn:hover {
+  background: var(--color-bg-hover);
+}

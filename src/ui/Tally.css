@@ -1,0 +1,39 @@
+.tally {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--lh-sm);
+}
+
+.tally__lamp {
+  width: var(--tally-size);
+  height: var(--tally-size);
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
+
+.tally__label {
+  color: var(--color-text-primary);
+}
+
+@keyframes tally-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes tally-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tally[data-state="running"] .tally__lamp,
+.tally[data-state="waiting-permission"] .tally__lamp {
+  animation: tally-pulse var(--dur-pulse) var(--ease-standard) infinite;
+}
+
+.tally[data-state="running"] .tally__icon {
+  animation: tally-spin var(--dur-pulse) linear infinite;
+}
