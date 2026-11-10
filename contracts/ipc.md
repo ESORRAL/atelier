@@ -1,6 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
-Version 1 (phase 2 : Chat). Seul l'architecte modifie ce fichier. Les noms sont exacts : les tâches
+Version 1.1 (phase 2 : Chat). 1.1 : ajout de `SessionEvent` `user`, pour réafficher les messages de l'utilisateur à la reprise. Seul l'architecte modifie ce fichier. Les noms sont exacts : les tâches
 parallèles s'appuient dessus sans se voir.
 
 ## 1. Commandes Tauri (UI → Rust)
@@ -46,6 +46,7 @@ type SessionEvent =
       toolUseID: string; displayName?: string; description?: string; blockedPath?: string;
       canAlways: boolean }
   | { kind: "permission_cancelled"; requestId: string }
+  | { kind: "user"; text: string }                    // tour envoyé par session_send (émis et journalisé par Rust)
   | { kind: "state"; state: SessionState; error?: string }
   | { kind: "error"; message: string; fatal: boolean };
 
