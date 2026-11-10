@@ -5,7 +5,9 @@ import {
   formatInput,
   initialState,
   keyToAction,
+  keyUp,
   press,
+  pressKey,
   queueCount,
   refocus,
   sync,
@@ -102,5 +104,44 @@ describe("permission machine", () => {
     expect(formatInput("Bash", { command: "rm -rf build && npm test" })).toBe("rm -rf build && npm test");
     expect(formatInput("Write", { file_path: "/a/b.ts", content: "x" })).toBe("/a/b.ts");
     expect(formatInput("Grep", { pattern: "<b>" })).toBe('{\n  "pattern": "<b>"\n}');
+  });
+
+  it("ignores auto-repeat and keys held since before the request was displayed", () => {
+    const altO = { key: "o", altKey: true, repeat: false };
+    let s = sync(initialState, [req("a"), req("b")], 0);
+    s = keyUp(s);
+    const r = pressKey(s, altO, GUARD_MS);
+    expect(r.decision?.requestId).toBe("a");
+    s = sync(r.state, [req("a"), req("b")], 1000);
+    expect(s.current?.requestId).toBe("b");
+    // Alt+O still held: repeats, then a fresh press without keyup, after the guard.
+    expect(pressKey(s, { ...altO, repeat: true }, 5000).decision).toBeUndefined();
+    expect(pressKey(s, altO, 5000).decision).toBeUndefined();
+    s = keyUp(s);
+    expect(pressKey(s, { ...altO, repeat: true }, 5000).decision).toBeUndefined();
+    expect(pressKey(s, altO, 5000).decision?.requestId).toBe("b");
+  });
+
+  it("emits at most one decision per request (double click, key + click)", () => {
+    const list = [req("a"), req("b")];
+    const s = keyUp(sync(initialState, list, 0));
+    const first = press(s, "allow_once", GUARD_MS);
+    expect(first.decision?.requestId).toBe("a");
+    expect(press(first.state, "allow_once", GUARD_MS).decision).toBeUndefined();
+    expect(pressKey(first.state, { key: "o", altKey: true, repeat: false }, GUARD_MS).decision).toBeUndefined();
+    // Parent has not removed "a" yet: it must not come back, and "b" is guarded.
+    const next = sync(first.state, list, GUARD_MS);
+    expect(next.current?.requestId).toBe("b");
+    expect(press(next, "allow_once", GUARD_MS).decision).toBeUndefined();
+    // A stale state still showing "a" but knowing it was decided cannot decide again.
+    expect(press({ ...s, done: first.state.done }, "deny", GUARD_MS).decision).toBeUndefined();
+  });
+
+  it("reveals bidi, zero-width, control and ANSI characters", () => {
+    expect(formatInput("Bash", { command: "echo safe‮;hs.lmx‬" })).toBe("echo safe\\u{202E};hs.lmx\\u{202C}");
+    expect(formatInput("Bash", { command: "a​b﻿c⁦d⁩" })).toBe("a\\u{200B}b\\u{FEFF}c\\u{2066}d\\u{2069}");
+    expect(formatInput("Bash", { command: "ok\rdel\u001b[2K\u0085\n\tx" })).toBe("ok\\u{D}del\\u{1B}[2K\\u{85}\n\tx");
+    expect(formatInput("Edit", { file_path: "/tmp/‮txt.sh" })).toBe("/tmp/\\u{202E}txt.sh");
+    expect(formatInput("Grep", { pattern: "‮‏" })).toBe('{\n  "pattern": "\\u{202E}\\u{200F}"\n}');
   });
 });

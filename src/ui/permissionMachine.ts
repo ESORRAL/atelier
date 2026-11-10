@@ -24,6 +24,7 @@ export type MachineState = {
   guardUntil: number;
   cancelledAt: number | null; // set when the displayed request got cancelled
   done: ReadonlySet<string>; // decided or dismissed ids, never shown again
+  keyArmed: boolean; // a keyup was seen since this request was displayed
 };
 
 export const GUARD_MS = 500;
@@ -35,6 +36,7 @@ export const initialState: MachineState = {
   guardUntil: 0,
   cancelledAt: null,
   done: new Set(),
+  keyArmed: false,
 };
 
 const isPending = (s: MachineState, r: PermissionRequest) => !r.cancelled && !s.done.has(r.requestId);
@@ -52,8 +54,11 @@ export function sync(s: MachineState, requests: PermissionRequest[], now: number
   }
   const next = requests.find((r) => isPending(s, r)) ?? null;
   if (!next) return s.current === null ? s : { ...s, current: null };
-  return { ...s, current: next, step: "ask", guardUntil: now + GUARD_MS, cancelledAt: null };
+  return { ...s, current: next, step: "ask", guardUntil: now + GUARD_MS, cancelledAt: null, keyArmed: false };
 }
+
+/** A key was released: from now on key presses may decide the displayed request. */
+export const keyUp = (s: MachineState): MachineState => (s.current && !s.keyArmed ? { ...s, keyArmed: true } : s);
 
 /** Window or dialog regained focus: re-arm the guard. */
 export const refocus = (s: MachineState, now: number): MachineState => ({ ...s, guardUntil: now + GUARD_MS });
@@ -69,7 +74,8 @@ export function press(
   now: number,
 ): { state: MachineState; decision?: { requestId: string; decision: Decision } } {
   const cur = s.current;
-  if (!cur || isLocked(s, now)) return { state: s };
+  // done.has: one request yields at most one decision, even if a stale state is pressed again.
+  if (!cur || isLocked(s, now) || s.done.has(cur.requestId)) return { state: s };
   const rearm = (step: Step) => ({ state: { ...s, step, guardUntil: now + GUARD_MS } });
   const decide = (decision: Decision) => ({
     state: { ...s, current: null, step: "ask" as Step, done: new Set(s.done).add(cur.requestId) },
@@ -86,6 +92,17 @@ export function press(
   return { state: s };
 }
 
+/** Key press: ignores auto-repeat and any key held down since before the request was displayed. */
+export function pressKey(
+  s: MachineState,
+  key: { key: string; altKey: boolean; repeat: boolean },
+  now: number,
+): ReturnType<typeof press> {
+  const action = keyToAction(key.key, key.altKey);
+  if (!action || key.repeat || !s.keyArmed) return { state: s };
+  return press(s, action, now);
+}
+
 /** Keyboard shortcuts (letters via event.key). Enter is deliberately absent. */
 export function keyToAction(key: string, altKey: boolean): Action | null {
   if (key === "Escape") return "escape";
@@ -99,17 +116,24 @@ export function queueCount(s: MachineState, requests: PermissionRequest[]): numb
   return (s.current ? 1 : 0) + requests.filter((r) => r.requestId !== id && isPending(s, r)).length;
 }
 
+// Bidi overrides/isolates, zero-width chars, C0/C1 controls (incl. ESC, \r) except \n and \t.
+const HIDDEN = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g;
+
+/** Makes invisible or text-reordering characters visible as `\u{…}` so nothing can be disguised. */
+export const reveal = (text: string): string =>
+  text.replace(HIDDEN, (c) => `\\u{${c.charCodeAt(0).toString(16).toUpperCase()}}`);
+
 /** Full tool input as plain text: whole command for Bash, path for Write/Edit, indented JSON otherwise. */
 export function formatInput(toolName: string, input: unknown): string {
   const obj = (input ?? {}) as Record<string, unknown>;
-  if (toolName === "Bash" && typeof obj.command === "string") return obj.command;
-  if ((toolName === "Write" || toolName === "Edit") && typeof obj.file_path === "string") return obj.file_path;
-  return JSON.stringify(input, null, 2) ?? String(input);
+  if (toolName === "Bash" && typeof obj.command === "string") return reveal(obj.command);
+  if ((toolName === "Write" || toolName === "Edit") && typeof obj.file_path === "string") return reveal(obj.file_path);
+  return reveal(JSON.stringify(input, null, 2) ?? String(input));
 }
 
 export function titleFor(r: PermissionRequest): string {
   if (r.toolName === "Bash") return "Claude veut exécuter une commande";
   if (r.toolName === "Write") return "Claude veut écrire un fichier";
   if (r.toolName === "Edit") return "Claude veut modifier un fichier";
-  return `Claude veut utiliser l'outil ${r.displayName ?? r.toolName}`;
+  return `Claude veut utiliser l'outil ${reveal(r.displayName ?? r.toolName)}`;
 }

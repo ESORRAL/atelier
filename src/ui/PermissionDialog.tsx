@@ -8,13 +8,17 @@ import {
   initialState,
   isLocked,
   keyToAction,
+  keyUp,
   press,
+  pressKey,
   queueCount,
   refocus,
+  reveal,
   sync,
   titleFor,
   type Action,
   type Decision,
+  type MachineState,
   type PermissionRequest,
 } from "./permissionMachine";
 import "./PermissionDialog.css";
@@ -24,9 +28,17 @@ export type { Decision, PermissionRequest };
 export function PermissionHost(props: {
   requests: PermissionRequest[];
   onDecide: (requestId: string, decision: Decision, message: string | null) => void;
+  cwd?: string;
 }) {
-  const { requests, onDecide } = props;
-  const [s, setS] = useState(initialState);
+  const { requests, onDecide, cwd } = props;
+  const [s, setState] = useState(initialState);
+  // Latest machine state, read synchronously so two events in a row never act on a stale copy.
+  const sRef = useRef(s);
+  sRef.current = s;
+  const setS = (next: MachineState | ((prev: MachineState) => MachineState)) => {
+    if (typeof next !== "function") sRef.current = next;
+    setState(next);
+  };
   const [, setTick] = useState(0);
   const [announce, setAnnounce] = useState("");
   const requestsRef = useRef(requests);
@@ -39,27 +51,32 @@ export function PermissionHost(props: {
   const cur = s.current;
   const count = queueCount(s, requests);
 
-  useEffect(() => setS((prev) => sync(prev, requests, Date.now())), [requests]);
+  useEffect(() => setS((prev) => sync(prev, requests, performance.now())), [requests]);
 
   // Cancelled banner: leave it up for 1 s, then let the queue move on.
   useEffect(() => {
     if (s.cancelledAt === null) return;
-    const t = setTimeout(() => setS((prev) => sync(prev, requestsRef.current, Date.now())), CANCELLED_BANNER_MS);
+    const t = setTimeout(() => setS((prev) => sync(prev, requestsRef.current, performance.now())), CANCELLED_BANNER_MS);
     return () => clearTimeout(t);
   }, [s.cancelledAt]);
 
   // Re-render when the guard ends so buttons look enabled again; the guard itself never decides anything.
   useEffect(() => {
-    const left = s.guardUntil - Date.now();
+    const left = s.guardUntil - performance.now();
     if (left <= 0) return;
     const t = setTimeout(() => setTick((n) => n + 1), left);
     return () => clearTimeout(t);
   }, [s.guardUntil]);
 
   useEffect(() => {
-    const onFocus = () => setS((prev) => (prev.current ? refocus(prev, Date.now()) : prev));
+    const onFocus = () => setS((prev) => (prev.current ? refocus(prev, performance.now()) : prev));
+    const onKeyUp = () => setS(keyUp);
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("keyup", onKeyUp);
+    };
   }, []);
 
   // Focus the title on each newly displayed request; restore the origin when the queue empties.
@@ -74,6 +91,11 @@ export function PermissionHost(props: {
     }
   }, [curId]);
 
+  // A step change unmounts the focused button: put focus back on the title so it stays in the dialog.
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, [s.step, s.cancelledAt]);
+
   useEffect(() => {
     if (cur && count > countRef.current && countRef.current > 0) {
       setAnnounce(`Nouvelle demande en attente, 1 sur ${count}`);
@@ -83,15 +105,17 @@ export function PermissionHost(props: {
 
   if (!cur) return null;
 
-  const act = (action: Action) => {
-    const now = Date.now();
-    const r = press(s, action, now);
+  const apply = (r: ReturnType<typeof press>, now: number) => {
     if (r.decision) {
       onDecide(r.decision.requestId, r.decision.decision, null);
       setS(sync(r.state, requests, now));
     } else {
       setS(r.state);
     }
+  };
+  const act = (action: Action) => {
+    const now = performance.now();
+    apply(press(sRef.current, action, now), now);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -110,17 +134,16 @@ export function PermissionHost(props: {
       }
       return;
     }
-    const action = keyToAction(e.key, e.altKey);
-    if (action) {
-      e.preventDefault();
-      act(action);
-    }
+    if (!keyToAction(e.key, e.altKey)) return;
+    e.preventDefault();
+    const now = performance.now();
+    apply(pressKey(sRef.current, e, now), now);
   };
 
-  const locked = isLocked(s, Date.now());
+  const locked = isLocked(s, performance.now());
   const cancelled = s.cancelledAt !== null;
   const text = formatInput(cur.toolName, cur.input);
-  const scope = cur.toolName === "Bash" ? text : (cur.displayName ?? cur.toolName);
+  const scope = cur.toolName === "Bash" ? text : reveal(cur.displayName ?? cur.toolName);
   const btn = (label: string, action: Action, variant: "primary" | "secondary", icon?: boolean) => (
     <button
       type="button"
@@ -156,8 +179,9 @@ export function PermissionHost(props: {
         </div>
         <div id="permission-desc">
           <pre className="permission__input">{text}</pre>
-          {cur.description && <p className="permission__meta">{cur.description}</p>}
-          {cur.blockedPath && <p className="permission__meta">Chemin bloqué : {cur.blockedPath}</p>}
+          {cwd && <p className="permission__meta">Répertoire de travail : <code>{reveal(cwd)}</code></p>}
+          {cur.description && <p className="permission__meta">{reveal(cur.description)}</p>}
+          {cur.blockedPath && <p className="permission__meta">Chemin bloqué : {reveal(cur.blockedPath)}</p>}
           {cur.canAlways && (
             <p className="permission__meta">
               « Toujours autoriser » s'applique à <code>{scope}</code> dans ce projet, révocable dans Réglages.
