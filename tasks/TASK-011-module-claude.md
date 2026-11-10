@@ -67,8 +67,8 @@ cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 Pas d'UI, pas de notifications, pas de changement des modules existants ni des contrats.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : 12 commandes §1 + `app_version`. `Core` pur (traduction, état §3, index), `Claude` lance le pont par `supervisor::spawn`, journalise avant d'émettre, `close_all` à la destruction de la fenêtre `main` (2 s puis kill). Faux pont injecté par `start_with_bridge` (aucune variable d'environnement).
+- Fichiers touchés : `src-tauri/src/claude/{mod,session,commands}.rs`, `src-tauri/src/lib.rs`, `src-tauri/tests/{claude.rs,fake-bridge.mjs}`.
+- Vérification (sortie résumée) : fmt et clippy propres ; 15 tests unitaires, 3 d'intégration (+ supervisor) verts. Essai réel Haiku (test `#[ignore]`, vrai pont) : « Bonjour ! Qu'est-ce que tu veux faire aujourd'hui ? », état `idle`, aucun process restant.
+- Raccourcis pris (`shortcut:`) : chemin du pont en développement seulement.
+- À remonter à l'architecte : essai par `npm run tauri dev` non fait (pas de pilotage de l'UI) : ACL du `Channel` non vérifiée. `session_models` expire après 15 s si le pont ne répond pas. `bridge/node_modules` requis (`npm ci`).
