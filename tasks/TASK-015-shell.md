@@ -56,8 +56,8 @@ grep -rnE "#[0-9a-fA-F]{3,8}\b" src --include=*.css --include=*.tsx && echo "COU
 Pas de contenu réel pour les onglets futurs, pas d'écran de réglages, pas de Rust.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : rail, barre du haut, panneau droit (Chat), tiroir journal (200 derniers événements), palette Ctrl+K/Ctrl+P, raccourcis AZERTY/F ; Chat reste monté derrière les autres onglets ; états vides en import dynamique.
+- Fichiers touchés : src/App.tsx, src/shell/**, src/features/*/index.tsx, Chat.tsx (props onInfo/onEvent/onSessionReset/controlsRef), design/screenshots/shell.png.
+- Vérification : lint, 36 tests, build OK ; aucune couleur en dur.
+- Raccourcis pris : panneau non redimensionnable, tiroir non mémorisé par projet ; Tab figé dans la palette ; seuil 1280 px en media query ; versions v0.2/v0.3 des états vides supposées.
+- À remonter à l'architecte : aucun besoin de contrat ; screenshot pris avec un stub Tauri injecté dans dist.
