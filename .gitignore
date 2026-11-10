@@ -7,4 +7,5 @@ dist/
 graphify-out/cache/
 spikes/**/sandbox/
 spikes/**/node_modules/
+src-tauri/gen/
 spikes/**/target/
