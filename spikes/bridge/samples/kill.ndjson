@@ -1,0 +1,5 @@
+{"t":33099,"kind":"before.kill","data":{"signal":"SIGTERM","nodePid":1525740,"claudePids":[1525749]}}
+{"t":38158,"kind":"after.kill","data":{"signal":"SIGTERM","checks":[{"wait":500,"nodeAlive":false,"claudeAlive":[true],"inPgrep":[1525749]},{"wait":2000,"nodeAlive":false,"claudeAlive":[true],"inPgrep":[1525749]},{"wait":5000,"nodeAlive":false,"claudeAlive":[true],"inPgrep":[1525749]}]}}
+{"t":65353,"kind":"before.kill","data":{"signal":"SIGKILL","nodePid":1526131,"claudePids":[1526140]}}
+{"t":70405,"kind":"after.kill","data":{"signal":"SIGKILL","checks":[{"wait":500,"nodeAlive":false,"claudeAlive":[true],"inPgrep":[1526140]},{"wait":2000,"nodeAlive":false,"claudeAlive":[true],"inPgrep":[1526140]},{"wait":5000,"nodeAlive":false,"claudeAlive":[true],"inPgrep":[1526140]}]}}
+{"t":70405,"kind":"summary","data":{"SIGTERM":{"wait":5000,"nodeAlive":false,"claudeAlive":[true],"inPgrep":[1525749]},"SIGKILL":{"wait":5000,"nodeAlive":false,"claudeAlive":[true],"inPgrep":[1526140]}}}
