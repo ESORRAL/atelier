@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-only",
+  "description": "Only the local main window may call probe. No capability names the pause window, no remote.urls.",
+  "windows": ["main"],
+  "permissions": ["allow-probe"]
+}
