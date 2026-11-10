@@ -1,7 +1,7 @@
 ---
 id: TASK-005
 title: Spike — aucun process orphelin, même après SIGKILL
-status: todo
+status: done
 phase: 1
 agent: core
 model: opus
@@ -51,8 +51,8 @@ Pas de Tauri, pas de module définitif, pas de lancement de `claude`. Tue tout p
 avant de rendre.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : crate `atelier-orphan-spike`, 7 techniques × 4 morts + `setsid`. Retenue : groupe + `killpg` au `Drop` + watchdog (EOF de pipe → `killpg`) : propre pour les 4 morts. `setsid` s'échappe ; seul un scope `systemd-run --user` le rattrape.
+- Fichiers touchés : `spikes/orphans/{Cargo.toml,Cargo.lock,src/main.rs,tests/orphans.rs}`. `FINDINGS.md` refusé par l'outil : son contenu est dans le rapport final.
+- Vérification (sortie résumée) : 9 passed, 1 ignored. Sans protection, le test ignoré échoue (`EP` partout). Aucun process restant.
+- Raccourcis pris (`shortcut:`) : `killpg` différé du watchdog, risque de pgid réutilisé.
+- À remonter à l'architecte : ARCHITECTURE §3 est faux pour SIGKILL. `PDEATHSIG` et `kill_on_drop` ne touchent que l'enfant direct. `process-wrap` 10 ne tue pas le groupe au drop. Il faut un watchdog externe ou un cgroup.
