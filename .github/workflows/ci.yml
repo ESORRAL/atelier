@@ -28,6 +28,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+      - run: npm ci --ignore-scripts && node --test
+        working-directory: bridge
       - run: npm run build
       - working-directory: src-tauri
         run: |

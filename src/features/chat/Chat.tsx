@@ -87,6 +87,7 @@ export default function Chat() {
 
   const start = async (dir: string, resumeFrom?: SessionEntry) => {
     setLocalError(null);
+    setCwd(dir);
     const mine = ++token.current;
     queue.current = [];
     if (keyRef.current) await sessionClose(keyRef.current).catch(() => {});
@@ -255,6 +256,7 @@ export default function Chat() {
       <div className="sr-only" role="status">{announce}</div>
       <PermissionHost
         requests={s.permissions}
+        cwd={cwd}
         onDecide={(requestId, decision, message) => {
           if (!key) return;
           const done = () => dispatch({ kind: "permission_done", requestId });
