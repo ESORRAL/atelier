@@ -47,8 +47,8 @@ cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 Pas de son, pas de réglage pour couper les notifications (plus tard), pas d'UI.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : module `notify` (Tracker pur : focus, motif, limite 5 s par session et motif) + plugin notification côté Rust ; crochet dans le sink de `session_start`.
+- Fichiers touchés : src-tauri/src/notify/mod.rs, claude/commands.rs, lib.rs, Cargo.toml, Cargo.lock.
+- Vérification : fmt, clippy -D warnings, test OK (4 tests notify). capabilities/main.json inchangé.
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : essai réel sur le bureau NON fait (pas de session graphique pilotée). Plugin 2.8.1 sans permission de capability.
