@@ -1,0 +1,284 @@
+/*
+ * Atelier — design tokens « Régie ». Source de vérité (DESIGN.md en est le résumé).
+ * Plain CSS custom properties, hex only (no color-mix/oklch/@property : WebKitGTK).
+ * Theme: dark by default; system light via prefers-color-scheme; manual override via
+ * <html data-theme="light|dark">. Contrast ratios are listed in DESIGN.md §2.
+ */
+
+/* ---------- Fonts (bundled in ../fonts relative to this file, OFL 1.1, no CDN) ---------- */
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("../fonts/AtkinsonHyperlegibleNext-VariableFont_wght.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("../fonts/AtkinsonHyperlegibleNext-Italic-VariableFont_wght.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Mono";
+  src: url("../fonts/AtkinsonHyperlegibleMono-VariableFont_wght.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------- Theme-independent tokens + dark theme (default) ---------- */
+:root {
+  color-scheme: dark;
+
+  /* Typography */
+  --font-ui: "Atkinson Hyperlegible Next", "Cantarell", "Noto Sans", system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono", "DejaVu Sans Mono", "Noto Sans Mono", monospace;
+  --text-xs: 12px;   --lh-xs: 16px;   /* meta, timestamps */
+  --text-sm: 13px;   --lh-sm: 18px;   /* secondary UI, tables, logs */
+  --text-md: 14px;   --lh-md: 20px;   /* default UI */
+  --text-read: 15px; --lh-read: 24px; /* chat & notes body */
+  --text-lg: 18px;   --lh-lg: 24px;   /* panel / card titles */
+  --text-xl: 22px;   --lh-xl: 28px;   /* screen titles */
+  --text-2xl: 30px;  --lh-2xl: 36px;  /* music title, recap figures */
+  --weight-regular: 400;
+  --weight-medium: 520;
+  --weight-bold: 680;
+  --measure-read: 72ch;
+
+  /* Spacing (4px grid) */
+  --space-0: 0;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* Radius — by hierarchy, never one radius for everything */
+  --radius-xs: 3px;    /* chips, kbd, code inline */
+  --radius-sm: 5px;    /* buttons, inputs, list rows */
+  --radius-md: 8px;    /* cards, code blocks, tool cards */
+  --radius-lg: 12px;   /* dialogs, palette, music cover */
+  --radius-full: 999px;/* tally lamps, toggles */
+
+  /* Motion */
+  --dur-instant: 90ms;   /* hover, press */
+  --dur-fast: 160ms;     /* menus, tooltips, tab switch */
+  --dur-base: 240ms;     /* panels, drawers, dialogs */
+  --dur-slow: 400ms;     /* agent state transition, recap */
+  --dur-pulse: 1600ms;   /* tally pulse (running / waiting) */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Z-index */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-drawer: 20;
+  --z-panel: 30;
+  --z-popover: 40;
+  --z-palette: 50;
+  --z-toast: 60;
+  --z-permission: 70; /* always on top: nothing may cover it */
+
+  /* Layout */
+  --app-min-w: 960px;
+  --app-min-h: 600px;
+  --rail-w: 56px;
+  --topbar-h: 40px;
+  --bottombar-h: 44px;
+  --panel-w: 340px;
+  --panel-min-w: 280px;
+  --panel-max-w: 520px;
+  --drawer-h: 260px;
+  --drawer-min-h: 120px;
+  --composer-min-h: 56px;
+  --composer-max-h: 40vh;
+  --palette-w: 640px;
+  --dialog-w: 560px;
+  --agent-card-min-w: 300px;
+  --focus-ring-w: 2px;
+  --focus-ring-offset: 2px;
+  --tally-size: 8px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
+
+  /* Color — dark « Régie de nuit » */
+  --color-bg-base: #111615;      /* rail, top/bottom bars, app background */
+  --color-bg-surface: #161C1B;   /* main content area */
+  --color-bg-raised: #1E2624;    /* cards, inputs, code blocks */
+  --color-bg-overlay: #252E2C;   /* dialogs, palette, menus */
+  --color-bg-hover: #222B29;
+  --color-bg-selected: #1B3530;
+  --color-border-subtle: #2A3432;  /* decorative separators */
+  --color-border-strong: #6B7B75;  /* input & control boundaries (>= 3:1) */
+
+  --color-text-primary: #E4EBE7;
+  --color-text-secondary: #A8B4AF;
+  --color-text-muted: #929F9A;
+  --color-text-on-accent: #0E1A17;
+  --color-text-on-danger: #FFFFFF;
+
+  --color-accent: #6CC3B0;        /* « patine » : primary action, focus, selection, links */
+  --color-accent-hover: #86D3C2;
+  --color-accent-solid: #6CC3B0;  /* filled primary button */
+  --color-focus-ring: #6CC3B0;
+
+  /* Agent / task states (always paired with icon + label) */
+  --color-state-queued: #939F9A;
+  --color-state-running: #7DB4F5;
+  --color-state-waiting: #F2B33D; /* waiting-permission = tally amber */
+  --color-state-review: #BBA6F4;
+  --color-state-done: #7FCB8F;
+  --color-state-failed: #F07A71;
+  --color-state-waiting-bg: #2A2412;
+
+  /* Feedback */
+  --color-success: #7FCB8F;
+  --color-warning: #F2B33D;
+  --color-danger: #F07A71;        /* danger text / icons */
+  --color-danger-solid: #B8352E;  /* destructive filled button; only 2.95:1 on surface: always carries a text label, never a standalone indicator */
+  --color-danger-bg: #3A1D1F;
+  --color-info: #7DB4F5;
+
+  /* Permission dialog */
+  --color-permission-frame: #F2B33D;
+  --color-permission-bg: #252E2C;
+
+  /* Diff */
+  --color-diff-add-bg: #17301F;
+  --color-diff-add-fg: #A6E3B3;
+  --color-diff-remove-bg: #3A1D1F;
+  --color-diff-remove-fg: #F6AFAA;
+  --color-diff-gutter: #929F9A;
+
+  /* Charts (Usage) — categorical, max 5 series */
+  --color-chart-1: #6CC3B0;
+  --color-chart-2: #7DB4F5;
+  --color-chart-3: #BBA6F4;
+  --color-chart-4: #F2B33D;
+  --color-chart-5: #A8B4AF;
+  --color-chart-grid: #2A3432;
+
+  /* Elevation — dark: lightness + border; shadow only on overlays */
+  --shadow-none: none;
+  --shadow-overlay: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --scrim: rgba(6, 9, 8, 0.6);
+}
+
+/* ---------- Light theme « Calque » ---------- */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --color-bg-base: #E6EBE8;
+    --color-bg-surface: #F3F6F4;
+    --color-bg-raised: #FFFFFF;
+    --color-bg-overlay: #FFFFFF;
+    --color-bg-hover: #E9EFEC;
+    --color-bg-selected: #D5EBE5;
+    --color-border-subtle: #D3DBD7;
+    --color-border-strong: #74827C;
+    --color-text-primary: #17201D;
+    --color-text-secondary: #41504A;
+    --color-text-muted: #56645E;
+    --color-text-on-accent: #FFFFFF;
+    --color-text-on-danger: #FFFFFF;
+    --color-accent: #17705F;
+    --color-accent-hover: #0F5C4E;
+    --color-accent-solid: #17705F;
+    --color-focus-ring: #17705F;
+    --color-state-queued: #56645E;
+    --color-state-running: #1F5FAF;
+    --color-state-waiting: #875500;
+    --color-state-review: #6346B8;
+    --color-state-done: #2A6E37;
+    --color-state-failed: #AD2C25;
+    --color-state-waiting-bg: #FBF0D9;
+    --color-success: #2A6E37;
+    --color-warning: #875500;
+    --color-danger: #AD2C25;
+    --color-danger-solid: #A72C26;
+    --color-danger-bg: #F9E0DD;
+    --color-info: #1F5FAF;
+    --color-permission-frame: #875500;
+    --color-permission-bg: #FFFFFF;
+    --color-diff-add-bg: #DCF1E0;
+    --color-diff-add-fg: #1B5A2A;
+    --color-diff-remove-bg: #F9E0DD;
+    --color-diff-remove-fg: #8A221C;
+    --color-diff-gutter: #56645E;
+    --color-chart-1: #17705F;
+    --color-chart-2: #1F5FAF;
+    --color-chart-3: #6346B8;
+    --color-chart-4: #875500;
+    --color-chart-5: #41504A;
+    --color-chart-grid: #D3DBD7;
+    --shadow-overlay: 0 8px 24px rgba(23, 32, 29, 0.18);
+    --scrim: rgba(23, 32, 29, 0.35);
+  }
+}
+
+/* Manual override — duplicate of the block above, keep both in sync. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-bg-base: #E6EBE8;
+  --color-bg-surface: #F3F6F4;
+  --color-bg-raised: #FFFFFF;
+  --color-bg-overlay: #FFFFFF;
+  --color-bg-hover: #E9EFEC;
+  --color-bg-selected: #D5EBE5;
+  --color-border-subtle: #D3DBD7;
+  --color-border-strong: #74827C;
+  --color-text-primary: #17201D;
+  --color-text-secondary: #41504A;
+  --color-text-muted: #56645E;
+  --color-text-on-accent: #FFFFFF;
+  --color-text-on-danger: #FFFFFF;
+  --color-accent: #17705F;
+  --color-accent-hover: #0F5C4E;
+  --color-accent-solid: #17705F;
+  --color-focus-ring: #17705F;
+  --color-state-queued: #56645E;
+  --color-state-running: #1F5FAF;
+  --color-state-waiting: #875500;
+  --color-state-review: #6346B8;
+  --color-state-done: #2A6E37;
+  --color-state-failed: #AD2C25;
+  --color-state-waiting-bg: #FBF0D9;
+  --color-success: #2A6E37;
+  --color-warning: #875500;
+  --color-danger: #AD2C25;
+  --color-danger-solid: #A72C26;
+  --color-danger-bg: #F9E0DD;
+  --color-info: #1F5FAF;
+  --color-permission-frame: #875500;
+  --color-permission-bg: #FFFFFF;
+  --color-diff-add-bg: #DCF1E0;
+  --color-diff-add-fg: #1B5A2A;
+  --color-diff-remove-bg: #F9E0DD;
+  --color-diff-remove-fg: #8A221C;
+  --color-diff-gutter: #56645E;
+  --color-chart-1: #17705F;
+  --color-chart-2: #1F5FAF;
+  --color-chart-3: #6346B8;
+  --color-chart-4: #875500;
+  --color-chart-5: #41504A;
+  --color-chart-grid: #D3DBD7;
+  --shadow-overlay: 0 8px 24px rgba(23, 32, 29, 0.18);
+  --scrim: rgba(23, 32, 29, 0.35);
+}
+
+/* ---------- Reduced motion: durations collapse, pulses stop ---------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 0ms;
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+    --dur-pulse: 0ms; /* components must render a static lamp when this is 0 */
+  }
+}
