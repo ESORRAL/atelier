@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 1.2 (phase 3). 1.2 : états revus (`idle` dès que le pont est prêt, `running` dès l'envoi), reprise sur la même clé, index créé au premier message.
 Version 1.1 (phase 2 : Chat). 1.1 : ajout de `SessionEvent` `user`, pour réafficher les messages de l'utilisateur à la reprise. Seul l'architecte modifie ce fichier. Les noms sont exacts : les tâches
 parallèles s'appuient dessus sans se voir.
 
@@ -25,6 +26,9 @@ Tauri). Toute erreur est rejetée avec une chaîne lisible en français.
 
 `key` est toujours une `string` produite par `session_start`. Une clé inconnue → erreur
 `Session inconnue`.
+
+`cwd` de `session_start` : `~` développé, chemin absolu exigé, dossier existant, `/` refusé ; sinon erreur
+française. `settings_set` refuse un `claudePath` qui n'est pas un fichier exécutable absolu.
 
 ## 2. Types partagés
 
@@ -73,14 +77,26 @@ Côté Rust, les mêmes types avec `#[serde(rename_all = "camelCase")]` ; `Sessi
 | Reçu | Nouvel état |
 |---|---|
 | lancement | `starting` |
-| `sdk` `system/init` | `running` (un `init` ouvre chaque tour) |
+| `start` envoyé au pont avec succès | `idle` (pas d'attente du premier `system/init`, qui n'arrive qu'avec le premier tour) |
+| `session_send` écrit au pont avec succès | `running` |
+| `sdk` `system/init` | aucun changement (met à jour le modèle affiché) |
 | `sdk` `result` | `idle`, sauf demande encore en attente |
 | `permission_request` | `waiting_permission` |
 | `permission_response` envoyée ou `permission_cancelled`, plus aucune en attente | `running` |
 | `closed` | `closed` |
 | fin du process sans `closed` | `crashed` (+ `error`) ; toute demande en attente est annulée |
 
-Chaque changement émet `{kind:"state"}`. Chaque `SessionEvent` émis est d'abord journalisé.
+Chaque changement émet `{kind:"state"}`. Chaque `SessionEvent` émis est d'abord journalisé, **sauf**
+les `sdk` de type `stream_event` (fragments de streaming) : ils sont émis vers l'UI mais pas journalisés,
+car les messages `assistant` complets suffisent à réafficher l'historique.
+
+### Reprise et index
+- `session_start` avec `resume` = un `claudeSessionId` présent dans l'index : la session **réutilise la clé
+  de cette entrée** (même journal, même ligne d'index) au lieu d'en créer une nouvelle.
+- Le SDK remet `total_cost_usd` à zéro dans un nouveau process : `costUsd` de l'index = coût de l'entrée au
+  moment de la reprise + `total_cost_usd` courant. L'UI affiche ce même total.
+- Une entrée d'index n'est créée qu'au premier `session_send` (pas de session vide dans la liste).
+- L'index n'est réécrit que si une de ses valeurs change (modèle, coût, titre, `claudeSessionId`).
 
 ## 4. Interfaces internes du cœur Rust
 
