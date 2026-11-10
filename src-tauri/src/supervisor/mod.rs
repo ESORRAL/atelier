@@ -58,7 +58,9 @@ pub fn spawn(mut cmd: Command) -> std::io::Result<Supervised> {
 /// it): EOF means this process is gone. Own process group so a terminal Ctrl-C does not reach it.
 fn spawn_watchdog(pgid: i32) -> std::io::Result<std::process::Child> {
     use std::os::unix::process::CommandExt;
-    let exe = match std::env::var_os(WATCHDOG_EXE_ENV) {
+    // The override exists for integration tests, whose current_exe() is the test harness.
+    // Release builds ignore it, so the environment cannot choose which binary becomes the watchdog.
+    let exe = match std::env::var_os(WATCHDOG_EXE_ENV).filter(|_| cfg!(debug_assertions)) {
         Some(exe) => exe.into(),
         None => std::env::current_exe()?,
     };
