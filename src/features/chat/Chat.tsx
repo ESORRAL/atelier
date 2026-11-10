@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { Stop, PaperPlaneRight } from "@phosphor-icons/react";
+import { createPortal } from "react-dom";
+import { Folder, Stop, PaperPlaneRight } from "@phosphor-icons/react";
 import {
   permissionRespond,
   sessionClose,
@@ -32,7 +33,7 @@ const STATE_LABEL: Record<string, string> = {
 const errText = (e: unknown) => (typeof e === "string" ? e : "Une erreur est survenue.");
 const euro = (usd: number) => `${usd.toFixed(4)} $`;
 
-export default function Chat() {
+export default function Chat({ slot }: { slot?: HTMLElement | null }) {
   const [s, dispatch] = useReducer(reduce, initialState);
   const [key, setKey] = useState<string | null>(null);
   const [cwd, setCwd] = useState("");
@@ -143,56 +144,80 @@ export default function Chat() {
           : "";
   const error = localError ?? s.error;
 
+  const head = (
+    <div className="session">
+      <span className="session__state">{s.sessionState ? STATE_LABEL[s.sessionState] : "Aucune session"}</span>
+      {key && (
+        <select
+          className="session__model"
+          aria-label="Modèle"
+          value={s.model ?? ""}
+          disabled={!models.length}
+          onChange={(e) => key && sessionSetModel(key, e.target.value).catch((x) => setLocalError(errText(x)))}
+        >
+          {s.model && !models.some((m) => m.value === s.model) && <option value={s.model}>{s.model}</option>}
+          {models.map((m) => (
+            <option key={m.value} value={m.value}>{m.displayName}</option>
+          ))}
+        </select>
+      )}
+      <span className="session__cost" aria-label="Coût de la session">
+        {euro(s.costUsd)}
+      </span>
+    </div>
+  );
+
   return (
     <section className="chat" aria-label="Chat">
-      <header className="chat__head">
-        <div className="chat__state">
-          <strong>{s.sessionState ? STATE_LABEL[s.sessionState] : "Aucune session"}</strong>
-          {s.model && <span className="muted"> · {s.model}</span>}
-        </div>
-        <span className="muted" aria-label="Coût de la session">
-          {euro(s.costUsd)}
-        </span>
-      </header>
+      {slot ? createPortal(head, slot) : head}
 
       {!key ? (
-        <div className="chat__start">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (cwd.trim()) start(cwd.trim());
-            }}
-          >
-            <label htmlFor="chat-cwd">Dossier du projet</label>
-            <input id="chat-cwd" value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="/chemin/vers/le/projet" list="chat-recent" />
-            <datalist id="chat-recent">{recent.map((r) => <option key={r} value={r} />)}</datalist>
-            <button type="submit" className="btn btn--primary" disabled={!cwd.trim()}>
-              Démarrer une session
-            </button>
-          </form>
-          {recent.length > 0 && (
-            <ul className="chat__list" aria-label="Dossiers récents">
-              {recent.map((r) => (
-                <li key={r}>
-                  <button type="button" className="btn" onClick={() => setCwd(r)}>{r}</button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <h2>Sessions récentes</h2>
-          {sessions.length === 0 ? (
-            <p className="muted">Aucune session pour l'instant.</p>
-          ) : (
-            <ul className="chat__list">
-              {sessions.map((e) => (
-                <li key={e.key}>
-                  <button type="button" className="btn" onClick={() => start(e.cwd, e)}>
-                    {e.title || e.key} <span className="muted">· {e.cwd} · {euro(e.costUsd)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+        <div className="welcome">
+          <div className="welcome__panel">
+            <h1 className="welcome__title">Sur quel projet <span className="welcome__nowrap">travailles-tu&nbsp;?</span></h1>
+            <p className="welcome__lede">Choisis un dossier, Claude ouvrira une session dedans.</p>
+            <form
+              className="welcome__form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (cwd.trim()) start(cwd.trim());
+              }}
+            >
+              <label htmlFor="chat-cwd" className="sr-only">Dossier du projet</label>
+              <input id="chat-cwd" value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="/chemin/vers/le/projet" list="chat-recent" />
+              <datalist id="chat-recent">{recent.map((r) => <option key={r} value={r} />)}</datalist>
+              <button type="submit" className="btn btn--primary" disabled={!cwd.trim()}>
+                Démarrer une session
+              </button>
+            </form>
+            {recent.length > 0 && (
+              <ul className="welcome__chips" aria-label="Dossiers récents">
+                {recent.map((r) => (
+                  <li key={r}>
+                    <button type="button" className="chip" onClick={() => setCwd(r)}>
+                      <Folder size="var(--icon-sm)" aria-hidden="true" /> {r}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <h2 className="welcome__h2">Sessions récentes</h2>
+            {sessions.length === 0 ? (
+              <p className="welcome__empty">Aucune session pour l'instant. Ta première conversation apparaîtra ici.</p>
+            ) : (
+              <ul className="welcome__sessions">
+                {sessions.map((e) => (
+                  <li key={e.key}>
+                    <button type="button" className="session-row" onClick={() => start(e.cwd, e)}>
+                      <span className="session-row__title">{e.title || e.key}</span>
+                      <span className="session-row__meta">{e.cwd}</span>
+                      <span className="session-row__cost">{euro(e.costUsd)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       ) : (
         <>
@@ -208,46 +233,39 @@ export default function Chat() {
               follow.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
             }}
           >
-            {s.messages.map((m) => (
-              <MessageView key={m.id} message={m} />
-            ))}
+            <div className="chat__column">
+              {s.messages.length === 0 && <p className="chat__empty">Dis bonjour à Claude pour commencer.</p>}
+              {s.messages.map((m) => (
+                <MessageView key={m.id} message={m} />
+              ))}
+            </div>
           </div>
           <div className="chat__composer">
-            <textarea
-              aria-label="Message à Claude"
-              placeholder="Écris à Claude…  (Entrée envoie, Maj+Entrée = nouvelle ligne)"
-              value={draft}
-              rows={2}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape" && busy) interrupt();
-                else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-            />
-            <div className="chat__bar">
-              <select
-                aria-label="Modèle"
-                value={s.model ?? ""}
-                disabled={!models.length}
-                onChange={(e) => key && sessionSetModel(key, e.target.value).catch((x) => setLocalError(errText(x)))}
-              >
-                {s.model && !models.some((m) => m.value === s.model) && <option value={s.model}>{s.model}</option>}
-                {models.map((m) => (
-                  <option key={m.value} value={m.value}>{m.displayName}</option>
-                ))}
-              </select>
+            <div className="composer">
+              <textarea
+                aria-label="Message à Claude"
+                placeholder="Écris ton message…"
+                value={draft}
+                rows={1}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape" && busy) interrupt();
+                  else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+              />
               {busy && (
-                <button type="button" className="btn" onClick={interrupt}>
+                <button type="button" className="btn btn--ghost" onClick={interrupt}>
                   <Stop size="var(--icon-sm)" aria-hidden="true" /> Arrêter (Échap)
                 </button>
               )}
-              <button type="button" className="btn btn--primary" onClick={send} disabled={!draft.trim()}>
-                <PaperPlaneRight size="var(--icon-sm)" aria-hidden="true" /> Envoyer
+              <button type="button" className="composer__send" onClick={send} disabled={!draft.trim()} aria-label="Envoyer" title="Envoyer (Entrée)">
+                <PaperPlaneRight size="var(--icon-md)" weight="fill" aria-hidden="true" />
               </button>
             </div>
+            <p className="composer__hint">Entrée pour envoyer, Maj+Entrée pour aller à la ligne</p>
           </div>
         </>
       )}

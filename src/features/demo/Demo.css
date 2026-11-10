@@ -1,7 +1,13 @@
 .demo {
   display: grid;
-  gap: var(--space-6);
-  padding: var(--space-6);
+  gap: var(--space-7);
+  max-width: var(--measure-chat);
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-6) var(--space-8);
+}
+
+.demo > .btn {
+  justify-self: start;
 }
 
 .demo section {
@@ -12,6 +18,11 @@
 .demo h2 {
   font-size: var(--text-lg);
   line-height: var(--lh-lg);
+  font-weight: var(--weight-bold);
+}
+
+.demo__chat {
+  width: 100%;
 }
 
 .demo__row {
@@ -21,22 +32,9 @@
 }
 
 .demo__swatch {
-  padding: var(--space-4) var(--space-5);
-  border: var(--space-1) solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-}
-
-.demo__btn {
-  justify-self: start;
-  padding: var(--space-3) var(--space-5);
-  border: var(--space-1) solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-raised);
-  color: var(--color-text-primary);
-  font: inherit;
-  cursor: pointer;
-}
-
-.demo__btn:hover {
-  background: var(--color-bg-hover);
+  padding: var(--space-5) var(--space-6);
+  border: var(--border-w) solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
 }

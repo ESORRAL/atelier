@@ -2,8 +2,12 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
+  padding: var(--space-1) var(--space-4) var(--space-1) var(--space-3);
   font-size: var(--text-sm);
   line-height: var(--lh-sm);
+  white-space: nowrap;
+  border: var(--border-w) solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
 }
 
 .tally__lamp {
@@ -11,6 +15,7 @@
   height: var(--tally-size);
   border-radius: var(--radius-full);
   background: currentColor;
+  box-shadow: 0 0 var(--space-3) currentColor; /* lit lamp */
 }
 
 .tally__label {
