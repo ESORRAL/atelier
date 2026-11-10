@@ -8,12 +8,13 @@ Stack : Tauri 2 + Rust (`src-tauri/`), React + TypeScript (`src/`), pont Node ve
 2. N'écris que dans les chemins qu'elle autorise. Besoin d'un autre fichier : arrête-toi et dis-le dans
    ton rapport.
 3. Pour comprendre la structure : `graphify query "<question>"` ou `graphify explain "<nœud>"`. Ne
-   parcours pas le repo.
+   parcours pas le repo. Le graphe n'est pas versionné : s'il manque, lance `graphify update .` (quelques
+   secondes, sans LLM).
 4. `contracts/` est la source de vérité, en lecture seule. Un contrat à changer : arrête-toi et remonte-le.
 5. Sobriété (Ponytail) : réutilise l'existant, la bibliothèque standard, les API natives. Aucune nouvelle
    dépendance hors de celles nommées dans ta fiche.
-6. Lance les commandes de vérification de ta fiche, committe sur ta branche, remplis la section Rapport
-   (150 mots max).
+6. Lance les commandes de vérification de ta fiche, committe sur ta branche en ajoutant les fichiers un
+   par un (jamais `git add -A`), remplis la section Rapport (150 mots max).
 
 ## Interdits
 - Installer un plugin, un skill, un serveur MCP ou un outil système.
@@ -39,7 +40,13 @@ Stack : Tauri 2 + Rust (`src-tauri/`), React + TypeScript (`src/`), pont Node ve
 | Fonctionnement des agents (architecte seulement) | `AGENTS.md` |
 
 ## Commandes
-<!-- Remplies par la tâche d'échafaudage (TASK-004) : dev, test, lint, build. -->
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"   # Rust n'est pas dans le PATH par défaut
+npm run tauri dev                      # lancer l'app
+npm run lint && npm test && npm run build
+cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
+graphify update .                      # (re)construire le graphe, sans LLM
+```
 
 ## Si tu es l'architecte (session principale)
 Tu ne codes pas les features : tu découpes, délègues, fais relire, intègres. Suis `AGENTS.md`. Chaque
