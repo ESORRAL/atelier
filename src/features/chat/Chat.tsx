@@ -114,6 +114,8 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
     dispatch({ kind: "reset" });
     onSessionReset?.();
     try {
+      // Re-read so defaults saved in Réglages apply to this new session.
+      settings.current = await settingsGet().catch(() => settings.current);
       if (resumeFrom) {
         const past = await sessionHistory(resumeFrom.key);
         // Pending permission requests of a past session are obsolete.

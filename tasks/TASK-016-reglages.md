@@ -44,8 +44,8 @@ npm ci && npm run lint && npm test && npm run build
 Pas de raccourcis remappables (plus tard), pas de Rust.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : écran Réglages (CLI, modèle, mode, thème immédiat, dossiers récents supprimables, bouton Enregistrer avec retour, erreur du cœur affichée telle quelle). Validation pure testée. Chat : les défauts sont relus à chaque démarrage de session (avant, lus une seule fois au montage).
+- Fichiers touchés : src/features/settings/{index.tsx,validate.ts,validate.test.ts,settings.css}, src/features/chat/Chat.tsx (2 lignes), ce fichier.
+- Vérification : lint OK, 41 tests OK, build OK.
+- Raccourcis pris (`shortcut:`) : aucun ; `select` natifs stylés plutôt qu'un composant Field (absent de src/ui).
+- À remonter à l'architecte : rien. Non vérifié visuellement (pas de tauri dev).
