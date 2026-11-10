@@ -1,36 +1,50 @@
-# CLAUDE.md — brouillon de départ (à compléter par l'architecte)
+# Atelier
 
-> Projet : cockpit desktop Linux pour Claude Code (nom de code **Atelier**).
-> Une interface graphique, avec le CLI Claude Code qui tourne en arrière-plan,
-> plus des onglets en bonus (musique, Reels Instagram, second cerveau, graphe du code…).
+Cockpit desktop Linux pour Claude Code : une interface graphique, le CLI tourne en arrière-plan.
+Stack : Tauri 2 + Rust (`src-tauri/`), React + TypeScript (`src/`), pont Node vers l'Agent SDK (`bridge/`).
 
-## Rôles
-- **Architecte (Fable 5.2)** : architecture, découpage, fiches de tâche, délégation, revue, intégration.
-  Ne code pas les features.
-- **Sous-agents** (définis dans `.claude/agents/`) : un agent = une tâche = un périmètre de fichiers.
+## Si tu es un sous-agent
+1. Ta mission est ta fiche `tasks/TASK-XXX-*.md`. Lis-la, puis **uniquement** les fichiers qu'elle liste.
+2. N'écris que dans les chemins qu'elle autorise. Besoin d'un autre fichier : arrête-toi et dis-le dans
+   ton rapport.
+3. Pour comprendre la structure : `graphify query "<question>"` ou `graphify explain "<nœud>"`. Ne
+   parcours pas le repo.
+4. `contracts/` est la source de vérité, en lecture seule. Un contrat à changer : arrête-toi et remonte-le.
+5. Sobriété (Ponytail) : réutilise l'existant, la bibliothèque standard, les API natives. Aucune nouvelle
+   dépendance hors de celles nommées dans ta fiche.
+6. Lance les commandes de vérification de ta fiche, committe sur ta branche, remplis la section Rapport
+   (150 mots max).
 
-## Règles pour tous les agents
-1. **Contexte minimal** : lis ta fiche de tâche et uniquement les fichiers qu'elle liste.
-2. Pour comprendre la structure, lis `graphify-out/GRAPH_REPORT.md` / interroge le graphe au lieu de
-   grep tout le repo.
-3. N'édite que les fichiers autorisés par ta fiche. Si tu as besoin d'un autre fichier, arrête-toi et signale-le.
-4. Les contrats d'interface (`contracts/`) sont la source de vérité ; seul l'architecte les modifie.
-5. **Ponytail** : réutilise l'existant, la stdlib et les API natives. Toute nouvelle dépendance doit être justifiée.
-6. **Sécurité** : n'installe aucun plugin, skill ou MCP. Pas de secrets dans le code ni dans les logs. Pas de
-   `--dangerously-skip-permissions`.
-7. Instagram : aucune automatisation ni scraping, webview isolée sans accès à l'API interne de l'app.
-8. Termine toujours par un **rapport** : ce qui a été fait, les fichiers touchés, les tests lancés, les
-   points ouverts et les décisions à remonter.
-
-## Suivi (second cerveau)
-- Vault Obsidian : `$ATELIER_VAULT/Projets/Atelier/` (via la CLI officielle `obsidian`, Obsidian lancé).
-- Après chaque tâche fusionnée : mettre à jour le journal, le tableau de bord, les décisions et les leçons.
-- Après chaque merge : `graphify update .`
+## Interdits
+- Installer un plugin, un skill, un serveur MCP ou un outil système.
+- `--dangerously-skip-permissions`, le mode `bypassPermissions`, un secret dans le code ou les logs.
+- Lire, stocker ou transmettre un jeton d'authentification Claude.
+- Donner à la fenêtre Instagram un accès à l'app, y injecter un script, automatiser ou extraire son contenu.
+- Afficher du HTML non fiable (dont `graphify-out/graph.html`).
+- Modifier `.claude/`, `contracts/`, `tasks/` (hors ta section Rapport), `CLAUDE.md`, `AGENTS.md`.
 
 ## Conventions
-- Code et identifiants en anglais ; docs, notes et messages de commit en français.
-- Commits conventionnels (`feat(chat): …`), une branche par tâche (`task/TASK-XXX`), git worktrees pour
-  le travail en parallèle.
+- Code, identifiants et commentaires en anglais. Docs, notes et messages de commit en français.
+- Commits conventionnels : `feat(chat): …`, `fix(core): …`, `docs: …`. Une branche par tâche :
+  `task/TASK-XXX-slug`.
+- Un raccourci assumé porte un commentaire `shortcut: <limite>, <quand le lever>`.
+
+## Où trouver quoi
+| Besoin | Fichier |
+|---|---|
+| Architecture, par section | `ARCHITECTURE.md` |
+| Design, par section | `DESIGN.md`, `design/tokens.css` |
+| Décisions | `docs/adr/` |
+| Feuille de route | `docs/ROADMAP.md` |
+| Fonctionnement des agents (architecte seulement) | `AGENTS.md` |
 
 ## Commandes
-<!-- À remplir par l'architecte une fois la stack choisie (dev, tests, lint, build). -->
+<!-- Remplies par la tâche d'échafaudage (TASK-004) : dev, test, lint, build. -->
+
+## Si tu es l'architecte (session principale)
+Tu ne codes pas les features : tu découpes, délègues, fais relire, intègres. Suis `AGENTS.md`. Chaque
+phase se termine par un point à l'utilisateur, puis tu attends son GO.
+
+## Consignes de compactage
+Garde : la phase en cours, les tâches ouvertes avec leur état, les décisions en attente de l'utilisateur.
+Jette : le contenu des rapports déjà intégrés et les sorties de commandes.
