@@ -30,6 +30,21 @@ zéro IPC, codecs du navigateur. Moins intégré, isolation plus forte.
 Un test automatique ouvre une page de test dans la fenêtre `instagram` et vérifie que
 `window.__TAURI__` est absent et qu'un appel `invoke` échoue. La tâche n'est pas fusionnée sans lui.
 
+## Résultat du spike (TASK-003) et de sa revue, 2026-11-10
+Prouvé : la fenêtre externe n'atteint aucune commande, ses cookies sont dans un magasin séparé sur le
+disque, un sous-domaine piégé (`instagram.com.evil.example`) est refusé.
+
+Corrections apportées par la revue, à appliquer dans l'implémentation réelle (v0.3) :
+1. **Ce qui protège vraiment** : Tauri 2.12 rejette toute commande venant d'une origine distante sans
+   capability `remote`, même sans `AppManifest::commands`. Le manifeste ne protège que les fenêtres locales.
+   Les deux restent obligatoires, mais le premier est le verrou de la fenêtre Instagram.
+2. **Test plus strict** : sur 6 vecteurs essayés, seuls les 2 `invoke` étaient effectifs (les autres
+   n'envoyaient pas la clé d'invocation). Le test définitif doit : envoyer la clé d'invocation sur tous les
+   vecteurs, essayer aussi les commandes `plugin:*` du cœur (`plugin:event|emit`,
+   `plugin:webview|create_webview_window`), et vérifier l'absence de `__TAURI__` et `__TAURI_INTERNALS__`.
+3. **Navigation** : n'autoriser que `https` (le spike laissait passer `http://www.instagram.com`) ; tester
+   les redirections serveur et le redirecteur ouvert `l.facebook.com`, qui doit ouvrir le navigateur système.
+
 ## Limites connues
 - La connexion « avec Google » est refusée par Google dans WebKitGTK ; identifiant + mot de passe
   Instagram uniquement.
