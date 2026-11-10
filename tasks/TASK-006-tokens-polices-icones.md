@@ -61,8 +61,8 @@ Pas de rail, de barres ni de panneaux (phase 3). Pas d'autre composant que `Tall
 valeur dans `design/tokens.css`.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : tokens, polices Fontsource (latin 400/500/700 + mono 400), Phosphor, thème (`theme.ts` + test), `Tally`, page démo en import dynamique ; `@font-face` supprimés de `design/tokens.css`.
+- Fichiers touchés : `src/main.tsx`, `src/App.tsx`, `src/ui/{base.css,theme.ts,theme.test.ts,Tally.tsx,Tally.css}`, `src/features/demo/*`, `design/tokens.css`, `package.json`, `package-lock.json`.
+- Vérification : lint OK, 5 tests OK, build OK, 4 woff2 dans `dist/assets`, aucun hex en dur.
+- Raccourcis pris (`shortcut:`) : Fontsource n'a pas de variable ; graisses statiques 400/500/700 au lieu de 400/520/680, pas d'italique. Pas de test de CSP à l'exécution (app Tauri non lancée).
+- À remonter à l'architecte : graisses 520/680 non servies ; CSP non vérifiée en runtime.

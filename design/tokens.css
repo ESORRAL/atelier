@@ -5,29 +5,6 @@
  * <html data-theme="light|dark">. Contrast ratios are listed in DESIGN.md §2.
  */
 
-/* ---------- Fonts (bundled in ../fonts relative to this file, OFL 1.1, no CDN) ---------- */
-@font-face {
-  font-family: "Atkinson Hyperlegible Next";
-  src: url("../fonts/AtkinsonHyperlegibleNext-VariableFont_wght.woff2") format("woff2");
-  font-weight: 200 800;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Atkinson Hyperlegible Next";
-  src: url("../fonts/AtkinsonHyperlegibleNext-Italic-VariableFont_wght.woff2") format("woff2");
-  font-weight: 200 800;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Atkinson Hyperlegible Mono";
-  src: url("../fonts/AtkinsonHyperlegibleMono-VariableFont_wght.woff2") format("woff2");
-  font-weight: 200 800;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* ---------- Theme-independent tokens + dark theme (default) ---------- */
 :root {
   color-scheme: dark;
