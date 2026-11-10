@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { createBridge } from './main.mjs';
 
 const tick = () => new Promise((r) => setImmediate(r));
@@ -193,4 +194,48 @@ test('unexpected SDK stream end is fatal', async () => {
   await tick();
   assert.deepEqual(t.last('error').fatal, true);
   assert.deepEqual(t.exits, [1]);
+});
+
+test('already-aborted signal is refused without a request', async () => {
+  const t = setup();
+  t.start();
+  const ac = new AbortController();
+  ac.abort();
+  assert.equal((await ask(t.fake, { signal: ac.signal })).behavior, 'deny');
+  assert.equal(t.last('permission_request'), undefined);
+});
+
+test('duplicate requestId is refused; the first request stays intact', async () => {
+  const t = setup();
+  t.start();
+  const first = ask(t.fake);
+  assert.equal((await ask(t.fake)).behavior, 'deny');
+  assert.equal(t.last('error').fatal, false);
+  t.send({ type: 'permission_response', requestId: 'r1', decision: 'allow_once' });
+  assert.equal((await first).behavior, 'allow');
+});
+
+test('synchronous throw from query is fatal, exit 1', () => {
+  const out = [];
+  const exits = [];
+  const bridge = createBridge({ query: () => { throw new Error('boom'); }, sdkVersion: 'x', send: (m) => out.push(m), exit: (c) => exits.push(c) });
+  bridge.handleLine(JSON.stringify({ type: 'start', cwd: '/w', claudePath: '/c', permissionMode: 'default' }));
+  assert.equal(out.at(-1).type, 'error');
+  assert.equal(out.at(-1).fatal, true);
+  assert.deepEqual(exits, [1]);
+});
+
+// The entry point imports the real SDK, so only pre-start behaviour is reachable here.
+test('stdio: real main.mjs handles chunked and split lines', async () => {
+  const child = spawn(process.execPath, [new URL('./main.mjs', import.meta.url).pathname], { stdio: ['pipe', 'pipe', 'ignore'] });
+  let stdout = '';
+  child.stdout.on('data', (d) => (stdout += d));
+  const code = new Promise((r) => child.on('exit', r));
+  child.stdin.write('{"type":"nope"}\n{"type":"user","text":"x"}\n{"type":"cl');
+  await new Promise((r) => setTimeout(r, 50));
+  child.stdin.write('ose"}\n');
+  assert.equal(await code, 0);
+  const lines = stdout.trim().split('\n').map((l) => JSON.parse(l));
+  assert.deepEqual(lines.map((m) => [m.type, m.fatal]), [['ready', undefined], ['error', false], ['error', false], ['closed', undefined]]);
+  assert.equal(lines[0].sdkVersion, '0.3.322');
 });

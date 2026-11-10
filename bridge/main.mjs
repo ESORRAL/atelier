@@ -50,6 +50,11 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
   async function canUseTool(toolName, input, opts) {
     const { signal, suggestions = [], requestId = crypto.randomUUID() } = opts;
     const canAlways = suggestions.some((s) => s.type === 'addRules');
+    if (signal?.aborted) return { behavior: 'deny', message: DEFAULT_DENY };
+    if (pending.has(requestId)) {
+      error(`duplicate requestId refused: ${requestId}`);
+      return { behavior: 'deny', message: DEFAULT_DENY };
+    }
     return new Promise((resolve) => {
       pending.set(requestId, { input, suggestions, canAlways, resolve });
       signal?.addEventListener('abort', () => settle(requestId, { behavior: 'deny', message: DEFAULT_DENY }, true), { once: true });
@@ -89,19 +94,24 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
       if (typeof m.cwd !== 'string' || typeof m.claudePath !== 'string') return error('start requires cwd and claudePath');
       if (!MODES.has(m.permissionMode)) return error(`invalid permissionMode: ${m.permissionMode}`);
       const input = inputStream();
-      const q = query({
-        prompt: input,
-        options: {
-          cwd: m.cwd,
-          pathToClaudeCodeExecutable: m.claudePath,
-          permissionMode: m.permissionMode,
-          ...(m.model && { model: m.model }),
-          ...(m.resume && { resume: m.resume }),
-          includePartialMessages: true,
-          forwardSubagentText: true,
-          canUseTool,
-        },
-      });
+      let q;
+      try {
+        q = query({
+          prompt: input,
+          options: {
+            cwd: m.cwd,
+            pathToClaudeCodeExecutable: m.claudePath,
+            permissionMode: m.permissionMode,
+            ...(m.model && { model: m.model }),
+            ...(m.resume && { resume: m.resume }),
+            includePartialMessages: true,
+            forwardSubagentText: true,
+            canUseTool,
+          },
+        });
+      } catch (e) {
+        return shutdown(1, `SDK error: ${e?.message ?? e}`);
+      }
       session = { q, input };
       pump(q);
     },
@@ -161,9 +171,11 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  // stdout carries protocol lines only, so redirect before anything can print.
+  console.log = console.info = console.debug = console.error;
+  console.dir = (obj) => console.error(obj);
   const { query } = await import('@anthropic-ai/claude-agent-sdk');
   const pkg = new URL('./node_modules/@anthropic-ai/claude-agent-sdk/package.json', import.meta.url);
-  console.log = console.info = console.error; // stdout carries protocol lines only
   const bridge = createBridge({
     query,
     sdkVersion: JSON.parse(readFileSync(pkg, 'utf8')).version,
