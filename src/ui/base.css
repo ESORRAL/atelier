@@ -18,12 +18,87 @@ body {
   font-family: var(--font-ui);
   font-size: var(--text-md);
   line-height: var(--lh-md);
+  -webkit-font-smoothing: antialiased;
 }
 
 :focus-visible {
   outline: var(--focus-ring-w) solid var(--color-focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
+
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+.muted { color: var(--color-text-secondary); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- App shell: top bar + main ---------- */
+.app {
+  display: grid;
+  grid-template-rows: var(--topbar-h) minmax(0, 1fr);
+  height: 100vh;
+}
+.app__main {
+  min-height: 0;
+  overflow: auto;
+  background: var(--color-bg-surface) var(--glow-lamp) no-repeat;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: 0 var(--space-6);
+  background: var(--color-bg-base);
+  border-bottom: var(--border-w) solid var(--color-border-subtle);
+}
+.topbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-display);
+  letter-spacing: var(--tracking-display);
+}
+/* The half-lit lamp: amber half, coral rim. */
+.topbar__lamp {
+  width: var(--icon-md);
+  height: var(--icon-md);
+  border-radius: var(--radius-full);
+  border: var(--focus-ring-w) solid var(--color-coral);
+  background: linear-gradient(90deg, var(--color-accent) 50%, var(--color-bg-base) 50%);
+  box-shadow: 0 0 var(--space-4) var(--color-accent);
+}
+.topbar__slot {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  background: var(--color-bg-raised);
+  border: var(--border-w) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  padding: var(--space-3) var(--space-5);
+  cursor: pointer;
+  transition: background-color var(--dur-instant) var(--ease-standard);
+}
+.btn:hover:not(:disabled) { background: var(--color-bg-hover); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn--primary { background: var(--color-accent-solid); color: var(--color-text-on-accent); border-color: transparent; }
+.btn--primary:hover:not(:disabled) { background: var(--color-accent-hover); }
+.btn--ghost { background: transparent; border-color: transparent; color: var(--color-text-secondary); }
+.btn--ghost:hover:not(:disabled) { color: var(--color-text-primary); }
 
 @media (prefers-reduced-motion: reduce) {
   *,

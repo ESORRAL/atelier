@@ -1,11 +1,11 @@
-# DESIGN.md — Atelier, concept « Régie »
+# DESIGN.md — Atelier, concept « Veilleuse »
 
 Spécification de design de référence. Chaque section `##` se lit seule. Valeurs exactes : `design/tokens.css` (source de vérité ; en cas d'écart, le CSS gagne).
 
 ## Sommaire
 | § | Section | Contenu en une ligne |
 |---|---|---|
-| 1 | Intention | Concept « Régie », pourquoi, ce qu'on refuse. |
+| 1 | Intention | Concept « Veilleuse », pourquoi, ce qu'on refuse. |
 | 2 | Tokens | Couleurs (2 thèmes, contrastes vérifiés), typo, espacement, rayons, élévation, mouvement, z-index, layout. |
 | 3 | Layout | Coquille, règles de repli, wireframes Shell / Chat / Agents / Musique / Usage / Graphe, écrans liste + détail, lanceur Instagram. |
 | 4 | Composants | Inventaire minimal : rôle, anatomie, états, clavier, a11y. |
@@ -16,98 +16,108 @@ Spécification de design de référence. Chaque section `##` se lit seule. Valeu
 
 ## 1. Intention & direction esthétique
 
-**Concept : « Régie »** — la cabine de régie d'un studio d'enregistrement, la nuit. On y surveille des signaux, on valide des prises, et la musique y est chez elle.
+**Concept : « Veilleuse »** — un studio de musique la nuit, éclairé par une seule lampe de bureau. Chaleureux, intime, haut de gamme : on a envie d'y rester travailler. Remplace le concept « Régie » (gris-vert, jugé froid).
 
 | Idée | Traduction visuelle |
 |---|---|
-| Feutre acoustique | Fonds gris-vert profonds (`#111615` → `#252E2C`), pas de bleu nuit ni de noir pur. Surfaces mates, sans dégradé ni verre dépoli. |
-| Patine | Un seul accent, vert-de-gris (`#6CC3B0` sombre / `#17705F` clair) : action principale, focus, sélection, liens. |
-| Voyants « tally » | **Signature unique de l'app** : un voyant rond de 8 px + libellé pour tout ce qui vit (état CLI, agents, tâches, permission). Le voyant ambre clignotant lentement = « quelqu'un attend ta décision ». |
-| Console | Densité maîtrisée, alignement à gauche, chiffres tabulaires, colonnes nettes. Le Chat reste aéré (mesure 72ch). |
-| Studio | L'onglet Musique est le seul endroit expressif : grande pochette, teinte de pochette en fond (jamais sous du texte). |
+| Bois sombre | Fonds brun très sombre (`#17120E` → `#2D241D`), jamais de noir pur ni de gris neutre. Surfaces mates. |
+| La lampe | **Signature unique de l'app** : un halo ambre radial très doux (`--glow-lamp`) en haut de la zone principale, et un liseré clair sur le bord haut des cartes (`--shadow-card`), comme la lumière qui accroche. Le logo est une lampe à moitié allumée (◐ ambre cerclé corail). |
+| Deux accents chauds | **Ambre** (`#F2A54A` sombre / `#9A520E` clair) : action principale, focus, envoi, liens. **Corail** (`#FF8E72` / `#A63F26`) : la voix de l'utilisateur (bulles), le cercle du logo. |
+| Formes généreuses | Rayons larges par hiérarchie : pilules pour les contrôles et le composer, cartes à 20 px, panneau d'accueil à 28 px. Coins « bec » (6 px) côté auteur sur les messages. |
+| Voyants « tally » | Conservés : voyant rond de 8 px + icône + libellé, dans une pastille, avec un léger halo « lampe allumée ». Jaune lampe vif pour « attend ta décision ». |
 
-Refusé : charte et typo d'Anthropic ou look Claude Desktop (crème + serif + terracotta), template de chat IA (bulles centrées, dégradés violets), kit de cartes SaaS identiques, labels en capitales espacées, emoji-icônes.
+Refusé : charte et typo d'Anthropic ou look Claude Desktop (crème + serif + terracotta `#D97757`), template de chat IA (dégradés violets, verre dépoli), kit de cartes SaaS identiques (une seule ombre grise partout), labels en capitales espacées, emoji-icônes.
 
-Principe directeur : *le calme par défaut, le signal quand ça compte*. L'interface est silencieuse tant que rien n'attend l'utilisateur ; seules les attentes (permission, revue, échec) attirent l'œil.
+Principe directeur : *la lampe éclaire ce qui compte*. Le fond reste dans la pénombre ; la lumière (ambre) va à l'action et au focus, le jaune vif aux attentes (permission).
 
 ## 2. Design tokens
 
-Préfixe `--`. Thème sombre par défaut, clair si `prefers-color-scheme: light`, forçage via `<html data-theme="light|dark">`. Hex uniquement.
+Préfixe `--`. Thème sombre par défaut, clair si `prefers-color-scheme: light`, forçage via `<html data-theme="light|dark">`. Hex uniquement (alpha en hex 8 chiffres pour le halo).
 
 ### 2.1 Couleurs — surfaces & texte
-| Token | Sombre « Régie de nuit » | Clair « Calque » | Usage |
+| Token | Sombre « Veilleuse » | Clair « Papier » | Usage |
 |---|---|---|---|
-| `color-bg-base` | `#111615` | `#E6EBE8` | Rail, barres haut/bas |
-| `color-bg-surface` | `#161C1B` | `#F3F6F4` | Zone principale |
-| `color-bg-raised` | `#1E2624` | `#FFFFFF` | Cartes, champs, blocs de code |
-| `color-bg-overlay` | `#252E2C` | `#FFFFFF` | Dialogues, palette, menus |
-| `color-bg-hover` / `-selected` | `#222B29` / `#1B3530` | `#E9EFEC` / `#D5EBE5` | Survol / sélection |
-| `color-border-subtle` | `#2A3432` | `#D3DBD7` | Séparateurs décoratifs |
-| `color-border-strong` | `#6B7B75` | `#74827C` | Bords de contrôles (≥ 3:1) |
-| `color-text-primary` | `#E4EBE7` | `#17201D` | Texte courant |
-| `color-text-secondary` | `#A8B4AF` | `#41504A` | Méta, libellés |
-| `color-text-muted` | `#929F9A` | `#56645E` | Horodatages, placeholders |
-| `color-accent` | `#6CC3B0` | `#17705F` | Action, focus, lien |
-| `color-text-on-accent` | `#0E1A17` | `#FFFFFF` | Texte sur bouton primaire |
+| `color-bg-base` | `#17120E` | `#EDE2D2` | Fond de l'app, top bar, blocs de code |
+| `color-bg-surface` | `#1B1511` | `#F6EEE2` | Zone principale (+ `glow-lamp`) |
+| `color-bg-raised` | `#251D17` | `#FFFAF3` | Cartes de Claude, champs, composer |
+| `color-bg-overlay` | `#2D241D` | `#FFFAF3` | Dialogues, palette, menus |
+| `color-bg-hover` / `-selected` | `#2E251E` / `#3D2C1C` | `#EFE4D4` / `#F6DDBF` | Survol / sélection |
+| `color-bubble-user-bg` / `-border` | `#3A2119` / `#6A3A2D` | `#F8DED3` / `#EDBFAE` | Bulle du message utilisateur (bord décoratif) |
+| `color-border-subtle` | `#362A21` | `#DDCDB8` | Séparateurs, bords de carte |
+| `color-border-strong` | `#8C7461` | `#8F7660` | Bords de contrôles (≥ 3:1) |
+| `color-text-primary` | `#F4E7D7` | `#2B1E14` | Texte courant |
+| `color-text-secondary` | `#CBB59E` | `#5A4433` | Méta, libellés |
+| `color-text-muted` | `#AD967F` | `#6B5543` | Horodatages, placeholders, aide |
+| `color-accent` | `#F2A54A` | `#9A520E` | Action, focus, envoi, lien |
+| `color-coral` | `#FF8E72` | `#A63F26` | Voix de l'utilisateur, logo |
+| `color-text-on-accent` | `#241505` | `#FFFFFF` | Texte/icône sur bouton ambre |
+| `glow-lamp` | ambre `#F2A54A` à 12 % | à 20 % | Halo radial en haut de la zone principale, jamais sous du texte fin |
 
 ### 2.2 Couleurs — sémantique
 | Token | Sombre | Clair | Icône Phosphor associée |
 |---|---|---|---|
-| `color-state-queued` | `#939F9A` | `#56645E` | `CircleDashed` |
-| `color-state-running` | `#7DB4F5` | `#1F5FAF` | `CircleNotch` (rotation) |
-| `color-state-waiting` (permission) | `#F2B33D` | `#875500` | `HandPalm` |
-| `color-state-review` | `#BBA6F4` | `#6346B8` | `Eye` |
-| `color-state-done` | `#7FCB8F` | `#2A6E37` | `CheckCircle` |
-| `color-state-failed` | `#F07A71` | `#AD2C25` | `XCircle` |
-| `color-danger` / `-solid` / `-bg` | `#F07A71` / `#B8352E` / `#3A1D1F` | `#AD2C25` / `#A72C26` / `#F9E0DD` | `Warning` |
-| `color-permission-frame` | `#F2B33D` | `#875500` | cadre 2 px du dialogue |
-| `color-diff-add-bg` / `-fg` | `#17301F` / `#A6E3B3` | `#DCF1E0` / `#1B5A2A` | préfixe `+` |
-| `color-diff-remove-bg` / `-fg` | `#3A1D1F` / `#F6AFAA` | `#F9E0DD` / `#8A221C` | préfixe `−` |
-| `color-chart-1…5` | patine, bleu, lilas, ambre, gris | idem foncés | max 5 séries |
+| `color-state-queued` | `#AD967F` | `#6B5543` | `CircleDashed` |
+| `color-state-running` | `#93B7E8` | `#1F5FAF` | `CircleNotch` (rotation) |
+| `color-state-waiting` (permission) | `#FFD15C` | `#7A4A00` | `HandPalm` |
+| `color-state-review` | `#C9A8F0` | `#6346B8` | `Eye` |
+| `color-state-done` | `#9CCB86` | `#3B6B23` | `CheckCircle` |
+| `color-state-failed` | `#FF8A80` | `#B0302A` | `XCircle` |
+| `color-danger` / `-solid` / `-bg` | `#FF8A80` / `#B83A2E` / `#3D1C18` | `#B0302A` / `#A92E28` / `#F9E0DA` | `Warning` |
+| `color-permission-frame` | `#FFD15C` | `#7A4A00` | cadre 2 px du dialogue |
+| `color-diff-add-bg` / `-fg` | `#1E2A17` / `#B9E0A0` | `#E1F0D6` / `#2E5A1A` | préfixe `+` |
+| `color-diff-remove-bg` / `-fg` | `#3D1C18` / `#FFB4A8` | `#F9E0DA` / `#8A221C` | préfixe `−` |
+| `color-chart-1…5` | ambre, corail, bleu, lilas, sable | idem foncés | max 5 séries |
 
-Règle : un état n'est **jamais** porté par la couleur seule. Le « tally » est le voyant rond de 8 px de l'état, toujours suivi de son icône et de son libellé texte.
+Règle : un état n'est **jamais** porté par la couleur seule. Le « tally » est le voyant rond de 8 px de l'état, toujours suivi de son icône et de son libellé texte. En clair, l'ambre d'action (`#9A520E`) et le brun d'attente (`#7A4A00`) sont proches : l'attente se reconnaît à son icône `HandPalm`, son libellé et son voyant pulsé, jamais à la teinte.
 
-### 2.3 Contrastes vérifiés (WCAG 2.x)
+### 2.3 Contrastes vérifiés (WCAG 2.x, script sur `design/tokens.css`)
 | Paire | Sombre | Clair | Seuil |
 |---|---|---|---|
-| text-primary / surface · overlay | 14.26 · 11.51 | 15.31 · 16.66 | 4.5 |
-| text-secondary / surface · overlay | 8.07 · 6.52 | 7.81 · 8.50 | 4.5 |
-| text-muted / surface · overlay | 6.29 · 5.08 | 5.71 · 6.21 | 4.5 |
-| text-muted / hover · selected | 5.29 · 4.78 | 5.33 · 4.98 | 4.5 |
-| accent / base · raised | 8.76 · 7.42 | 4.95 · 5.97 | 4.5 |
-| text-on-accent / accent | 8.54 | 5.97 | 4.5 |
-| on-danger (#FFF) / danger-solid | 5.85 | 6.93 | 4.5 |
-| état le plus faible / overlay | failed 5.13 | done 6.21 | 4.5 |
-| state-waiting / waiting-bg | 8.30 | 5.58 | 4.5 |
-| danger / danger-bg | 5.62 | 5.29 | 4.5 |
-| diff-add fg/bg · remove fg/bg | 9.64 · 8.46 | 6.96 · 7.19 | 4.5 |
-| text-primary / selected | 10.85 | 13.36 | 4.5 |
-| border-strong / base · surface · overlay | 4.10 · 3.88 · 3.13 | 3.33 · 3.69 · 4.02 | 3 (UI) |
-| danger-solid / surface (indicateur seul) | 2.95 ✗ | 6.37 | 3 (UI) → toujours avec libellé texte |
-| focus-ring (accent) / base | 8.76 | 4.95 | 3 (UI) |
+| text-primary / base · surface · raised · overlay | 15.28 · 14.85 · 13.62 · 12.49 | 12.64 · 14.05 · 15.57 · 15.57 | 4.5 |
+| text-primary / bulle utilisateur · selected | 12.23 · 10.95 | 12.61 · 12.33 | 4.5 |
+| text-secondary / surface · raised · overlay · bulle | 9.16 · 8.40 · 7.70 · 7.54 | 7.90 · 8.76 · 8.76 · 7.09 | 4.5 |
+| text-muted / base · surface · raised · overlay | 6.59 · 6.41 · 5.88 · 5.39 | 5.46 · 6.07 · 6.73 · 6.73 | 4.5 |
+| text-muted / hover · selected · bulle | 5.32 · 4.73 · 5.28 | 5.56 · 5.33 · 5.45 | 4.5 |
+| accent / base · surface · raised · overlay | 9.08 · 8.83 · 8.10 · 7.42 | 4.57 · 5.09 · 5.64 · 5.64 | 4.5 |
+| text-on-accent / accent · accent-hover | 8.66 · 10.29 | 5.85 · 7.75 | 4.5 |
+| coral / base · surface | 8.29 · 8.06 | 4.88 · 5.43 | 4.5 |
+| on-danger (#FFF) / danger-solid | 5.70 | 6.76 | 4.5 |
+| état le plus faible / overlay | queued 5.39 | review 6.53 | 4.5 |
+| state-waiting / waiting-bg | 10.10 | 6.35 | 4.5 |
+| danger / danger-bg · surface | 6.68 · 7.92 | 5.06 · 5.53 | 4.5 |
+| diff-add fg/bg · remove fg/bg | 10.18 · 8.96 | 6.80 · 7.18 | 4.5 |
+| border-strong / base · surface · raised · overlay | 4.24 · 4.12 · 3.78 · 3.46 | 3.33 · 3.70 · 4.10 · 4.10 | 3 (UI) |
+| focus-ring / base · raised · bulle | 10.79 · 9.62 · 8.64 | 4.57 · 5.64 · 4.57 | 3 (UI) |
+| permission-frame / surface · permission-bg | 12.50 · 10.51 | 6.50 · 7.20 | 3 (UI) |
+| danger-solid / surface (indicateur seul) | 3.17 | 5.87 | 3 (UI) → toujours avec libellé texte |
 
-Tout nouveau couple texte/fond doit être vérifié et ajouté ici.
+Au centre du halo `glow-lamp`, la surface monte à ≈ `#352618` (sombre) / `#F5DFC4` (clair) : text-primary 11.97 / 12.50, text-secondary 7.38 / 7.03, text-muted 5.16 / 5.40, accent — / 4.53. Tout nouveau couple texte/fond doit être vérifié et ajouté ici.
 
 ### 2.4 Typographie
-Familles (OFL 1.1, embarquées, variables 200–800) : **Atkinson Hyperlegible Next** (UI et lecture), **Atkinson Hyperlegible Mono** (code, diffs, logs, chemins, commandes, `TASK-XXX`). Fallbacks : `"Cantarell", "Noto Sans", system-ui, sans-serif` / `"DejaVu Sans Mono", "Noto Sans Mono", monospace`. Choix : lisibilité de longue durée (formes de lettres désambiguïsées : `Il1`, `O0`), une seule super-famille cohérente, rien de commun avec la typo des apps Claude.
+Familles (OFL 1.1, embarquées via `@fontsource/bricolage-grotesque` et `@fontsource/fragment-mono`, sous-ensemble latin, aucun CDN) :
+- **Bricolage Grotesque** (400 / 500 / 700 / 800) : UI, lecture et titres. Grotesque aux formes un peu dessinées à la main, chaleureuse sans être ronde-enfantine ; en 800 resserrée (`tracking-display`), elle porte le titre d'accueil.
+- **Fragment Mono** (400) : code, chemins, commandes, noms d'outils, `TASK-XXX`.
+
+Fallbacks : `"Cantarell", "Noto Sans", system-ui, sans-serif` / `"DejaVu Sans Mono", "Noto Sans Mono", monospace`.
 
 | Token | Taille / interligne | Usage |
 |---|---|---|
-| `text-xs` | 12 / 16 | Horodatages, méta, compteurs |
-| `text-sm` | 13 / 18 | Tableaux, logs, libellés secondaires |
+| `text-xs` | 12 / 16 | Horodatages, méta, aide du composer |
+| `text-sm` | 13 / 18 | Tableaux, logs, libellés secondaires, code |
 | `text-md` | 14 / 20 | UI par défaut, boutons |
-| `text-read` | 15 / 24 | Corps du Chat et des notes (max `72ch`) |
-| `text-lg` | 18 / 24 | Titres de carte / panneau |
-| `text-xl` | 22 / 28 | Titre d'écran |
+| `text-read` | 15 / 24 | Corps des messages et des notes |
+| `text-lg` | 18 / 24 | Titres de carte / panneau, marque |
+| `text-xl` | 22 / 28 | Titre d'écran, invitation du Chat vide |
 | `text-2xl` | 30 / 36 | Titre du morceau, chiffres du récap |
+| `text-display` | 44 / 48 | Titre de l'écran d'accueil uniquement (800, −0.02em) |
 
-Graisses : 400 / 520 / 680. Chiffres : `font-variant-numeric: tabular-nums` sur coûts, tokens, durées. Casse de phrase partout ; pas de capitales espacées ; pas d'italique décoratif.
+Graisses : 400 / 500 / 700 / 800 (`weight-display`). Chiffres : `font-variant-numeric: tabular-nums` sur coûts, tokens, durées. Casse de phrase partout ; pas de capitales espacées ; pas d'italique décoratif.
 
 ### 2.5 Espacement, rayons, élévation
-| Espacement | `space-1` 2 · `-2` 4 · `-3` 8 · `-4` 12 · `-5` 16 · `-6` 24 · `-7` 32 · `-8` 48 (px) |
+| Espacement | `space-1` 2 · `-2` 4 · `-3` 8 · `-4` 12 · `-5` 16 · `-6` 24 · `-7` 32 · `-8` 48 · `-9` 72 (px) |
 |---|---|
-| **Rayons** | `radius-xs` 3 (chip, kbd) · `-sm` 5 (bouton, champ, ligne) · `-md` 8 (carte, code, tool card) · `-lg` 12 (dialogue, palette, pochette) · `-full` (voyant, interrupteur) |
-| **Élévation** | Sombre : la hauteur = clarté de surface + bordure `border-subtle`, aucune ombre sauf `shadow-overlay` (dialogues, menus, palette). Clair : idem, ombre overlay plus douce. Scrim `--scrim` sous les modales. |
+| **Rayons** | `radius-xs` 6 (chip, code inline, coin « bec » des messages) · `-sm` 10 (champ carré, ligne) · `-md` 14 (tool card, bloc de code) · `-lg` 20 (carte de message, liste de sessions) · `-xl` 28 (composer, dialogue de permission) · `-full` (boutons, pilules, voyant, bouton d'envoi) |
+| **Élévation** | Sombre : la hauteur = clarté de surface + `border-subtle` + liseré haut `shadow-card` (lumière de lampe, pas d'ombre portée). Seuls les overlays ont `shadow-overlay`. Clair : idem, liseré blanc, ombre overlay plus douce. Scrim `--scrim` sous les modales. |
 
 ### 2.6 Mouvement & z-index
 | Durée | Valeur | Usage | | z-index | Valeur |
@@ -126,10 +136,11 @@ Graisses : 400 / 520 / 680. Chiffres : `font-variant-numeric: tabular-nums` sur 
 | Token | Valeur | | Token | Valeur |
 |---|---|---|---|---|
 | `app-min-w` × `app-min-h` | 960 × 600 | | `drawer-h` (min) | 260 (120) |
-| `rail-w` | 56 | | `composer-min-h` / max | 56 / 40vh |
-| `topbar-h` / `bottombar-h` | 40 / 44 | | `palette-w` / `dialog-w` | 640 / 560 |
+| `rail-w` | 56 | | `composer-min-h` / max | 52 / 40vh |
+| `topbar-h` / `bottombar-h` | 56 / 44 | | `palette-w` / `dialog-w` | 640 / 560 |
 | `panel-w` (min–max) | 340 (280–520) | | `agent-card-min-w` | 300 |
-| `focus-ring-w` + offset | 2 + 2 | | `tally-size` / icônes | 8 / 16, 20 |
+| `measure-chat` / `welcome-w` | 760 / 560 | | `send-size` | 40 (bouton d'envoi rond) |
+| `focus-ring-w` + offset | 2 + 2 | | `tally-size` / icônes | 8 / 16, 20, 28 |
 
 ## 3. Layout & comportement responsive
 
@@ -147,7 +158,7 @@ Règles : le rail ne se replie jamais (icônes seules, libellé en tooltip). Le 
 ### 3.1 Coquille
 ```
 ┌──────┬──────────────────────────────────────────────────────────────────────────────┐
-│ ◉ At │ atelier-app ▾ │ modèle: opus ▾ │ ● CLI prêt │ Aujourd'hui 3,42 € │   ⌕ Ctrl+K │ topbar 40
+│ ◐ At │ atelier-app ▾ │ ( opus ▾ ) │ ● CLI prêt │ ( Aujourd'hui 3,42 € ) │ ⌕ Ctrl+K │ topbar 56
 ├──────┼──────────────────────────────────────────────────────┬───────────────────────┤
 │ Chat │                                                      │ Panneau contextuel     │
 │ Agts │                 Zone principale                       │ [Fichiers|Diff|Notes|  │
@@ -167,30 +178,26 @@ Règles : le rail ne se replie jamais (icônes seules, libellé en tooltip). Le 
 
 ### 3.2 Chat
 ```
-┌─ main ───────────────────────────────────────────────────┐
-│ Session « refonte auth » ▾  Reprendre…   12,4k tok 0,38 € │  en-tête de session
-├──────────────────────────────────────────────────────────┤
-│  Toi                                             14:02    │
-│  Ajoute la validation du formulaire.                      │
-│                                                            │
-│  Claude                                         14:02     │  aligné à gauche, pas de bulles
-│  ◌ Réflexion… (repliable)                                  │
-│  ┌ Read  src/form.ts ──────────────────── ● terminé ┐      │  tool card
-│  └──────────────────────────────────────────────────┘      │
-│  ┌ Edit  src/form.ts ──────────────────── ● en cours ┐     │
-│  │ − const ok = true                                 │     │  diff inline
-│  │ + const ok = schema.safeParse(v).success          │     │
-│  └──────────────────────────────────────────────────┘     │
-│  Texte Markdown en streaming▍                              │
-│                                    ┌────────────────────┐  │
-│                                    │ ↓ 3 nouveaux blocs │  │  pastille si scroll manuel
-├──────────────────────────────────────────────────────────┤
-│ ┌──────────────────────────────────────────────────────┐ │
-│ │ Écris à Claude…   (Entrée envoie, Maj+Entrée = ligne)│ │  composer
-│ └──────────────────────────────────────────────────────┘ │
-│ opus ▾   @fichier   /commande            ■ Arrêter (Échap)│
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ ◐ Atelier            Claude écrit  ( Opus ▾ )  ( 0,38 € )  ♪ │  top bar 56 : marque, état, modèle,
+├──────────────────────────────────────────────────────────────┤  coût (pilules) ; ♪ = futur mini-lecteur
+│          ░░░░ halo de lampe (glow-lamp) ░░░░                  │
+│                       ╭──────────────────────────────╮        │  bulle utilisateur : à droite,
+│                       │ Ajoute la validation du form.│        │  bubble-user-bg, coin bec bas-droit
+│                       ╰─────────────────────────────╯        │
+│   ╭──────────────────────────────────────────────────╮        │  carte Claude : colonne 760 centrée,
+│   │ ● Claude                                          │        │  raised + border-subtle + liseré haut,
+│   │ › Réflexion (repliable)                           │        │  radius-lg, coin bec haut-gauche
+│   │ ╭ Bash  npm test ─────────────── (● Terminé) ╮    │        │  tool card : fond base, nom outil
+│   │ ╰────────────────────────────────────────────╯    │        │  en mono ambre, tally en pastille
+│   │ Texte Markdown en streaming▍                      │        │
+│   ╰──────────────────────────────────────────────────╯        │
+│                                     ( ↓ 3 nouveaux blocs )    │  pastille si scroll manuel
+│   ( Écris ton message…            Arrêter (Échap)    (➜) )    │  composer pilule, envoi rond ambre
+│        Entrée pour envoyer, Maj+Entrée pour aller à la ligne  │  aide text-xs muted
+└──────────────────────────────────────────────────────────────┘
 ```
+Chat sans message : invitation centrée « Dis bonjour à Claude pour commencer. » (`text-xl`, secondary). Sans session : écran d'accueil — titre `text-display` « Sur quel projet travailles-tu ? », champ chemin + « Démarrer une session » réunis dans une pilule, dossiers récents en chips mono, sessions récentes dans une carte-liste (titre, chemin mono, coût tabulaire).
 
 ### 3.3 Agents (salle de contrôle)
 ```
@@ -282,18 +289,18 @@ Liste fermée : réutiliser avant de créer. Tous : focus visible (`outline: 2px
 
 | Composant | Rôle & anatomie | États | Clavier | A11y |
 |---|---|---|---|---|
-| `Button` | Icône? + libellé. Variantes : primary (accent plein), secondary (bord strong), ghost, danger (danger-solid). | default, hover, active, focus, disabled, busy | Entrée/Espace | `<button>` natif ; busy → `aria-busy`, libellé inchangé |
-| `IconButton` | Icône 16/20 dans 32×32 | idem + pressed | idem | `aria-label` obligatoire, tooltip identique |
-| `Tally` | Voyant 8 px + libellé d'état | 6 états agent + idle/offline CLI ; pulse si running/waiting | — | Libellé texte toujours présent ; pulse décoratif |
-| `Field` | Libellé + input/textarea/select + aide/erreur | default, focus, invalid, disabled | natif | `<label for>`, erreur via `aria-describedby` + `aria-invalid` |
+| `Button` | Pilule (`radius-full`), icône? + libellé, graisse 500. Variantes : primary (ambre plein), secondary (bord strong), ghost (texte secondary), danger (danger-solid). | default, hover, active, focus, disabled, busy | Entrée/Espace | `<button>` natif ; busy → `aria-busy`, libellé inchangé |
+| `IconButton` | Icône 16/20 dans 32×32 rond ; bouton d'envoi = 40×40 ambre plein, icône fill | idem + pressed | idem | `aria-label` obligatoire, tooltip identique |
+| `Tally` | Pastille (`radius-full`, bord subtle) : voyant 8 px à halo + icône + libellé d'état | 6 états agent + idle/offline CLI ; pulse si running/waiting | — | Libellé texte toujours présent ; pulse décoratif |
+| `Field` | Libellé + input/textarea/select (pilule, bord strong) + aide/erreur ; composer = textarea sans bord dans une pilule `radius-xl` qui porte l'anneau de focus | default, focus, invalid, disabled | natif | `<label for>`, erreur via `aria-describedby` + `aria-invalid` |
 | `Toggle` | Interrupteur (Focus, réglages) | on, off, disabled | Espace | `role="switch"` + `aria-checked` |
 | `Tabs` | Segments (panneau droit, filtres) | selected, hover | ←/→, Home/End | `tablist`/`tab`/`tabpanel`, roving tabindex |
 | `RailItem` | Icône 20 + tooltip ; actif = icône fill + barre accent 2 px | active, hover, hidden (Focus) | ↑/↓ dans le rail, `Ctrl+Digit1…9` ou `F1…F9` (§5.6) | `nav` + `aria-current="page"` |
-| `Card` | Conteneur `raised`, `radius-md`, en-tête + corps | default, selected, attention (bord waiting) | focusable si actionnable | Titre = `h3` |
-| `MessageBlock` | Auteur, heure, corps Markdown | streaming, complete, stopped, error | ↑/↓ entre messages (mode lecture) | `article` + `aria-label="Claude, 14:02"` |
+| `Card` | Conteneur `raised`, `radius-lg`, bord subtle + liseré haut `shadow-card`, en-tête + corps | default, selected, attention (bord waiting) | focusable si actionnable | Titre = `h3` |
+| `MessageBlock` | Utilisateur : bulle à droite (`bubble-user-*`, max 80 %, auteur en `sr-only`). Claude : carte pleine colonne, voyant ambre + « Claude », corps Markdown | streaming, complete, stopped, error | ↑/↓ entre messages (mode lecture) | `article` + `aria-label="Claude, 14:02"` |
 | `CodeBlock` | Langue, bouton Copier, `pre` mono | default, copied (2 s) | Tab atteint Copier | Copier annonce « Copié » (live polite) |
 | `DiffView` | Gutter n° + `+`/`−` + texte, vue unifiée | collapsed (>40 lignes), expanded | Entrée déplie | Préfixe `+`/`−` lu ; jamais la couleur seule |
-| `ToolCard` | Nom outil (mono), cible, Tally, durée, détail repliable | running, done, failed, denied | Entrée déplie | `aria-expanded` ; erreur lisible en clair |
+| `ToolCard` | Fond `base`, `radius-md` ; nom outil (mono, ambre), cible (mono, secondary), Tally, durée, détail repliable | running, done, failed, denied | Entrée déplie | `aria-expanded` ; erreur lisible en clair |
 | `PermissionDialog` | Modale au-dessus de tout : commande complète, Refuser · Toujours… · Autoriser une fois ; jamais auto-fermée. Détail §5.1 | pending, confirming-always, cancelled | focus initial sur le titre, `Échap` = Refuser ; §5.1 | `alertdialog` |
 | `AgentCard` | Tally, rôle, modèle, `TASK-XXX`, dernier message (2 lignes), tokens/coût, action contextuelle | 6 états | Entrée ouvre logs ; `D` = Décider si attente | Changement d'état annoncé (§5.3) |
 | `Timeline` | Pistes horizontales par agent, segments colorés par état | hover segment → tooltip | ←/→ par événement | Alternative : liste d'événements tabulaire accessible |
@@ -317,7 +324,7 @@ Graphe : nœuds/liens rendus en SVG depuis le JSON, avec liste accessible équiv
 | Aspect | Règle |
 |---|---|
 | Déclenchement | Toute demande d'outil soumise à permission. File d'attente FIFO si plusieurs ; compteur « 1 sur 3 ». |
-| Forme | Modale `alertdialog`, `z-permission`, scrim, cadre 2 px `color-permission-frame`, `radius-lg`, largeur 560. Jamais un toast, jamais inline seul. |
+| Forme | Modale `alertdialog`, `z-permission`, scrim, cadre 2 px `color-permission-frame` (jaune lampe), `radius-xl`, boutons pilules, largeur 560. Jamais un toast, jamais inline seul. |
 | Contenu | Titre : « Claude veut exécuter une commande » (verbe selon l'outil). Agent demandeur + Tally. Bloc mono avec la commande / le chemin **complet**, non tronqué (scroll si long). Répertoire de travail. Portée de « toujours » énoncée en clair. |
 | Boutons (ordre fixe) | `Refuser` (secondary, gauche) · `Toujours autoriser…` (secondary + icône `LockOpen`, libellé de portée : « Toujours autoriser `npm test` dans ce projet ») · `Autoriser une fois` (primary, droite). |
 | Focus initial | Sur le titre du dialogue (`tabindex="-1"`), pas sur un bouton : `Entrée` seul ne valide rien. |
@@ -441,7 +448,7 @@ Format : nombres FR (`12 400 tokens`, `3,42 €`), heures `14:02`, durées `1 mi
 | CSS à éviter | `backdrop-filter`, `color-mix()`, `oklch()`, `@property`, `@container` style queries, CSS anchor positioning, scroll-driven animations, View Transitions, `text-wrap: balance` comme dépendance, `filter: blur` animé, grosses ombres floues. |
 | CSS sûr | Custom properties, Grid/Flex, `:focus-visible`, `<dialog>` (avec gestion du focus manuelle en plus), `position: sticky`, `prefers-color-scheme`, `prefers-reduced-motion`. |
 | Thème système | `prefers-color-scheme` suit GTK ; si non fiable (KDE), lire le thème via Tauri (`window.theme()`) et poser `data-theme`. Le choix manuel (Réglages) prime. |
-| Polices | `.woff2` dans `fonts/` (chemins relatifs `../fonts/` depuis `design/tokens.css`), licence OFL jointe. Aucun appel réseau. |
+| Polices | Paquets `@fontsource/bricolage-grotesque` et `@fontsource/fragment-mono` (OFL 1.1), importés dans `src/main.tsx` ; Vite embarque les `.woff2`. Aucun appel réseau (CSP `default-src 'self'`). |
 | Icônes | **Phosphor Icons** (MIT), SVG inline, poids `regular` (16/20 px), `fill` pour l'élément actif du rail. Import par icône (tree-shaking). Couleur `currentColor`. Aucun emoji dans l'UI. |
 | Lazy-loading | Musique, Instagram, Graphe, Usage : chunks séparés chargés au premier affichage ; rien n'est préchargé au démarrage. Le Chat est le seul chunk initial avec la coquille. |
 | Mini-lecteur | Lit l'état MPRIS via événements Rust ; aucune lib média dans le chunk principal. |

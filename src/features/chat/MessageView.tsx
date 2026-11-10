@@ -68,15 +68,18 @@ export const MessageView = memo(({ message }: { message: ChatMessage }) => {
   if (message.role === "user") {
     return (
       <article className="msg msg--user">
-        <h3 className="msg__who">Toi</h3>
+        <h3 className="sr-only">Toi</h3>
         <p className="msg__text">{message.text}</p>
       </article>
     );
   }
   const running = message.status === "running";
   return (
-    <article className="msg" aria-busy={running}>
-      <h3 className="msg__who">Claude</h3>
+    <article className="msg msg--claude" aria-busy={running}>
+      <h3 className="msg__who">
+        <span className="msg__lamp" aria-hidden="true" />
+        Claude
+      </h3>
       {message.blocks.map((b, i) => (
         <BlockView key={i} block={b} />
       ))}

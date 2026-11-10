@@ -1,9 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "@fontsource/atkinson-hyperlegible-next/latin-400.css";
-import "@fontsource/atkinson-hyperlegible-next/latin-500.css";
-import "@fontsource/atkinson-hyperlegible-next/latin-700.css";
-import "@fontsource/atkinson-hyperlegible-mono/latin-400.css";
+import "@fontsource/bricolage-grotesque/latin-400.css";
+import "@fontsource/bricolage-grotesque/latin-500.css";
+import "@fontsource/bricolage-grotesque/latin-700.css";
+import "@fontsource/bricolage-grotesque/latin-800.css";
+import "@fontsource/fragment-mono/latin-400.css";
 import "../design/tokens.css";
 import "./ui/base.css";
 import { getTheme, setTheme } from "./ui/theme";
