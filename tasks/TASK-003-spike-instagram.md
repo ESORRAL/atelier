@@ -60,8 +60,8 @@ du user-agent, aucune installation de paquet. Si un critère est impossible, doc
 résultat.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : mini-app Tauri 2.12.5 (`main` avec capability, `pause` sans capability, `data_directory` propre, `on_navigation` sur liste blanche) et test d'isolation automatique. Prouvé : aucun appel depuis `pause` n'atteint Rust (6 vecteurs essayés), le témoin `main` passe, cookies isolés, navigation hors liste bloquée. Le test échoue bien si on ajoute `pause` à la capability.
+- Fichiers touchés : `spikes/instagram/**`, cette section.
+- Vérification (sortie résumée) : `cargo build` OK, `cargo test` 1/1, `run-isolation-test.sh` 9 PASS, « ISOLATION TEST: PASS ».
+- Raccourcis pris (`shortcut:`) : les liens hors liste sont bloqués, pas ouverts dans le navigateur système ; `window.open` est arrêté par le bloqueur de popups de WebKit, pas par `on_new_window`.
+- À remonter à l'architecte : la fenêtre s'appelle `pause` dans la fiche et `instagram` dans l'ADR ; le dossier de `pause` est un sous-dossier du store par défaut (le mettre à côté dans l'app) ; le test manuel reste à faire (`MANUEL.md`).
