@@ -61,8 +61,8 @@ grep -rn "dangerouslySetInnerHTML\|iframe" src && echo INTERDIT || echo OK
 Pas de boîte de permission, pas de rail ni de panneaux, pas de Rust.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : onglet Chat (démarrage, streaming, cartes d'outils, Échap/Arrêter, modèle, coût, sessions récentes, reprise), `reduce.ts` pur, `src/ipc/claude.ts`.
+- Fichiers touchés : `src/features/chat/**`, `src/ipc/claude.ts(+test)`, `src/App.tsx`, `package.json`, `package-lock.json`.
+- Vérification : lint, 11 tests, build OK ; grep interdit : OK.
+- Raccourcis (`shortcut:`) : sorties de sous-agents ignorées ; pas de diff inline, pas de pastille « N nouveaux blocs » ; coût affiché en $ ; fichier de tâche hors liste « Écrire » modifié (rapport).
+- À remonter à l'architecte : les prompts utilisateur ne sont peut-être pas dans `session_history` (seuls des SessionEvent) : à la réouverture, le texte « Toi » manquera ; contrat à préciser. Aucun échantillon réel ne contient d'outil : fixture inline.
