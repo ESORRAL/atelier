@@ -13,7 +13,7 @@ Seul l'architecte modifie ce fichier.
 
 ## 1. Lancement
 ```
-node bridge/dist/main.js
+node bridge/main.mjs
 ```
 Le pont n'accepte aucun argument. Son premier message attendu est `start`. Il est lancé par le module
 `supervisor` dans son propre groupe de process : le SDK ne tue pas `claude` quand le pont meurt
@@ -97,6 +97,6 @@ afficher.
 Ces noms sont ceux utilisés dans les scripts de `spikes/bridge/`, sauf `settingSources`, non testé par le spike.
 
 ## 6. Journal
-Le cœur Rust écrit chaque ligne reçue du pont dans `sessions/<session_id>.ndjson` (voir
+Le cœur Rust journalise chaque événement dans `sessions/<clé de session>.ndjson` (clé locale, voir `contracts/ipc.md §4`) (voir
 `ARCHITECTURE.md §8`). La reprise ne rejoue pas l'historique dans le flux : ce journal est la seule
 source pour réafficher une conversation.
