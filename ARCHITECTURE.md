@@ -67,7 +67,7 @@ dans le même dossier.
 
 | Module | Responsabilité | Dépendance clé | Version |
 |---|---|---|---|
-| `supervisor` | lancer et tuer des groupes de process ; aucun orphelin | `process-wrap`, `tokio` | 0.1 |
+| `supervisor` | lancer et tuer des groupes de process ; aucun orphelin | `tokio`, `libc` | 0.1 |
 | `claude` | sessions : démarrer, envoyer, interrompre, reprendre, modèle ; routage des permissions | `supervisor` | 0.1 |
 | `store` | réglages, index des sessions, journal d'événements, agrégats d'usage | `serde_json` | 0.1 |
 | `notify` | notifications desktop | plugin Tauri officiel | 0.1 |
@@ -77,9 +77,15 @@ dans le même dossier.
 | `graph` | lecture de `graphify-out/graph.json` et `GRAPH_REPORT.md` | — | 0.3 |
 | `windows` | fenêtres « pause » isolées (Instagram) | — | 0.3 |
 
-Aucun orphelin, trois filets : groupe de process (tué par `killpg` à la fermeture), `PR_SET_PDEATHSIG`
-posé dans `pre_exec` depuis un thread qui vit aussi longtemps que l'app, et `kill_on_drop`. Un test
-d'intégration tue l'app par SIGKILL et vérifie qu'il ne reste ni `node` ni `claude`.
+Aucun orphelin (recette prouvée par `spikes/orphans/`, 4 morts testées dont SIGKILL) :
+1. Chaque enfant est lancé dans son propre groupe de process (`process_group(0)`).
+2. Un `Guard` tue le groupe par `killpg` dans son `Drop` : couvre la sortie normale, la panique et SIGTERM.
+3. Un **watchdog** (le binaire de l'app relancé en mode `watchdog`) lit un pipe dont l'app tient seule
+   l'écriture ; à la fin du pipe, il tue le groupe. C'est le seul filet qui couvre SIGKILL.
+
+`kill_on_drop`, `PR_SET_PDEATHSIG` et `process-wrap` ne suffisent pas : ils ne visent que l'enfant
+direct, et le petit-enfant (`claude`) survit. Limite connue : un descendant qui fait `setsid` s'échappe ;
+la parade est un scope `systemd-run --user`, à ajouter si le cas se présente.
 
 ## 4. Pont Claude et cycle d'une permission
 

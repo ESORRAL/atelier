@@ -1,7 +1,7 @@
 ---
 id: TASK-005
 title: Spike — aucun process orphelin, même après SIGKILL
-status: todo
+status: done
 phase: 1
 agent: core
 model: opus
