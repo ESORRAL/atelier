@@ -1,20 +1,18 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import { appVersion } from "./ipc/app";
+import { lazy, Suspense, useState } from "react";
 
+const Chat = lazy(() => import("./features/chat/Chat"));
 const Demo = lazy(() => import("./features/demo/Demo"));
 
 export default function App() {
-  const [version, setVersion] = useState("");
-  useEffect(() => {
-    appVersion().then(setVersion, () => setVersion(""));
-  }, []);
+  const [demo, setDemo] = useState(false);
   return (
     <main>
-      <h1>Atelier</h1>
-      <p>{version && `v${version}`}</p>
-      <Suspense fallback={null}>
-        <Demo />
-      </Suspense>
+      <Suspense fallback={null}>{demo ? <Demo /> : <Chat />}</Suspense>
+      <p>
+        <button type="button" onClick={() => setDemo(!demo)}>
+          {demo ? "Retour au chat" : "Démo des composants"}
+        </button>
+      </p>
     </main>
   );
 }

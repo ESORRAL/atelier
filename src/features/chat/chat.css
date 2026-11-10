@@ -1,0 +1,83 @@
+.chat {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--space-8));
+  min-height: 0;
+  background: var(--color-bg-surface);
+}
+.chat__head {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--text-sm);
+}
+.muted { color: var(--color-text-secondary); }
+.chat__start { padding: var(--space-5); display: grid; gap: var(--space-4); align-content: start; overflow: auto; }
+.chat__start form { display: grid; gap: var(--space-3); max-width: var(--measure-read); }
+.chat__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.chat__list .btn { width: 100%; justify-content: flex-start; text-align: left; }
+
+.chat input,
+.chat textarea,
+.chat select {
+  font: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: var(--color-bg-hover); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn--primary { background: var(--color-accent-solid); color: var(--color-text-on-accent); border-color: transparent; }
+.btn--primary:hover:not(:disabled) { background: var(--color-accent-hover); }
+
+.chat__log { flex: 1; min-height: 0; overflow: auto; padding: var(--space-5); display: grid; gap: var(--space-5); align-content: start; }
+.msg { max-width: var(--measure-read); }
+.msg__who { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--color-text-secondary); }
+.msg__text { white-space: pre-wrap; font-size: var(--text-read); line-height: var(--lh-read); }
+.msg__stopped { font-size: var(--text-sm); color: var(--color-warning); font-weight: var(--weight-medium); }
+.md { font-size: var(--text-read); line-height: var(--lh-read); overflow-wrap: anywhere; }
+.md pre { background: var(--color-bg-raised); border-radius: var(--radius-md); padding: var(--space-4); overflow: auto; font-family: var(--font-mono); }
+.md code { font-family: var(--font-mono); background: var(--color-bg-raised); border-radius: var(--radius-xs); padding: 0 var(--space-2); }
+.md pre code { background: none; padding: 0; }
+.md-link { text-decoration: underline; }
+.cursor { color: var(--color-accent); }
+
+.tool-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-3) 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+.tool-card__name { font-weight: var(--weight-bold); }
+.tool-card__input { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); color: var(--color-text-secondary); }
+.tool-denied { display: inline-flex; align-items: center; gap: var(--space-3); color: var(--color-danger); }
+
+.thinking__toggle { display: inline-flex; align-items: center; gap: var(--space-2); font: inherit; font-size: var(--text-sm); color: var(--color-text-secondary); background: none; border: 0; padding: var(--space-2) 0; cursor: pointer; }
+.thinking__text { font-size: var(--text-sm); color: var(--color-text-secondary); white-space: pre-wrap; }
+
+.chat__composer { display: grid; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--color-border-subtle); }
+.chat__composer textarea { resize: vertical; max-height: var(--composer-max-h); min-height: var(--composer-min-h); }
+.chat__bar { display: flex; gap: var(--space-3); justify-content: flex-end; }
+.chat__bar select { margin-right: auto; }
+.chat__error { margin: 0; padding: var(--space-3) var(--space-5); background: var(--color-danger-bg); color: var(--color-danger); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
