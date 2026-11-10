@@ -29,7 +29,7 @@ export type ChatState = {
   nextId: number;
 };
 
-export type ChatAction = SessionEvent | { kind: "user_text"; text: string } | { kind: "reset" };
+export type ChatAction = SessionEvent | { kind: "reset" };
 
 export const initialState: ChatState = {
   messages: [],
@@ -138,7 +138,7 @@ export function reduce(s: ChatState, a: ChatAction): ChatState {
   switch (a.kind) {
     case "reset":
       return initialState;
-    case "user_text":
+    case "user":
       return { ...s, error: null, nextId: s.nextId + 1, messages: [...s.messages, { id: `u${s.nextId}`, role: "user", text: a.text }] };
     case "sdk":
       return reduceSdk(s, a.message as Obj);

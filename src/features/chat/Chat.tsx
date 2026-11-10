@@ -94,7 +94,7 @@ export default function Chat() {
       if (resumeFrom) {
         const past = await sessionHistory(resumeFrom.key);
         // Pending permission requests of a past session are obsolete.
-        past.filter((e) => e.kind === "sdk").forEach(dispatch);
+        past.filter((e) => e.kind === "sdk" || e.kind === "user").forEach(dispatch);
       }
       const k = await sessionStart(
         dir,
@@ -116,7 +116,6 @@ export default function Chat() {
     if (!key || !text) return;
     setDraft("");
     follow.current = true;
-    dispatch({ kind: "user_text", text });
     sessionSend(key, text).catch((e) => setLocalError(errText(e)));
   };
   const interrupt = () => key && sessionInterrupt(key).catch((e) => setLocalError(errText(e)));

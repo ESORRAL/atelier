@@ -83,3 +83,11 @@ test("permission queue: add then mark cancelled; state event", () => {
   expect(s.permissions[0].cancelled).toBe(true);
   expect(s.sessionState).toBe("waiting_permission");
 });
+
+test("replayed history with two user turns", () => {
+  const ev = [{ kind: "user" as const, text: "un" }, ...load("stream"), { kind: "user" as const, text: "deux" }, ...load("interrupt")];
+  const s = run(ev as any);
+  expect(s.messages.map((m) => m.role)).toEqual(["user", "assistant", "user", "assistant"]);
+  expect(s.messages[0]).toMatchObject({ text: "un" });
+  expect(s.messages[2]).toMatchObject({ text: "deux" });
+});

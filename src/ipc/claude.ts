@@ -7,6 +7,7 @@ export type SessionState = "starting" | "idle" | "running" | "waiting_permission
 
 export type SessionEvent =
   | { kind: "sdk"; message: unknown }
+  | { kind: "user"; text: string } // turn sent by session_send (emitted and journaled by Rust)
   | {
       kind: "permission_request";
       requestId: string;
