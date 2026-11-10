@@ -46,8 +46,8 @@ cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 Pas de scope systemd, pas de lancement du pont, pas de commande Tauri.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : `supervisor` selon `ipc.md §4` : groupe de process, `killpg` à `kill()`/`Drop` (idempotent, le watchdog est tué et récolté, jamais de `killpg` tardif), watchdog `watchdog <pgid>` (pgid ≤ 1 refusé). Tests : kill, Drop, SIGKILL du parent (helper relancé), pipes forcés.
+- Fichiers touchés : `src-tauri/src/supervisor/mod.rs`, `src-tauri/src/main.rs`, `src-tauri/tests/supervisor.rs`.
+- Vérification (sortie résumée) : fmt, clippy OK ; `cargo test` 1 + 4 verts (5 passes stables). Watchdog remplacé par `/bin/true` : `sigkill_of_parent_leaves_nothing` échoue, `left: [1625836, 1625838]` (sh + sleep survivants).
+- Raccourcis pris (`shortcut:`) : réutilisation du pgid gardée ; le pidfd du leader ne suffit pas (le groupe survit à son leader).
+- À remonter à l'architecte : variable `ATELIER_WATCHDOG_EXE` ajoutée (privée, hors signatures) : en test, `current_exe()` est le harnais, qui ne sait pas faire le watchdog.
