@@ -64,8 +64,13 @@ Pas de pont définitif, pas de Rust, pas de protocole inventé, pas de tests uni
 échoue est un résultat : documente-le, ne le contourne pas.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : 7 scénarios + `subagent.mjs` (forme des messages de sous-agent), captures expurgées.
+  stream/permission/always/interrupt/model/resume OK ; kill : le `claude` enfant survit (SIGTERM et SIGKILL).
+- Fichiers touchés : `spikes/bridge/{lib,stream,permission,always,interrupt,model,resume,kill,subagent}.mjs`,
+  `package.json`, `package-lock.json`, `samples/*.ndjson`.
+- Vérification (sortie résumée) : boucle des 7 scénarios sans FAIL ; grep données personnelles : OK.
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : `FINDINGS.md` non écrit (écriture de .md bloquée pour le sous-agent ; contenu
+  dans le rapport). La règle « toujours » est écrite dans `.claude/settings.local.json` du checkout principal
+  (fichier créé, non supprimé : suppression refusée). `total_cost_usd` est cumulé par session. Supervision :
+  `killpg`/`PR_SET_PDEATHSIG` indispensables.
