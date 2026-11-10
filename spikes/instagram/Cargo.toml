@@ -1,0 +1,16 @@
+[package]
+name = "spike-instagram"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Standalone: not part of any parent workspace.
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+tauri = { version = "2.12", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

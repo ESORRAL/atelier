@@ -1,7 +1,7 @@
 ---
 id: TASK-004
 title: Échafaudage Tauri 2 + React/TypeScript, commandes et CI
-status: review
+status: done
 phase: 1
 agent: core
 model: sonnet
