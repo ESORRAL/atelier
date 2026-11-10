@@ -55,8 +55,8 @@ npm ci && npm run lint && npm test && npm run build
 Pas de branchement à l'onglet Chat (TASK-012 le fera), pas d'appel IPC dans ce composant.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : machine pure (file FIFO, garde 500 ms réarmée à chaque demande, étape et retour de focus, Échap, double confirmation « Toujours », annulée = jamais approuvable, bandeau 1 s) ; `PermissionHost` en portail, `alertdialog`, focus initial sur le titre, Tab piégé, Alt+O/T/R, annonce polie, focus restauré.
+- Fichiers touchés : `src/ui/permissionMachine.ts`, `src/ui/permissionMachine.test.ts`, `src/ui/PermissionDialog.tsx`, `src/ui/PermissionDialog.css`, cette fiche.
+- Vérification (sortie résumée) : lint OK, 14 tests OK (9 nouveaux), build OK.
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : `Decision` absent de `src/ipc/`, défini dans `permissionMachine.ts` ; pas de composant `Button` dans `src/ui/`, boutons natifs stylés localement ; pas de jeton d'épaisseur de bordure (`thin`, cadre via `--focus-ring-w`) ; le répertoire de travail n'est pas dans l'événement, donc non affiché ; libellé de portée « Toujours » supposé (commande pour Bash, nom d'outil sinon) ; une demande retirée de la file sans décision est traitée comme annulée.
