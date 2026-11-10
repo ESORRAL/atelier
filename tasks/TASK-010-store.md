@@ -1,7 +1,7 @@
 ---
 id: TASK-010
 title: Module store — réglages, index des sessions, journal d'événements
-status: todo
+status: done
 phase: 2
 agent: core
 model: sonnet
@@ -43,8 +43,8 @@ cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 Pas de commande Tauri, pas de verrou entre process.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : module `store` complet (types, Store, écriture atomique, validation de clé, 4 tests).
+- Fichiers touchés : src-tauri/src/store/mod.rs, cette fiche.
+- Vérification : fmt, clippy -D warnings OK ; cargo test 5 passed.
+- Raccourcis pris (`shortcut:`) : upsert relit/réécrit tout sessions.json ; recentCwds non tronqué à 10 (à faire par l'appelant) ; fichier tmp au nom fixe (pas de verrou, hors périmètre).
+- À remonter à l'architecte : rien.
