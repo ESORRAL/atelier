@@ -70,9 +70,19 @@ reste un outil personnel, non distribué comme service de connexion pour d'autre
 Non utilisé : les coéquipiers ne se lancent pas en mode `-p`/SDK, et la doc annonce environ 7 fois plus
 de tokens qu'une session standard. Les sous-agents classiques suffisent (voir `AGENTS.md`).
 
-## À valider par un spike (TASK-002)
-Forme exacte des messages du SDK installé, aller-retour de permission complet, interruption, changement
-de modèle. Les contrats sont figés **après** ce spike, à partir d'événements réels.
+## Résultat du spike (TASK-002, 2026-11-10)
+Six scénarios sur sept fonctionnent : flux, permission, « toujours », interruption, changement de modèle,
+reprise. Constats qui changent la conception :
+- Tuer le pont Node ne tue pas `claude` (SIGTERM comme SIGKILL) : l'arrêt par groupe de process est
+  obligatoire, on ne peut pas compter sur le SDK.
+- `total_cost_usd` est cumulé sur la session ; le coût d'un tour est dans `model_usage_since_last_result`.
+- Les règles « toujours » sont écrites dans `.claude/settings.local.json` à la racine du dépôt du projet.
+- Le SDK propose aussi de passer en `acceptEdits` : l'app ne renvoie que les règles, jamais ce changement
+  de mode, quand l'utilisateur choisit « toujours ».
+- La reprise ne rejoue pas l'historique : le journal propre à l'app est nécessaire.
+- Sans `permissionMode` explicite, le CLI peut démarrer en `auto` : le pont le fixe toujours.
+
+Détail : `spikes/bridge/FINDINGS.md`. Contrat qui en découle : `contracts/bridge-protocol.md`.
 
 ## Sources
 - https://code.claude.com/docs/en/headless.md · /agent-sdk/overview.md · /agent-sdk/user-input.md
