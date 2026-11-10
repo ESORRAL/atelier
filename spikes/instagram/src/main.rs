@@ -6,7 +6,16 @@ use tauri::webview::NewWindowResponse;
 use tauri::{Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 const DEFAULT_PAUSE_URL: &str = "https://www.instagram.com/";
-const ALLOWED_DOMAINS: &[&str] = &["instagram.com", "cdninstagram.com", "facebook.com"];
+// fbsbx.com hosts Meta's login captcha frame, which embeds Google reCAPTCHA (google.com, gstatic.com, recaptcha.net).
+const ALLOWED_DOMAINS: &[&str] = &[
+    "instagram.com",
+    "cdninstagram.com",
+    "facebook.com",
+    "fbsbx.com",
+    "google.com",
+    "gstatic.com",
+    "recaptcha.net",
+];
 
 /// Labels of every window whose call reached Rust.
 static PROBE_CALLS: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -20,6 +29,10 @@ fn probe(window: WebviewWindow) -> String {
 }
 
 fn host_allowed(url: &Url, extra_host: Option<&str>) -> bool {
+    // Empty frames created by the page itself.
+    if url.as_str() == "about:blank" {
+        return true;
+    }
     let Some(host) = url.host_str() else {
         return false;
     };
@@ -114,6 +127,9 @@ mod tests {
         assert!(ok("https://m.facebook.com/login", None));
         assert!(!ok("http://www.instagram.com/", None));
         assert!(!ok("https://evilinstagram.com/", None));
+        assert!(ok("about:blank", None));
+        assert!(ok("https://www.fbsbx.com/captcha/recaptcha/iframe/", None));
+        assert!(!ok("about:srcdoc", None));
         assert!(!ok("https://example.com/", None));
         assert!(ok("http://127.0.0.1:8000/x", Some("127.0.0.1")));
         assert!(!ok("http://localhost:8000/x", Some("127.0.0.1")));
