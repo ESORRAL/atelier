@@ -1,4 +1,5 @@
 pub mod claude;
+pub mod notify;
 pub mod store;
 pub mod supervisor;
 
@@ -13,6 +14,7 @@ fn app_version() -> String {
 pub fn run() {
     use claude::commands::*;
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let store = store::Store::open(app.path().app_data_dir()?)?;
             app.manage(claude::Claude::new(store));

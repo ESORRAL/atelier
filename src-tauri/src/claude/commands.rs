@@ -13,6 +13,7 @@ type Res<T> = Result<T, String>;
 
 #[tauri::command]
 pub async fn session_start(
+    app: tauri::AppHandle,
     claude: State<'_, Claude>,
     cwd: String,
     model: Option<String>,
@@ -20,7 +21,11 @@ pub async fn session_start(
     resume: Option<String>,
     on_event: Channel<SessionEvent>,
 ) -> Res<String> {
+    let tracker = std::sync::Mutex::new(crate::notify::Tracker::default());
+    let key_cell = Arc::new(std::sync::OnceLock::<String>::new());
+    let cell = key_cell.clone();
     let sink = Arc::new(move |ev: SessionEvent| {
+        crate::notify::on_event(&app, &tracker, &cell, &ev);
         if let Err(e) = on_event.send(ev) {
             eprintln!("[claude] channel: {e}");
         }
@@ -31,7 +36,9 @@ pub async fn session_start(
         permission_mode,
         resume,
     };
-    claude.start(args, sink).await
+    let key = claude.start(args, sink).await?;
+    let _ = key_cell.set(key.clone());
+    Ok(key)
 }
 
 #[tauri::command]
