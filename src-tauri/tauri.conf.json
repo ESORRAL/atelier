@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build:bridge && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -25,6 +25,16 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": {
+      "../bridge/main.mjs": "bridge/main.mjs",
+      "../bridge/package.json": "bridge/package.json",
+      "../bridge/node_modules/": "bridge/node_modules/"
+    },
+    "linux": {
+      "deb": {
+        "depends": ["nodejs"]
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
