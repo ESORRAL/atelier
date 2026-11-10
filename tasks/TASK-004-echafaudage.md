@@ -56,8 +56,8 @@ Pas de design (TASK-006), pas de module métier, pas de pont, pas de paquet `.de
 `tauri dev` de façon bloquante.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : app Tauri 2.12.5 + React 19/Vite/TS strict, fenêtre `main` « Atelier », commande `app_version` appelée par l'UI (`src/ipc/app.ts`), capability `main` (core:default seul), CSP `default-src 'self'`, arborescence + README, scripts npm, CI ubuntu-24.04 (actions épinglées par SHA).
+- Fichiers touchés : src-tauri/**, src/**, index.html, package(-lock).json, tsconfig*.json, vite.config.ts, .github/workflows/ci.yml, .gitignore (+ cette fiche).
+- Vérification : npm ci, lint, test (1 Vitest), build OK ; cargo fmt --check, clippy -D warnings, cargo test (1 test) OK.
+- Raccourcis pris (`shortcut:`) : test Vitest sur l'appel IPC mocké, pas de rendu du composant (pas de jsdom, dépendance non autorisée). `status:` de la fiche non modifié.
+- À remonter à l'architecte : `vitest` 5.1.0 installé ; SHA des actions résolus via `gh api` (tags v4/v2/stable), à relire ; `tauri dev` non lancé.
