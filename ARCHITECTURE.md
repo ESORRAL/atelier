@@ -58,7 +58,7 @@ au shell ni accès au système de fichiers.
 | `tasks/` | fiches de tâche | architecte seul |
 | `docs/adr/`, `docs/ROADMAP.md` | décisions, feuille de route | architecte |
 | `.claude/agents/`, `.claude/rules/` | sous-agents, règles par chemin | architecte |
-| `graphify-out/` | graphe du code (généré) | `scribe` |
+| `graphify-out/` | graphe du code (généré, non versionné) | chaque agent, par `graphify update .` |
 
 Un module ou un onglet = un dossier = un périmètre d'écriture. Deux tâches parallèles n'écrivent jamais
 dans le même dossier.
