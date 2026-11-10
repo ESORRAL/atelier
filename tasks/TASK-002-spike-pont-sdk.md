@@ -1,7 +1,7 @@
 ---
 id: TASK-002
 title: Spike — piloter Claude Code avec l'Agent SDK et capturer les événements réels
-status: todo
+status: done
 phase: 1
 agent: core
 model: opus
