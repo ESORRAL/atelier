@@ -5,24 +5,24 @@
  * <html data-theme="light|dark">. Contrast ratios are listed in DESIGN.md §2.
  */
 
-/* ---------- Fonts (bundled in /fonts, OFL 1.1, no CDN) ---------- */
+/* ---------- Fonts (bundled in ../fonts relative to this file, OFL 1.1, no CDN) ---------- */
 @font-face {
   font-family: "Atkinson Hyperlegible Next";
-  src: url("/fonts/AtkinsonHyperlegibleNext-VariableFont_wght.woff2") format("woff2");
+  src: url("../fonts/AtkinsonHyperlegibleNext-VariableFont_wght.woff2") format("woff2");
   font-weight: 200 800;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Atkinson Hyperlegible Next";
-  src: url("/fonts/AtkinsonHyperlegibleNext-Italic-VariableFont_wght.woff2") format("woff2");
+  src: url("../fonts/AtkinsonHyperlegibleNext-Italic-VariableFont_wght.woff2") format("woff2");
   font-weight: 200 800;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: "Atkinson Hyperlegible Mono";
-  src: url("/fonts/AtkinsonHyperlegibleMono-VariableFont_wght.woff2") format("woff2");
+  src: url("../fonts/AtkinsonHyperlegibleMono-VariableFont_wght.woff2") format("woff2");
   font-weight: 200 800;
   font-style: normal;
   font-display: swap;
@@ -119,7 +119,7 @@
 
   --color-text-primary: #E4EBE7;
   --color-text-secondary: #A8B4AF;
-  --color-text-muted: #8C9994;
+  --color-text-muted: #929F9A;
   --color-text-on-accent: #0E1A17;
   --color-text-on-danger: #FFFFFF;
 
@@ -141,7 +141,7 @@
   --color-success: #7FCB8F;
   --color-warning: #F2B33D;
   --color-danger: #F07A71;        /* danger text / icons */
-  --color-danger-solid: #B8352E;  /* destructive filled button */
+  --color-danger-solid: #B8352E;  /* destructive filled button; only 2.95:1 on surface: always carries a text label, never a standalone indicator */
   --color-danger-bg: #3A1D1F;
   --color-info: #7DB4F5;
 
@@ -154,7 +154,7 @@
   --color-diff-add-fg: #A6E3B3;
   --color-diff-remove-bg: #3A1D1F;
   --color-diff-remove-fg: #F6AFAA;
-  --color-diff-gutter: #8C9994;
+  --color-diff-gutter: #929F9A;
 
   /* Charts (Usage) — categorical, max 5 series */
   --color-chart-1: #6CC3B0;

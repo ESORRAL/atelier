@@ -7,9 +7,9 @@ Spécification de design de référence. Chaque section `##` se lit seule. Valeu
 |---|---|---|
 | 1 | Intention | Concept « Régie », pourquoi, ce qu'on refuse. |
 | 2 | Tokens | Couleurs (2 thèmes, contrastes vérifiés), typo, espacement, rayons, élévation, mouvement, z-index, layout. |
-| 3 | Layout | Coquille, règles de repli, wireframes Shell / Chat / Agents / Musique. |
+| 3 | Layout | Coquille, règles de repli, wireframes Shell / Chat / Agents / Musique / Usage / Graphe, écrans liste + détail, lanceur Instagram. |
 | 4 | Composants | Inventaire minimal : rôle, anatomie, états, clavier, a11y. |
-| 5 | Interactions critiques | Permission, streaming, changements d'état d'agent, Focus, palette. |
+| 5 | Interactions critiques | Permission, streaming, changements d'état d'agent, Focus, palette, raccourcis AZERTY. |
 | 6 | Mouvement, son, états vides, ton | Principes motion, notifications, vide/chargement/erreur, microcopie FR. |
 | 7 | Moteur & ressources | Contraintes WebKitGTK, polices, icônes, chargement paresseux. |
 | 8 | Règles pour les agents UI | Checklist de 10 lignes, suffisante seule. |
@@ -46,7 +46,7 @@ Préfixe `--`. Thème sombre par défaut, clair si `prefers-color-scheme: light`
 | `color-border-strong` | `#6B7B75` | `#74827C` | Bords de contrôles (≥ 3:1) |
 | `color-text-primary` | `#E4EBE7` | `#17201D` | Texte courant |
 | `color-text-secondary` | `#A8B4AF` | `#41504A` | Méta, libellés |
-| `color-text-muted` | `#8C9994` | `#56645E` | Horodatages, placeholders |
+| `color-text-muted` | `#929F9A` | `#56645E` | Horodatages, placeholders |
 | `color-accent` | `#6CC3B0` | `#17705F` | Action, focus, lien |
 | `color-text-on-accent` | `#0E1A17` | `#FFFFFF` | Texte sur bouton primaire |
 
@@ -65,14 +65,15 @@ Préfixe `--`. Thème sombre par défaut, clair si `prefers-color-scheme: light`
 | `color-diff-remove-bg` / `-fg` | `#3A1D1F` / `#F6AFAA` | `#F9E0DD` / `#8A221C` | préfixe `−` |
 | `color-chart-1…5` | patine, bleu, lilas, ambre, gris | idem foncés | max 5 séries |
 
-Règle : un état n'est **jamais** porté par la couleur seule (icône + libellé texte toujours).
+Règle : un état n'est **jamais** porté par la couleur seule. Le « tally » est le voyant rond de 8 px de l'état, toujours suivi de son icône et de son libellé texte.
 
 ### 2.3 Contrastes vérifiés (WCAG 2.x)
 | Paire | Sombre | Clair | Seuil |
 |---|---|---|---|
 | text-primary / surface · overlay | 14.26 · 11.51 | 15.31 · 16.66 | 4.5 |
 | text-secondary / surface · overlay | 8.07 · 6.52 | 7.81 · 8.50 | 4.5 |
-| text-muted / surface · overlay | 5.84 · 4.71 | 5.71 · 6.21 | 4.5 |
+| text-muted / surface · overlay | 6.29 · 5.08 | 5.71 · 6.21 | 4.5 |
+| text-muted / hover · selected | 5.29 · 4.78 | 5.33 · 4.98 | 4.5 |
 | accent / base · raised | 8.76 · 7.42 | 4.95 · 5.97 | 4.5 |
 | text-on-accent / accent | 8.54 | 5.97 | 4.5 |
 | on-danger (#FFF) / danger-solid | 5.85 | 6.93 | 4.5 |
@@ -81,7 +82,8 @@ Règle : un état n'est **jamais** porté par la couleur seule (icône + libell�
 | danger / danger-bg | 5.62 | 5.29 | 4.5 |
 | diff-add fg/bg · remove fg/bg | 9.64 · 8.46 | 6.96 · 7.19 | 4.5 |
 | text-primary / selected | 10.85 | 13.36 | 4.5 |
-| border-strong / surface · overlay | 3.88 · 3.13 | 3.40 · 3.70 | 3 (UI) |
+| border-strong / base · surface · overlay | 4.10 · 3.88 · 3.13 | 3.33 · 3.69 · 4.02 | 3 (UI) |
+| danger-solid / surface (indicateur seul) | 2.95 ✗ | 6.37 | 3 (UI) → toujours avec libellé texte |
 | focus-ring (accent) / base | 8.76 | 4.95 | 3 (UI) |
 
 Tout nouveau couple texte/fond doit être vérifié et ajouté ici.
@@ -157,7 +159,7 @@ Règles : le rail ne se replie jamais (icônes seules, libellé en tooltip). Le 
 │ Musq │  (onglets média masqués en mode Focus)               │                       │
 │ Inst │                                                      │                       │
 │ ⚙    ├──────────────────────────────────────────────────────┤                       │
-│      │ Tiroir terminal / logs (repliable, Ctrl+`)           │                       │
+│      │ Tiroir terminal / logs (repliable, Ctrl+² ou F12)    │                       │
 ├──────┴──────────────────────────────────────────────────────┴───────────────────────┤
 │ ▶ Titre — Artiste   ⏮ ⏯ ⏭  ▁▃▅ vol │        │ ◔ Focus 18:24 │ ● 2 agents · 1 attend│ bottombar 44
 └─────────────────────────────────────────────────────────────────────────────────────┘
@@ -193,14 +195,18 @@ Règles : le rail ne se replie jamais (icônes seules, libellé en tooltip). Le 
 ### 3.3 Agents (salle de contrôle)
 ```
 ┌─ main ──────────────────────────────────────────────────────────┐
-│ Agents  [Tous 6] [Actifs 3] [Attente 1] [Échecs 0]   Tri: état ▾ │
+│ Agents [Tous 6] [Actifs 2] [Attente 1] [En revue 1] [Échecs 1]   │
 ├──────────────────────────────────────────────────────────────────┤
-│ ┌ ● Attend permission ───────┐ ┌ ● En cours ────────┐ ┌ ● En revue ┐│  attente toujours en premier
-│ │ Agent UI · sonnet          │ │ Backend · opus     │ │ Tests · ... ││
-│ │ TASK-014                   │ │ TASK-011           │ │ TASK-009    ││
-│ │ « Bash: npm test »         │ │ « Écriture api.rs »│ │ …           ││
-│ │ 41k tok · 0,62 €  [Décider]│ │ 88k tok · 1,10 €   │ │             ││
-│ └────────────────────────────┘ └────────────────────┘ └─────────────┘│
+│ ┌ ● Attend ta décision ─────┐ ┌ ● Échec ──────────┐ ┌ ● En revue ─┐│  ordre : attente, échec,
+│ │ UI · sonnet · TASK-014    │ │ Tests · TASK-009  │ │ Doc·TASK-016││  revue, en cours,
+│ │ « Bash: npm test »        │ │ « exit 1 : 3 KO » │ │ « Diff prêt »│  en file, terminé
+│ │ 41k tok 0,62 € [Décider]  │ │ [Voir les logs]   │ │ [Relire]    ││
+│ └───────────────────────────┘ └───────────────────┘ └─────────────┘│
+│ ┌ ● En cours ───────────────┐ ┌ ● En file ────────┐ ┌ ● Terminé ──┐│
+│ │ Backend · opus · TASK-011 │ │ Infra · TASK-017  │ │ Lint·TASK-08││
+│ │ « Écriture api.rs »       │ │ « Démarre après   │ │ 12k 0,09 €  ││
+│ │ 88k tok 1,10 € [Arrêter]  │ │   TASK-011 »      │ │             ││
+│ └───────────────────────────┘ └───────────────────┘ └─────────────┘│
 ├──────────────────────────────────────────────────────────────────┤
 │ Timeline  14:00 ──●────●──●───────●── maintenant                   │  1 piste par agent
 │  UI      ▬▬▬▬▬▬▬▬▬▬▌attente                                       │
@@ -226,7 +232,49 @@ Règles : le rail ne se replie jamais (icônes seules, libellé en tooltip). Le 
 ```
 Les glyphes ci-dessus sont des repères ASCII ; l'UI utilise Phosphor (§7).
 
-Projets, Second cerveau, Graphe, Usage, Réglages : liste à gauche + détail à droite (ou tableau), même grille ; pas de wireframe dédié.
+### 3.5 Usage
+```
+┌─ main ──────────────────────────────────────────────────────────┐
+│ Usage   [7 j] [30 j] [Mois]      Total 18,40 € · 1,2 M tokens    │
+├──────────────────────────────────────────────────────────────────┤
+│ Par jour (MiniChart barres)  ▁▂▅▃▇▂▄                              │
+├───────────────────────────────┬──────────────────────────────────┤
+│ Par agent (barres horiz.)     │ Par modèle (barres horiz.)        │
+│ Backend ▬▬▬▬▬▬▬ 7,10 €        │ opus   ▬▬▬▬▬▬▬▬ 12,30 €           │
+│ UI      ▬▬▬▬ 4,20 €           │ sonnet ▬▬▬ 6,10 €                 │
+├───────────────────────────────┴──────────────────────────────────┤
+│ Tableau détaillé (date, agent, modèle, tokens, coût) — tri, copie │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### 3.6 Graphe
+```
+┌─ main ──────────────────────────────────────────┬────────────────┐
+│ Graphe  Recherche nœud… [Communautés ▾]  Zoom ± │ Nœud sélectionné│
+├─────────────────────────────────────────────────┤ nom (mono)      │
+│        ○──○        ●═══●                         │ communauté      │
+│       ○  ○──●═════●   ●   (SVG depuis JSON,     │ degré, fichiers │
+│        ○──○        ●═══●   couleur = communauté) │ [Ouvrir fichier]│
+├─────────────────────────────────────────────────┤                 │
+│ Nœuds clés (ListRow) · Communautés (ListRow)     │                 │
+└─────────────────────────────────────────────────┴────────────────┘
+```
+Clavier : la liste « Nœuds clés » est la navigation principale ; le SVG suit la sélection (`aria-hidden`, liste = équivalent accessible).
+
+### 3.7 Écrans « liste + détail »
+| Écran | Volet gauche | Volet droit |
+|---|---|---|
+| Projets | `ListRow` (dossiers récents, branches/worktrees) | Colonnes de `TaskCard` par état (`Tabs` pour filtrer) |
+| Second cerveau | `Field` recherche + `ListRow` (Tableau de bord, Journal, Décisions, Leçons) | Note Markdown (`text-read`, 72ch) + `Button` « Ouvrir dans Obsidian » |
+| Réglages | `Tabs` verticaux (CLI, Modèles, Vault, Thème, Raccourcis, Onglets) | `Field`, `Toggle`, `Button` |
+
+### 3.8 Instagram (lanceur)
+Aucune webview dans la fenêtre principale. L'onglet Instagram affiche une seule `Card` :
+| Élément | Spécification |
+|---|---|
+| Tuile | Icône `InstagramLogo` (Phosphor), titre « Reels », texte « S'ouvre dans une fenêtre séparée. Connexion manuelle. », `Button` primary « Ouvrir les Reels » (ou « Ramener la fenêtre » si déjà ouverte). |
+| Interrupteur | `Toggle` « Pause focus » : activé, masque Musique et Instagram du rail et ferme la fenêtre Reels (même effet que le mode Focus, sans minuteur). |
+| État | Tally (voyant rond 8 px + libellé) : « Fenêtre ouverte » / « Fermée ». |
 
 ## 4. Inventaire des composants
 
@@ -240,13 +288,13 @@ Liste fermée : réutiliser avant de créer. Tous : focus visible (`outline: 2px
 | `Field` | Libellé + input/textarea/select + aide/erreur | default, focus, invalid, disabled | natif | `<label for>`, erreur via `aria-describedby` + `aria-invalid` |
 | `Toggle` | Interrupteur (Focus, réglages) | on, off, disabled | Espace | `role="switch"` + `aria-checked` |
 | `Tabs` | Segments (panneau droit, filtres) | selected, hover | ←/→, Home/End | `tablist`/`tab`/`tabpanel`, roving tabindex |
-| `RailItem` | Icône 20 + tooltip ; actif = icône fill + barre accent 2 px | active, hover, hidden (Focus) | ↑/↓ dans le rail, `Ctrl+1…9` | `nav` + `aria-current="page"` |
+| `RailItem` | Icône 20 + tooltip ; actif = icône fill + barre accent 2 px | active, hover, hidden (Focus) | ↑/↓ dans le rail, `Ctrl+Digit1…9` ou `F1…F9` (§5.6) | `nav` + `aria-current="page"` |
 | `Card` | Conteneur `raised`, `radius-md`, en-tête + corps | default, selected, attention (bord waiting) | focusable si actionnable | Titre = `h3` |
 | `MessageBlock` | Auteur, heure, corps Markdown | streaming, complete, stopped, error | ↑/↓ entre messages (mode lecture) | `article` + `aria-label="Claude, 14:02"` |
 | `CodeBlock` | Langue, bouton Copier, `pre` mono | default, copied (2 s) | Tab atteint Copier | Copier annonce « Copié » (live polite) |
 | `DiffView` | Gutter n° + `+`/`−` + texte, vue unifiée | collapsed (>40 lignes), expanded | Entrée déplie | Préfixe `+`/`−` lu ; jamais la couleur seule |
 | `ToolCard` | Nom outil (mono), cible, Tally, durée, détail repliable | running, done, failed, denied | Entrée déplie | `aria-expanded` ; erreur lisible en clair |
-| `PermissionDialog` | Voir §5.1 | pending uniquement | voir §5.1 | `alertdialog` |
+| `PermissionDialog` | Modale au-dessus de tout : commande complète, Refuser · Toujours… · Autoriser une fois ; jamais auto-fermée. Détail §5.1 | pending, confirming-always, cancelled | focus initial sur le titre, `Échap` = Refuser ; §5.1 | `alertdialog` |
 | `AgentCard` | Tally, rôle, modèle, `TASK-XXX`, dernier message (2 lignes), tokens/coût, action contextuelle | 6 états | Entrée ouvre logs ; `D` = Décider si attente | Changement d'état annoncé (§5.3) |
 | `Timeline` | Pistes horizontales par agent, segments colorés par état | hover segment → tooltip | ←/→ par événement | Alternative : liste d'événements tabulaire accessible |
 | `LogView` | Lignes mono horodatées, filtre, suivi auto | following, paused | `F` suivre, `Ctrl+F` filtre | `role="log"`, `aria-live="off"` |
@@ -255,9 +303,9 @@ Liste fermée : réutiliser avant de créer. Tous : focus visible (`outline: 2px
 | `ListRow` | Icône, titre, méta, action au survol | hover, selected, focus | ↑/↓, Entrée | `listbox`/`option` ou `<ul>` + liens |
 | `TaskCard` | `TASK-XXX`, titre, Tally, agent assigné | 6 états | Entrée ouvre panneau Tâche | — |
 | `PlayerControls` | Pochette, titre, ⏮⏯⏭, volume, sélecteur de lecteur | playing, paused, no-player | Espace (si focus dans lecteur), `Ctrl+Alt+→` suivant | Boutons libellés ; titre en `aria-live="polite"` au changement de piste |
-| `CommandPalette` | Voir §5.5 | — | — | `combobox` + `listbox` |
+| `CommandPalette` | Recherche floue sur commandes, onglets, sessions, notes, agents. Détail §5.5 | open, empty-results | `Ctrl+K`, ↑/↓, Entrée, `Échap` | `combobox` + `listbox` |
 | `Toast` | Icône + message + action optionnelle | info, success, error | `Ctrl+Maj+N` focus dernier toast | `status` (polite) ; erreurs `alert` ; jamais pour une permission |
-| `Drawer` | Tiroir terminal/log redimensionnable | open, closed | `` Ctrl+` `` bascule | Région nommée `aria-label="Terminal"` |
+| `Drawer` | Tiroir terminal/log redimensionnable | open, closed | `Ctrl+Backquote` (touche ² en AZERTY) ou `F12` | Région nommée `aria-label="Terminal"` |
 | `EmptyState` | Icône 20, une phrase, une action | — | Action focusable | Texte réel, pas d'illustration seule |
 | `Skeleton` | Blocs `raised` sans animation de vague | — | — | Conteneur `aria-busy="true"` |
 
@@ -273,9 +321,11 @@ Graphe : nœuds/liens rendus en SVG depuis le JSON, avec liste accessible équiv
 | Contenu | Titre : « Claude veut exécuter une commande » (verbe selon l'outil). Agent demandeur + Tally. Bloc mono avec la commande / le chemin **complet**, non tronqué (scroll si long). Répertoire de travail. Portée de « toujours » énoncée en clair. |
 | Boutons (ordre fixe) | `Refuser` (secondary, gauche) · `Toujours autoriser…` (secondary + icône `LockOpen`, libellé de portée : « Toujours autoriser `npm test` dans ce projet ») · `Autoriser une fois` (primary, droite). |
 | Focus initial | Sur le titre du dialogue (`tabindex="-1"`), pas sur un bouton : `Entrée` seul ne valide rien. |
-| Garde de frappe | Clics et touches ignorés pendant 500 ms après apparition (évite la validation par frappe en cours dans le composer). Boutons visuellement désactivés pendant ce délai. |
-| Raccourcis | `Échap` = Refuser (explicite, journalisé). `Alt+O` une fois, `Alt+T` toujours (ouvre une confirmation), `Alt+R` refuser. Tab piégé dans le dialogue. |
-| « Toujours » | Demande une seconde confirmation inline (« Confirmer : toujours autoriser `npm test` ici ») ; révocable dans Réglages. |
+| Garde de frappe | Clics et touches ignorés pendant 500 ms (évite la validation par frappe en cours). Boutons visuellement désactivés pendant ce délai. Garde **réarmée** à chaque changement de contenu (demande suivante de la file) et à chaque retour du focus sur la fenêtre. |
+| Demande arrivant pendant un dialogue ouvert | Ajoutée en fin de file ; le compteur se met à jour (« 1 sur 4 »), le focus ne bouge pas, annonce polite « Nouvelle demande en attente ». |
+| Agent ou session arrêté(e) | Ses demandes en attente passent à « Annulée » (tracé dans la ToolCard) et la file avance ; une demande annulée n'est jamais approuvée. Si c'était la demande affichée : bandeau « Annulée : l'agent a été arrêté » 1 s, puis demande suivante (garde réarmée). |
+| Raccourcis | `Échap` = Refuser (explicite, journalisé). `Alt+O` une fois, `Alt+T` toujours (ouvre la confirmation), `Alt+R` refuser (lettres via `event.key`, §5.6). Tab piégé dans le dialogue. |
+| « Toujours » | Seconde étape inline (« Confirmer : toujours autoriser `npm test` ici ») avec [Retour] [Confirmer]. `Échap` à cette étape = retour à l'étape 1, **pas** un refus. Révocable dans Réglages. |
 | Jamais | Fermeture automatique, timeout, clic sur le scrim qui ferme, empilement derrière une autre modale, mode silencieux en Focus. |
 | A11y | `role="alertdialog"`, `aria-modal="true"`, `aria-labelledby` (titre), `aria-describedby` (commande + portée). Annonce assertive à l'ouverture. Retour du focus à l'élément d'origine à la fermeture. |
 | Hors app | Si la fenêtre n'a pas le focus : notification desktop « Permission requise » + badge sur l'icône ; voyant ambre dans la topbar et sur l'AgentCard. |
@@ -293,20 +343,23 @@ Graphe : nœuds/liens rendus en SVG depuis le JSON, avec liste accessible équiv
 | Lecteurs d'écran | Liste des messages `role="log"` avec `aria-live="off"` pendant le streaming et `aria-busy="true"` sur le message en cours. Une région `status` cachée annonce uniquement : « Claude écrit », « Outil Bash en cours », « Réponse terminée ». Le texte complet est lisible à la demande, jamais lu token par token. |
 
 ### 5.3 Changements d'état d'agent
+Tally = voyant rond de 8 px coloré par état, toujours accompagné d'une icône et d'un libellé.
+
 | Transition | Visuel | Annonce / notification |
 |---|---|---|
+| → queued | Tally gris fixe, libellé « En file », dépendance affichée (« Démarre après TASK-011 ») | aucune |
 | → running | Tally bleu, pulse lent | aucune |
 | → waiting-permission | Carte remontée en tête, bord ambre, bouton « Décider » | `status` assertive + notification desktop si fenêtre non focalisée |
 | → review | Tally lilas, bouton « Relire » | `status` polite + notification |
 | → done | Tally vert fixe, coût final | `status` polite + notification (regroupée si plusieurs en < 10 s) |
 | → failed | Tally rouge, extrait d'erreur 2 lignes, « Voir les logs » | `status` assertive + notification |
 
-Transition visuelle : fondu de couleur du voyant `dur-slow` ; la carte ne saute pas de place sauf vers « attente » (déplacement `dur-base`, aucun si mouvement réduit). Focus clavier conservé sur la même carte après un réordonnancement.
+Ordre des cartes (tri par défaut « urgence ») : attente, échec, revue, en cours, en file, terminé. Filtres : Tous, Actifs, Attente, En revue, Échecs. Transition visuelle : fondu de couleur du voyant `dur-slow` ; déplacement de carte `dur-base` (aucun si mouvement réduit). Focus clavier conservé sur la même carte après un réordonnancement.
 
 ### 5.4 Mode Focus
 | Aspect | Règle |
 |---|---|
-| Activation | `Ctrl+Maj+F`, palette, ou voyant Focus dans la bottombar. |
+| Activation | `Ctrl+Maj+F` (lettre, identique en AZERTY), palette, ou voyant Focus dans la bottombar. Raccourcis remappables (§5.6). |
 | Effet | Masque Musique et Instagram du rail et de la palette ; ferme la fenêtre Reels ; mini-lecteur conservé (contrôle seulement). Notifications réduites aux permissions et échecs. |
 | Minuteur | Pomodoro 25/5 par défaut (réglable), affiché dans la bottombar en `tabular-nums`. Fin de phase : notification silencieuse + toast. |
 | Sortie | Même raccourci ; confirmation si le minuteur tourne (« Quitter le Focus avant la fin ? »). |
@@ -321,6 +374,19 @@ Transition visuelle : fondu de couleur du voyant `dur-slow` ; la carte ne saute 
 | Préfixes | `>` commandes, `@` fichiers, `#` tâches, `?` aide. |
 | A11y | Input `role="combobox"` `aria-expanded` `aria-controls` ; liste `listbox`, option active via `aria-activedescendant`. Nombre de résultats annoncé (polite). |
 | Perf | Index en mémoire ; résultats en < 50 ms ; ne charge jamais un onglet média. |
+
+### 5.6 Raccourcis clavier (AZERTY d'abord)
+Le poste principal est en AZERTY français. Lettres liées par `event.key` (mnémonique conservé), chiffres et ponctuation par `event.code` (position physique, sans AltGr ni Maj). Chaque raccourci a une alternative touche F. **Tous remappables dans Réglages → Raccourcis** ; conflit détecté et signalé à l'enregistrement.
+
+| Action | Principal | Alternative |
+|---|---|---|
+| Palette | `Ctrl+K` | `Ctrl+P` |
+| Onglet n du rail | `Ctrl+Digit1…9` (touches `& é " …` sans Maj) | `F1…F9` |
+| Tiroir terminal | `Ctrl+Backquote` (touche ² en AZERTY) | `F12` |
+| Mode Focus | `Ctrl+Maj+F` | — (lettre, sans conflit AZERTY) |
+| Arrêter la réponse | `Échap` dans le composer | bouton « Arrêter » |
+| Permission | `Alt+O` / `Alt+T` / `Alt+R`, `Échap` = Refuser | boutons, Tab |
+| Musique suivant / précédent | `Ctrl+Alt+→` / `Ctrl+Alt+←` | touches média du clavier (MPRIS) |
 
 ## 6. Mouvement, son, états, ton
 
@@ -375,7 +441,7 @@ Format : nombres FR (`12 400 tokens`, `3,42 €`), heures `14:02`, durées `1 mi
 | CSS à éviter | `backdrop-filter`, `color-mix()`, `oklch()`, `@property`, `@container` style queries, CSS anchor positioning, scroll-driven animations, View Transitions, `text-wrap: balance` comme dépendance, `filter: blur` animé, grosses ombres floues. |
 | CSS sûr | Custom properties, Grid/Flex, `:focus-visible`, `<dialog>` (avec gestion du focus manuelle en plus), `position: sticky`, `prefers-color-scheme`, `prefers-reduced-motion`. |
 | Thème système | `prefers-color-scheme` suit GTK ; si non fiable (KDE), lire le thème via Tauri (`window.theme()`) et poser `data-theme`. Le choix manuel (Réglages) prime. |
-| Polices | `.woff2` dans `/fonts`, déclarées dans `tokens.css`, licence OFL jointe. Aucun appel réseau. |
+| Polices | `.woff2` dans `fonts/` (chemins relatifs `../fonts/` depuis `design/tokens.css`), licence OFL jointe. Aucun appel réseau. |
 | Icônes | **Phosphor Icons** (MIT), SVG inline, poids `regular` (16/20 px), `fill` pour l'élément actif du rail. Import par icône (tree-shaking). Couleur `currentColor`. Aucun emoji dans l'UI. |
 | Lazy-loading | Musique, Instagram, Graphe, Usage : chunks séparés chargés au premier affichage ; rien n'est préchargé au démarrage. Le Chat est le seul chunk initial avec la coquille. |
 | Mini-lecteur | Lit l'état MPRIS via événements Rust ; aucune lib média dans le chunk principal. |
@@ -383,13 +449,13 @@ Format : nombres FR (`12 400 tokens`, `3,42 €`), heures `14:02`, durées `1 mi
 | Contenu externe | Markdown assaini (pas d'HTML brut), liens ouverts dans le navigateur système, Graphe rendu depuis JSON. |
 
 ## 8. Règles pour les agents UI
-1. Couleurs, tailles, durées : uniquement via les variables de `design/tokens.css` ; jamais de hex en dur dans un composant.
-2. Réutilise un composant du §4 avant d'en créer un ; un nouveau composant doit être ajouté au §4.
-3. Un état = voyant `Tally` + icône Phosphor + libellé texte ; jamais la couleur seule.
-4. Le dialogue de permission suit §5.1 à la lettre : pas de fermeture auto, focus initial sur le titre, garde de 500 ms, `Échap` = Refuser.
-5. Streaming : `aria-live="off"` sur le message en cours, annonces brèves via une région `status` (§5.2).
-6. Tout est faisable au clavier, avec `:focus-visible` (anneau 2 px accent, offset 2 px).
-7. Mouvement : `opacity`/`transform` seulement, durées tokens, tout à 0 sous `prefers-reduced-motion`.
-8. Pas de `backdrop-filter`, `color-mix`, `oklch`, polices ou scripts CDN (§7) ; icônes Phosphor, aucun emoji.
-9. Onglets média et Graphe en import dynamique ; rien de média dans le chunk du Chat.
-10. Texte UI en français, casse de phrase, tutoiement, verbes précis (§6.4) ; tout nouveau couple texte/fond ≥ 4.5:1 ajouté au §2.3.
+1. Couleurs, tailles, durées : uniquement les variables de `design/tokens.css` (`--color-*`, `--space-*`, `--dur-*`…) ; jamais de hex en dur.
+2. Composants autorisés, réutilise avant de créer : Button, IconButton, Tally, Field, Toggle, Tabs, RailItem, Card, MessageBlock, CodeBlock, DiffView, ToolCard, PermissionDialog, AgentCard, Timeline, LogView, Meter, MiniChart, ListRow, TaskCard, PlayerControls, CommandPalette, Toast, Drawer, EmptyState, Skeleton.
+3. Un état (queued, running, waiting-permission, review, done, failed) = « tally » (voyant rond 8 px coloré `--color-state-*`) + icône Phosphor + libellé texte ; jamais la couleur seule.
+4. Permission : `alertdialog` modal au-dessus de tout, commande complète visible, focus initial sur le titre (Entrée ne valide rien), entrées ignorées 500 ms à chaque nouvelle demande ou retour de focus, `Échap` = Refuser (sauf à l'étape de confirmation « Toujours » : retour), jamais de fermeture auto ; demande d'un agent arrêté = « Annulée », jamais approuvée.
+5. Streaming : `role="log"` + `aria-live="off"` sur le message en cours, annonces brèves (« Claude écrit », « Réponse terminée ») via une région `status` cachée.
+6. Tout au clavier, `:focus-visible` = `outline: 2px solid var(--color-focus-ring); outline-offset: 2px` ; lettres via `event.key`, chiffres/ponctuation via `event.code`, alternative touche F, raccourcis remappables.
+7. Mouvement : `opacity`/`transform` seulement, durées `--dur-*`, tout à 0 sous `prefers-reduced-motion`.
+8. Interdits WebKitGTK : `backdrop-filter`, `color-mix()`, `oklch()`, `@property`, polices/scripts CDN ; icônes Phosphor (SVG, `currentColor`), aucun emoji.
+9. Musique, Instagram, Graphe, Usage en import dynamique ; rien de média dans le chunk du Chat ; jamais d'`iframe`/HTML externe.
+10. Texte UI en français, casse de phrase, tutoiement, verbes précis (« Autoriser une fois », pas « OK ») ; contraste ≥ 4.5:1 pour le texte, ≥ 3:1 pour les bords de contrôle, vérifié par script ; `--color-danger-solid` jamais seul sans libellé.
