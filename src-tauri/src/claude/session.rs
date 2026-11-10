@@ -60,6 +60,23 @@ fn io_err(e: std::io::Error) -> String {
 }
 
 /// Looks `name` up in `PATH` (executable regular file).
+/// The bridge bundled under `<resource_dir>/bridge/`, else (debug builds only) the repo's `bridge/`.
+pub fn bridge_path(resource_dir: Option<PathBuf>) -> Result<PathBuf, String> {
+    if let Some(p) = resource_dir.map(|d| d.join("bridge/main.mjs"))
+        && p.is_file()
+    {
+        return Ok(p);
+    }
+    #[cfg(debug_assertions)]
+    {
+        let dev = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../bridge/main.mjs"));
+        if dev.is_file() {
+            return Ok(dev.to_path_buf());
+        }
+    }
+    Err("Pont Claude introuvable : bridge/main.mjs absent des ressources de l'application".into())
+}
+
 fn find_in_path(name: &str) -> Option<PathBuf> {
     use std::os::unix::fs::PermissionsExt;
     std::env::split_paths(&std::env::var_os("PATH")?)
@@ -183,15 +200,13 @@ impl Claude {
             .ok_or_else(|| "Session inconnue".to_string())
     }
 
-    /// Starts a session on the development bridge.
+    /// Starts a session on the bridge of `bridge_path(None)` (the repo's, debug builds only).
     pub async fn start(&self, args: StartArgs, sink: Sink) -> Result<String, String> {
-        // shortcut: dev location of the bridge only; the installed path is decided with the .deb (phase 3).
-        let bridge = concat!(env!("CARGO_MANIFEST_DIR"), "/../bridge/main.mjs");
-        self.start_with_bridge(args, Path::new(bridge), sink).await
+        self.start_with_bridge(args, &bridge_path(None)?, sink)
+            .await
     }
 
-    /// `start` with another bridge script, run by `node` the same way (tests use a fake bridge).
-    #[doc(hidden)]
+    /// `start` with a given bridge script, run by `node` (the app passes the bundled one).
     pub async fn start_with_bridge(
         &self,
         args: StartArgs,
@@ -438,4 +453,24 @@ fn handle_line(s: &Session, store: &Mutex<Store>, line: &str) {
         return;
     }
     s.apply(store, |c| c.bridge(msg, now_ms()));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bridge_path;
+
+    #[test]
+    fn bridge_path_prefers_resources_then_dev_bridge() {
+        let res = std::env::temp_dir().join(format!("atelier-res-{}", std::process::id()));
+        std::fs::create_dir_all(res.join("bridge")).unwrap();
+        std::fs::write(res.join("bridge/main.mjs"), "").unwrap();
+        assert_eq!(
+            bridge_path(Some(res.clone())).unwrap(),
+            res.join("bridge/main.mjs")
+        );
+        // Tests are debug builds: a missing resource falls back to the repo's bridge.
+        let dev = bridge_path(Some(res.join("nope"))).unwrap();
+        assert!(dev.ends_with("src-tauri/../bridge/main.mjs"));
+        std::fs::remove_dir_all(res).unwrap();
+    }
 }

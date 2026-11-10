@@ -3,17 +3,17 @@
 use std::sync::Arc;
 
 use serde_json::Value;
-use tauri::State;
 use tauri::ipc::Channel;
+use tauri::{AppHandle, Manager, State};
 
-use super::{Claude, SessionEvent, StartArgs};
+use super::{Claude, SessionEvent, StartArgs, bridge_path};
 use crate::store::{PermissionMode, SessionEntry, Settings};
 
 type Res<T> = Result<T, String>;
 
 #[tauri::command]
 pub async fn session_start(
-    app: tauri::AppHandle,
+    app: AppHandle,
     claude: State<'_, Claude>,
     cwd: String,
     model: Option<String>,
@@ -21,6 +21,8 @@ pub async fn session_start(
     resume: Option<String>,
     on_event: Channel<SessionEvent>,
 ) -> Res<String> {
+    let bridge = bridge_path(app.path().resource_dir().ok())?;
+    eprintln!("[claude] bridge: {}", bridge.display());
     let tracker = std::sync::Mutex::new(crate::notify::Tracker::default());
     let key_cell = Arc::new(std::sync::OnceLock::<String>::new());
     let cell = key_cell.clone();
@@ -36,7 +38,7 @@ pub async fn session_start(
         permission_mode,
         resume,
     };
-    let key = claude.start(args, sink).await?;
+    let key = claude.start_with_bridge(args, &bridge, sink).await?;
     let _ = key_cell.set(key.clone());
     Ok(key)
 }

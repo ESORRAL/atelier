@@ -52,8 +52,8 @@ Pas d'installation système (`sudo dpkg -i` : c'est l'utilisateur qui le fera), 
 signature, pas de mise à jour automatique.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : pont embarqué en ressources (`/usr/lib/Atelier/bridge/`), `bridge_path(resource_dir)` avec repli dev en debug seulement, log `[claude] bridge: <chemin>` ; `npm ci --omit=optional` dans `beforeBuildCommand` ; `Depends: nodejs`.
+- Fichiers touchés : `src-tauri/tauri.conf.json`, `src-tauri/src/claude/{session,commands,mod}.rs`, `package.json`, `docs/INSTALL.md`.
+- Vérification : fmt/clippy OK, tests 16+4+4 OK ; `.deb` 10,66 Mio ; `dpkg-deb -c` : pont présent, aucun `claude-agent-sdk-linux-*` ; `dpkg-deb -x` puis `usr/bin/../lib/Atelier` résout, `smoke.mjs` réel sur le pont extrait : `result: success "pong"`.
+- Raccourcis : aucun. Lancement GUI du binaire extrait non fait (pas de session sans clic) : preuve = test unitaire + règle `resource_dir` de Tauri + smoke.
+- À remonter : `cargo build` exige désormais `bridge/node_modules` ; en debug le pont lancé est la copie `target/debug/bridge/`.

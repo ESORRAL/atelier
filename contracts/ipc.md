@@ -147,6 +147,7 @@ Possède les commandes du §1 (dans `claude/commands.rs`) et l'état géré par 
 `supervisor::spawn` et suit `contracts/bridge-protocol.md`. Clé de session : `s-<ms Unix>-<compteur>`.
 
 ## 5. Pont
-Lancé par `node <chemin du pont>/main.mjs` (JavaScript sans compilation). En développement, le chemin est
-`<racine du repo>/bridge/`. `shortcut:` l'emplacement en paquet installé sera tranché avec le `.deb`
-(phase 3).
+Lancé par `node <dossier du pont>/main.mjs` (JavaScript sans compilation). Le cœur cherche le pont dans
+`resource_dir()` de Tauri (paquet installé : `/usr/lib/Atelier/bridge/main.mjs`), avec repli sur
+`<racine du repo>/bridge/` en build debug seulement. `bridge/node_modules` doit exister avant tout
+`cargo build` (ressource vérifiée par `tauri-build`) : `npm run build:bridge`.
