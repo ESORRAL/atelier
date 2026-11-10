@@ -1,7 +1,7 @@
 ---
 id: TASK-009
 title: Pont Node définitif (bridge/) selon le protocole v1
-status: todo
+status: done
 phase: 2
 agent: core
 model: opus
@@ -47,8 +47,8 @@ cd bridge && npm ci --ignore-scripts && node --test
 Pas de Rust, pas de journal sur disque (c'est le cœur), pas de dépendance de plus.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : `bridge/main.mjs` (`createBridge` injectable + entrée stdio), tous les messages §2/§3, options §5, refus des modes hors liste, `allow_always` filtré `addRules`, annulation sur `interrupt`/abort SDK/fermeture stdin, fin de flux inattendue → `error` fatal (code 1). `console.log` redirigé vers stderr.
+- Fichiers touchés : `bridge/package.json`, `bridge/package-lock.json`, `bridge/main.mjs`, `bridge/main.test.mjs`, `bridge/smoke.mjs`.
+- Vérification (sortie résumée) : `npm ci` OK, `node --test` 12/12. Smoke réel (haiku) une fois : `ready` → `sdk`… → `result/success "pong"` → `closed`, code 0.
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : le contrat dit « type inconnu ignoré et journalisé », la fiche exige un `error` non fatal : le pont fait les deux. `sdkVersion` lu dans `node_modules/.../package.json`. `requestId` = celui du SDK (UUID généré s'il manque). Une commande avant `start` → `error` non fatal.
