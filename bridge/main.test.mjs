@@ -78,11 +78,20 @@ test('control messages reach the SDK; list_models answers models', async () => {
   t.send({ type: 'interrupt' });
   t.send({ type: 'set_model', model: 'sonnet' });
   t.send({ type: 'set_permission_mode', mode: 'plan' });
-  t.send({ type: 'list_models' });
+  t.send({ type: 'list_models', requestId: 'm1' });
   await tick();
   assert.deepEqual(t.fake.calls, [['interrupt'], ['setModel', 'sonnet'], ['setPermissionMode', 'plan']]);
-  assert.deepEqual(t.last('models'), { type: 'models', models: [{ value: 'haiku' }] });
+  assert.deepEqual(t.last('models'), { type: 'models', requestId: 'm1', models: [{ value: 'haiku' }] });
   assert.equal(t.last('error'), undefined);
+});
+
+test('list_models without requestId is a non-fatal error', async () => {
+  const t = setup();
+  t.start();
+  t.send({ type: 'list_models' });
+  await tick();
+  assert.equal(t.last('models'), undefined);
+  assert.deepEqual(t.last('error'), { type: 'error', message: 'list_models requires requestId', fatal: false });
 });
 
 test('invalid permissionMode is a non-fatal error and never reaches the SDK', async () => {

@@ -57,12 +57,38 @@ fn bad_data(e: serde_json::Error) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, e)
 }
 
-/// Write to a temp file in the same folder, then rename over the target.
+/// Write to a temp file in the same folder, flushed to disk, then rename over the target.
 fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let mut tmp = path.as_os_str().to_owned();
     tmp.push(".tmp");
-    fs::write(&tmp, bytes)?;
+    let mut f = fs::File::create(&tmp)?;
+    f.write_all(bytes)?;
+    f.sync_all()?;
     fs::rename(&tmp, path)
+}
+
+/// Reads a JSON file; absent → `T::default()`. Unreadable JSON is moved to `<file>.bak` and
+/// the default is returned, with a warning on stderr, so one bad file does not block the app.
+fn read_or_default<T: serde::de::DeserializeOwned + Default>(path: &Path) -> io::Result<T> {
+    let data = match fs::read(path) {
+        Ok(d) => d,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(T::default()),
+        Err(e) => return Err(e),
+    };
+    match serde_json::from_slice(&data) {
+        Ok(v) => Ok(v),
+        Err(e) => {
+            let mut bak = path.as_os_str().to_owned();
+            bak.push(".bak");
+            eprintln!(
+                "[store] {} illisible ({e}) : déplacé vers {}, valeurs par défaut",
+                path.display(),
+                Path::new(&bak).display()
+            );
+            fs::rename(path, &bak)?;
+            Ok(T::default())
+        }
+    }
 }
 
 impl Store {
@@ -75,7 +101,7 @@ impl Store {
         let ok = (1..=64).contains(&key.len())
             && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-');
         if !ok {
-            return Err(invalid("invalid session key"));
+            return Err(invalid("clé de session invalide"));
         }
         Ok(self.base.join("sessions").join(format!("{key}.ndjson")))
     }
@@ -118,21 +144,13 @@ impl Store {
     }
 
     pub fn list_sessions(&self) -> io::Result<Vec<SessionEntry>> {
-        let mut all: Vec<SessionEntry> = match fs::read(self.base.join("sessions.json")) {
-            Ok(d) => serde_json::from_slice(&d).map_err(bad_data)?,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Vec::new(),
-            Err(e) => return Err(e),
-        };
+        let mut all: Vec<SessionEntry> = read_or_default(&self.base.join("sessions.json"))?;
         all.sort_by_key(|e| std::cmp::Reverse(e.updated_at));
         Ok(all)
     }
 
     pub fn load_settings(&self) -> io::Result<Settings> {
-        match fs::read(self.base.join("settings.json")) {
-            Ok(d) => serde_json::from_slice(&d).map_err(bad_data),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Settings::default()),
-            Err(e) => Err(e),
-        }
+        read_or_default(&self.base.join("settings.json"))
     }
 
     pub fn save_settings(&self, s: &Settings) -> io::Result<()> {
@@ -208,6 +226,24 @@ mod tests {
             ev,
             vec![serde_json::json!({"n": 1}), serde_json::json!({"n": 3})]
         );
+    }
+
+    #[test]
+    fn unreadable_files_backed_up_and_defaulted() {
+        let s = store("corrupt");
+        fs::write(s.base.join("settings.json"), b"{not json").unwrap();
+        fs::write(s.base.join("sessions.json"), b"[{\"key\": 1}]").unwrap();
+        assert_eq!(s.load_settings().unwrap(), Settings::default());
+        assert!(s.list_sessions().unwrap().is_empty());
+        assert_eq!(
+            fs::read(s.base.join("settings.json.bak")).unwrap(),
+            b"{not json"
+        );
+        assert!(s.base.join("sessions.json.bak").exists());
+        assert!(!s.base.join("settings.json").exists());
+        // and the store works again
+        s.upsert_session(&entry("a", 1)).unwrap();
+        assert_eq!(s.list_sessions().unwrap().len(), 1);
     }
 
     #[test]

@@ -24,7 +24,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["deb", "rpm", "appimage"],
     "resources": {
       "../bridge/main.mjs": "bridge/main.mjs",
       "../bridge/package.json": "bridge/package.json",

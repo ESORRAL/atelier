@@ -82,11 +82,21 @@ pub struct Core {
     pub entry: SessionEntry,
     pub state: SessionState,
     pending: BTreeSet<String>,
+    /// Cost of the resumed entry: the SDK restarts `total_cost_usd` at zero in a new process.
+    cost_base: f64,
+    /// Whether the entry belongs in the index (resumed, or a turn was sent).
+    indexed: bool,
+    /// The entry as last written to the index.
+    saved: Option<SessionEntry>,
 }
 
 impl Core {
-    pub fn new(entry: SessionEntry) -> (Core, Vec<SessionEvent>) {
+    /// `resumed`: the entry is already in the index (resume of a known session).
+    pub fn new(entry: SessionEntry, resumed: bool) -> (Core, Vec<SessionEvent>) {
         let core = Core {
+            cost_base: if resumed { entry.cost_usd } else { 0.0 },
+            indexed: resumed,
+            saved: resumed.then(|| entry.clone()),
             entry,
             state: SessionState::Starting,
             pending: BTreeSet::new(),
@@ -107,6 +117,35 @@ impl Core {
         }
     }
 
+    /// The entry to write to the index, if it belongs there and a value other than
+    /// `updatedAt` changed since the last write. Marks it as written.
+    pub fn index_update(&mut self) -> Option<SessionEntry> {
+        let same = |a: &SessionEntry, b: &SessionEntry| {
+            SessionEntry {
+                updated_at: 0,
+                ..a.clone()
+            } == SessionEntry {
+                updated_at: 0,
+                ..b.clone()
+            }
+        };
+        if !self.indexed || self.saved.as_ref().is_some_and(|s| same(s, &self.entry)) {
+            return None;
+        }
+        self.saved = Some(self.entry.clone());
+        self.saved.clone()
+    }
+
+    /// `start` was written to the bridge.
+    pub fn started(&mut self, now: u64) -> Vec<SessionEvent> {
+        let mut out = Vec::new();
+        if self.state == SessionState::Starting {
+            self.set_state(SessionState::Idle, &mut out);
+        }
+        self.touch(now, &out);
+        out
+    }
+
     /// One line from the bridge, already parsed. `models` is answered by the caller, not here.
     pub fn bridge(&mut self, mut msg: Value, now: u64) -> Vec<SessionEvent> {
         let mut out = Vec::new();
@@ -123,11 +162,11 @@ impl Core {
                             self.entry.model = Some(model.into());
                         }
                         out.push(SessionEvent::Sdk { message: m });
-                        self.set_state(SessionState::Running, &mut out);
                     }
                     (Some("result"), _) => {
                         if let Some(cost) = m["total_cost_usd"].as_f64() {
-                            self.entry.cost_usd = cost; // cumulative: replace
+                            // cumulative within this process: replace, on top of the resumed cost
+                            self.entry.cost_usd = self.cost_base + cost;
                         }
                         out.push(SessionEvent::Sdk { message: m });
                         if self.pending.is_empty() {
@@ -175,12 +214,14 @@ impl Core {
         }
     }
 
-    /// A turn sent by `session_send`, before it is written to the bridge.
+    /// A turn of `session_send`, once written to the bridge.
     pub fn user(&mut self, text: &str, now: u64) -> Vec<SessionEvent> {
         if self.entry.title.is_empty() {
             self.entry.title = text.chars().take(TITLE_CHARS).collect();
         }
-        let out = vec![SessionEvent::User { text: text.into() }];
+        self.indexed = true;
+        let mut out = vec![SessionEvent::User { text: text.into() }];
+        self.set_state(SessionState::Running, &mut out);
         self.touch(now, &out);
         out
     }
@@ -197,6 +238,13 @@ impl Core {
     /// `responded` then applies the state change.
     pub fn claim(&mut self, request_id: &str) -> bool {
         self.pending.remove(request_id)
+    }
+
+    /// The response to a claimed request could not be written: it is pending again.
+    pub fn unclaim(&mut self, request_id: &str) {
+        if !matches!(self.state, SessionState::Closed | SessionState::Crashed) {
+            self.pending.insert(request_id.into());
+        }
     }
 
     /// The bridge process is gone.
@@ -227,8 +275,8 @@ mod tests {
     use SessionState::*;
     use serde_json::json;
 
-    fn core() -> Core {
-        let entry = SessionEntry {
+    fn entry() -> SessionEntry {
+        SessionEntry {
             key: "s-1-0".into(),
             claude_session_id: None,
             cwd: "/tmp".into(),
@@ -237,8 +285,11 @@ mod tests {
             created_at: 1,
             updated_at: 1,
             cost_usd: 0.0,
-        };
-        let (c, ev) = Core::new(entry);
+        }
+    }
+
+    fn core() -> Core {
+        let (c, ev) = Core::new(entry(), false);
         assert_eq!(ev, vec![state_event(Starting, None)]);
         c
     }
@@ -266,19 +317,26 @@ mod tests {
     }
 
     #[test]
-    fn init_runs_and_fills_index() {
+    fn states_follow_start_and_send_not_init() {
         let mut c = core();
+        assert_eq!(states(&c.started(2)), [Idle]);
+        assert_eq!(states(&c.user("hi", 3)), [Running]);
         let ev = c.bridge(init(), 5);
         assert!(matches!(ev[0], SessionEvent::Sdk { .. }));
-        assert_eq!(states(&ev), [Running]);
+        assert_eq!(states(&ev), []);
         assert_eq!(c.entry.claude_session_id.as_deref(), Some("abc"));
         assert_eq!(c.entry.model.as_deref(), Some("haiku"));
         assert_eq!(c.entry.updated_at, 5);
+        // a bridge that already died is not revived by a late `started`
+        let mut c = core();
+        c.exited(2);
+        assert!(c.started(3).is_empty());
     }
 
     #[test]
     fn result_idles_and_replaces_cost() {
         let mut c = core();
+        c.user("hi", 1);
         c.bridge(init(), 2);
         assert_eq!(states(&c.bridge(result(0.25), 3)), [Idle]);
         c.bridge(init(), 4);
@@ -287,8 +345,38 @@ mod tests {
     }
 
     #[test]
+    fn index_written_from_first_send_and_only_on_change() {
+        let mut c = core();
+        c.started(2);
+        c.bridge(init(), 3);
+        assert_eq!(c.index_update(), None, "no entry before the first turn");
+        c.user("hi", 4);
+        assert_eq!(c.index_update().unwrap().title, "hi");
+        let stream = sdk(json!({"type": "stream_event", "event": {}}));
+        c.bridge(stream, 5);
+        assert_eq!(c.index_update(), None, "updatedAt alone does not rewrite");
+        c.bridge(result(0.1), 6);
+        assert_eq!(c.index_update().unwrap().cost_usd, 0.1);
+        assert_eq!(c.index_update(), None);
+    }
+
+    #[test]
+    fn resume_adds_current_cost_to_entry_cost() {
+        let mut e = entry();
+        e.cost_usd = 1.0;
+        e.title = "old".into();
+        let (mut c, _) = Core::new(e, true);
+        assert_eq!(c.index_update(), None, "unchanged resumed entry");
+        c.bridge(result(0.25), 2);
+        c.bridge(result(0.5), 3);
+        assert_eq!(c.entry.cost_usd, 1.5);
+        assert_eq!(c.index_update().unwrap().cost_usd, 1.5);
+    }
+
+    #[test]
     fn permission_cycle() {
         let mut c = core();
+        c.user("hi", 1);
         c.bridge(init(), 2);
         let ev = c.bridge(perm("r1"), 3);
         assert!(
@@ -320,6 +408,19 @@ mod tests {
         assert!(c.claim("r1"));
         assert!(!c.claim("r1"));
         assert_eq!(states(&c.responded("r1", 3)), [Running]);
+    }
+
+    #[test]
+    fn unclaimed_request_is_pending_again() {
+        let mut c = core();
+        c.bridge(perm("r1"), 2);
+        assert!(c.claim("r1"));
+        c.unclaim("r1");
+        assert_eq!(c.state, WaitingPermission);
+        assert!(c.claim("r1"));
+        c.exited(3);
+        c.unclaim("r1");
+        assert!(!c.claim("r1"), "nothing pending on a dead bridge");
     }
 
     #[test]
@@ -374,8 +475,8 @@ mod tests {
         let mut c = core();
         let long = "é".repeat(70);
         assert_eq!(
-            c.user(&long, 9),
-            vec![SessionEvent::User { text: long.clone() }]
+            c.user(&long, 9)[0],
+            SessionEvent::User { text: long.clone() }
         );
         assert_eq!(c.entry.title, "é".repeat(60));
         c.user("second", 10);

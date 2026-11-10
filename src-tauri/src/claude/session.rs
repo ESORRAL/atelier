@@ -1,13 +1,13 @@
 //! Runs one bridge process per session (contracts/bridge-protocol.md) and owns the live sessions.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use serde_json::{Value, json};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStdin, Command};
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
@@ -21,6 +21,8 @@ pub type Sink = Arc<dyn Fn(SessionEvent) + Send + Sync>;
 
 const CLOSE_GRACE: Duration = Duration::from_secs(2);
 const MODELS_TIMEOUT: Duration = Duration::from_secs(15);
+/// Longest bridge line accepted; a longer one is skipped with a non-fatal `error`.
+const MAX_LINE: usize = 16 * 1024 * 1024;
 
 pub struct StartArgs {
     pub cwd: String,
@@ -34,8 +36,11 @@ struct Session {
     core: Mutex<Core>,
     sink: Sink,
     stdin: tokio::sync::Mutex<Option<ChildStdin>>,
-    /// Waiting `session_models` calls, oldest first, each with an id to withdraw it.
-    models: Mutex<VecDeque<(u64, oneshot::Sender<Value>)>>,
+    /// Waiting `session_models` calls, by `requestId`.
+    models: Mutex<HashMap<String, oneshot::Sender<Value>>>,
+    /// Held while writing a turn and applying its state, and while handling each bridge line,
+    /// so a reply is never processed before the turn that caused it.
+    turn: tokio::sync::Mutex<()>,
     kill: Mutex<Option<oneshot::Sender<()>>>,
     task: Mutex<Option<JoinHandle<()>>>,
 }
@@ -43,7 +48,7 @@ struct Session {
 /// State managed by Tauri: the store and the live sessions.
 pub struct Claude {
     store: Arc<Mutex<Store>>,
-    sessions: Mutex<HashMap<String, Arc<Session>>>,
+    sessions: Arc<Mutex<HashMap<String, Arc<Session>>>>,
     counter: AtomicU64,
     models_timeout: Duration,
 }
@@ -57,6 +62,13 @@ fn now_ms() -> u64 {
 
 fn io_err(e: std::io::Error) -> String {
     format!("Erreur de stockage : {e}")
+}
+
+fn is_executable(p: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    p.metadata()
+        .map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
 }
 
 /// Looks `name` up in `PATH` (executable regular file).
@@ -78,14 +90,84 @@ pub fn bridge_path(resource_dir: Option<PathBuf>) -> Result<PathBuf, String> {
 }
 
 fn find_in_path(name: &str) -> Option<PathBuf> {
-    use std::os::unix::fs::PermissionsExt;
     std::env::split_paths(&std::env::var_os("PATH")?)
         .map(|d| d.join(name))
-        .find(|p| {
-            p.metadata()
-                .map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
-                .unwrap_or(false)
-        })
+        .find(|p| is_executable(p))
+}
+
+/// `cwd` of `session_start`: `~` expanded, absolute, an existing folder, not `/`.
+pub fn validate_cwd(cwd: &str) -> Result<String, String> {
+    let expanded = match cwd.strip_prefix('~') {
+        Some(rest) if rest.is_empty() || rest.starts_with('/') => {
+            let home = std::env::var("HOME").map_err(|_| "Dossier personnel inconnu ($HOME)")?;
+            format!("{home}{rest}")
+        }
+        _ => cwd.to_string(),
+    };
+    let p = Path::new(&expanded);
+    if !p.is_absolute() {
+        return Err(format!("Chemin absolu requis : {cwd}"));
+    }
+    match p.canonicalize() {
+        Ok(c) if c == Path::new("/") => {
+            Err("La racine / ne peut pas servir de dossier de travail".into())
+        }
+        Ok(_) if p.is_dir() => Ok(expanded),
+        _ => Err(format!("Dossier introuvable : {expanded}")),
+    }
+}
+
+/// `claudePath` of `settings_set`: none, or an absolute path to an executable file.
+pub fn validate_claude_path(settings: &Settings) -> Result<(), String> {
+    match &settings.claude_path {
+        Some(p) if !Path::new(p).is_absolute() => Err(format!(
+            "Chemin de Claude Code : chemin absolu requis ({p})"
+        )),
+        Some(p) if !is_executable(Path::new(p)) => Err(format!(
+            "Chemin de Claude Code : {p} n'est pas un fichier exécutable"
+        )),
+        _ => Ok(()),
+    }
+}
+
+/// Next line of `r`, without its `\n`. `Ok(Some(None))`: a line longer than `max`, skipped.
+async fn read_line<R: AsyncBufRead + Unpin>(
+    r: &mut R,
+    max: usize,
+) -> std::io::Result<Option<Option<String>>> {
+    let mut buf = Vec::new();
+    let n = (&mut *r)
+        .take(max as u64 + 1)
+        .read_until(b'\n', &mut buf)
+        .await?;
+    if n == 0 {
+        return Ok(None);
+    }
+    if buf.last() == Some(&b'\n') {
+        buf.pop();
+    } else if n > max {
+        // Drop the rest of the oversized line, a bounded chunk at a time.
+        loop {
+            buf.clear();
+            let n = (&mut *r)
+                .take(max as u64)
+                .read_until(b'\n', &mut buf)
+                .await?;
+            if n == 0 || buf.last() == Some(&b'\n') {
+                return Ok(Some(None));
+            }
+        }
+    }
+    Ok(Some(Some(String::from_utf8_lossy(&buf).into_owned())))
+}
+
+/// Removes `key` from the live sessions if it is still `session` (a resume may reuse the key).
+fn forget(sessions: &Mutex<HashMap<String, Arc<Session>>>, key: &str, session: &Arc<Session>) {
+    if let Ok(mut all) = sessions.lock()
+        && all.get(key).is_some_and(|s| Arc::ptr_eq(s, session))
+    {
+        all.remove(key);
+    }
 }
 
 fn claude_path(settings: &Settings) -> Result<PathBuf, String> {
@@ -114,6 +196,10 @@ impl Session {
         }
         if let Ok(store) = store.lock() {
             for ev in &events {
+                if matches!(ev, SessionEvent::Sdk { message } if message["type"] == "stream_event")
+                {
+                    continue; // streaming fragments: emitted, not journaled (ipc.md §3)
+                }
                 match serde_json::to_value(ev) {
                     Ok(v) => {
                         if let Err(e) = store.append_event(&self.key, &v) {
@@ -123,7 +209,9 @@ impl Session {
                     Err(e) => eprintln!("[claude] serialize event: {e}"),
                 }
             }
-            if let Err(e) = store.upsert_session(&core.entry) {
+            if let Some(entry) = core.index_update()
+                && let Err(e) = store.upsert_session(&entry)
+            {
                 eprintln!("[claude] index {}: {e}", self.key);
             }
         }
@@ -175,7 +263,7 @@ impl Claude {
     pub fn new(store: Store) -> Claude {
         Claude {
             store: Arc::new(Mutex::new(store)),
-            sessions: Mutex::new(HashMap::new()),
+            sessions: Arc::new(Mutex::new(HashMap::new())),
             counter: AtomicU64::new(0),
             models_timeout: MODELS_TIMEOUT,
         }
@@ -217,41 +305,58 @@ impl Claude {
         let claude = claude_path(&settings)?;
         let node = find_in_path("node")
             .ok_or("Node.js introuvable : `node` absent du PATH (requis par le pont Claude)")?;
-        if !Path::new(&args.cwd).is_dir() {
-            return Err(format!("Dossier introuvable : {}", args.cwd));
-        }
+        let cwd = validate_cwd(&args.cwd)?;
 
         let now = now_ms();
-        let key = format!("s-{now}-{}", self.counter.fetch_add(1, Ordering::Relaxed));
-        let mut cmd = Command::new(node);
-        cmd.arg(bridge).current_dir(&args.cwd);
-        let mut proc = supervisor::spawn(cmd)
-            .map_err(|e| format!("Impossible de lancer le pont Claude : {e}"))?;
-
-        push_recent_cwd(&mut settings.recent_cwds, &args.cwd);
-        self.with_store(|s| s.save_settings(&settings))?;
-
-        let (core, first) = Core::new(SessionEntry {
-            key: key.clone(),
+        // Resume of an indexed session: same key, same journal, same index line (ipc.md §3).
+        let resumed = match &args.resume {
+            Some(id) => self
+                .sessions_list()?
+                .into_iter()
+                .find(|e| e.claude_session_id.as_deref() == Some(id.as_str())),
+            None => None,
+        };
+        let is_resumed = resumed.is_some();
+        let entry = resumed.unwrap_or_else(|| SessionEntry {
+            key: format!("s-{now}-{}", self.counter.fetch_add(1, Ordering::Relaxed)),
             claude_session_id: None,
-            cwd: args.cwd.clone(),
+            cwd: cwd.clone(),
             title: String::new(),
             model: args.model.clone(),
             created_at: now,
             updated_at: now,
             cost_usd: 0.0,
         });
+        let key = entry.key.clone();
+        if self.get(&key).is_ok() {
+            return Err("Cette session est déjà ouverte".into());
+        }
+
+        let mut cmd = Command::new(node);
+        cmd.arg(bridge).current_dir(&cwd);
+        let mut proc = supervisor::spawn(cmd)
+            .map_err(|e| format!("Impossible de lancer le pont Claude : {e}"))?;
+
+        push_recent_cwd(&mut settings.recent_cwds, &cwd);
+        self.with_store(|s| s.save_settings(&settings))?;
+
+        let (core, first) = Core::new(entry, is_resumed);
         let (kill_tx, mut kill_rx) = oneshot::channel();
         let session = Arc::new(Session {
             key: key.clone(),
             core: Mutex::new(core),
             sink,
             stdin: tokio::sync::Mutex::new(proc.stdin.take()),
-            models: Mutex::new(VecDeque::new()),
+            models: Mutex::new(HashMap::new()),
+            turn: tokio::sync::Mutex::new(()),
             kill: Mutex::new(Some(kill_tx)),
             task: Mutex::new(None),
         });
         session.apply(&self.store, |_| first);
+        // Registered before the reader starts, so its cleanup cannot run first.
+        if let Ok(mut all) = self.sessions.lock() {
+            all.insert(key.clone(), session.clone());
+        }
 
         if let Some(stderr) = proc.stderr.take() {
             let key = key.clone();
@@ -263,22 +368,37 @@ impl Claude {
             });
         }
 
-        let stdout = proc.stdout.take();
-        let (s, store) = (session.clone(), self.store.clone());
+        // stdout is drained by its own task: a line waiting for `turn` never blocks the bridge.
+        let (line_tx, mut line_rx) = tokio::sync::mpsc::unbounded_channel();
+        if let Some(stdout) = proc.stdout.take() {
+            tokio::spawn(async move {
+                let mut reader = BufReader::new(stdout);
+                while let Ok(Some(line)) = read_line(&mut reader, MAX_LINE).await {
+                    if line_tx.send(line).is_err() {
+                        break;
+                    }
+                }
+            });
+        }
+        let (s, store, sessions) = (session.clone(), self.store.clone(), self.sessions.clone());
         let task = tokio::spawn(async move {
-            if let Some(stdout) = stdout {
-                let mut lines = BufReader::new(stdout).lines();
-                let mut killed = false;
-                loop {
-                    tokio::select! {
-                        line = lines.next_line() => match line {
-                            Ok(Some(l)) => handle_line(&s, &store, &l),
-                            _ => break,
-                        },
-                        _ = &mut kill_rx, if !killed => {
-                            killed = true;
-                            proc.kill();
+            let mut killed = false;
+            loop {
+                tokio::select! {
+                    line = line_rx.recv() => match line {
+                        Some(Some(l)) => {
+                            let _turn = s.turn.lock().await;
+                            handle_line(&s, &store, &l);
                         }
+                        Some(None) => s.apply(&store, |_| vec![SessionEvent::Error {
+                            message: "Message du pont trop long (plus de 16 Mo), ignoré".into(),
+                            fatal: false,
+                        }]),
+                        None => break,
+                    },
+                    _ = &mut kill_rx, if !killed => {
+                        killed = true;
+                        proc.kill();
                     }
                 }
             }
@@ -289,18 +409,17 @@ impl Claude {
             if let Ok(mut m) = s.models.lock() {
                 m.clear(); // pending `session_models` calls fail instead of hanging
             }
+            // Nothing can use a dead bridge: free the session before announcing the end.
+            forget(&sessions, &s.key, &s);
             s.apply(&store, |c| c.exited(now_ms()));
         });
         if let Ok(mut t) = session.task.lock() {
             *t = Some(task);
         }
-        if let Ok(mut all) = self.sessions.lock() {
-            all.insert(key.clone(), session.clone());
-        }
 
         let mut start = json!({
             "type": "start",
-            "cwd": args.cwd,
+            "cwd": cwd,
             "claudePath": claude,
             "permissionMode": mode_str(&args.permission_mode),
         });
@@ -310,14 +429,20 @@ impl Claude {
         if let Some(r) = args.resume {
             start["resume"] = r.into();
         }
-        if let Err(e) = session.write(start).await {
+        let written = {
+            let _turn = session.turn.lock().await;
+            let res = session.write(start).await;
+            if res.is_ok() {
+                session.apply(&self.store, |c| c.started(now_ms()));
+            }
+            res
+        };
+        if let Err(e) = written {
             // No key reaches the UI: nobody could close this bridge later.
             session
                 .shutdown(tokio::time::Instant::now() + CLOSE_GRACE, false)
                 .await;
-            if let Ok(mut all) = self.sessions.lock() {
-                all.remove(&key);
-            }
+            forget(&self.sessions, &key, &session);
             return Err(e);
         }
         Ok(key)
@@ -325,8 +450,10 @@ impl Claude {
 
     pub async fn send(&self, key: &str, text: String) -> Result<(), String> {
         let s = self.get(key)?;
+        let _turn = s.turn.lock().await;
+        s.write(json!({"type": "user", "text": text})).await?;
         s.apply(&self.store, |c| c.user(&text, now_ms()));
-        s.write(json!({"type": "user", "text": text})).await
+        Ok(())
     }
 
     pub async fn interrupt(&self, key: &str) -> Result<(), String> {
@@ -346,23 +473,24 @@ impl Claude {
 
     pub async fn models(&self, key: &str) -> Result<Value, String> {
         let s = self.get(key)?;
-        let id = self.counter.fetch_add(1, Ordering::Relaxed);
+        let id = format!("m-{}", self.counter.fetch_add(1, Ordering::Relaxed));
         let (tx, rx) = oneshot::channel();
         s.models
             .lock()
             .map_err(|_| "Session indisponible")?
-            .push_back((id, tx));
-        let answer = match s.write(json!({"type": "list_models"})).await {
+            .insert(id.clone(), tx);
+        let answer = match s
+            .write(json!({"type": "list_models", "requestId": id}))
+            .await
+        {
             Ok(()) => tokio::time::timeout(self.models_timeout, rx).await.ok(),
             Err(_) => None,
         };
         match answer {
             Some(Ok(models)) => Ok(models),
             _ => {
-                // shortcut: the protocol has no request id, so a reply arriving after this
-                // timeout still goes to the next waiter; add one to `list_models` if it matters.
                 if let Ok(mut m) = s.models.lock() {
-                    m.retain(|(i, _)| *i != id);
+                    m.remove(&id); // a late reply is then ignored
                 }
                 Err("Liste des modèles indisponible".into())
             }
@@ -389,7 +517,13 @@ impl Claude {
         if let Some(m) = message {
             msg["message"] = m.into();
         }
-        s.write(msg).await?;
+        let _turn = s.turn.lock().await;
+        if let Err(e) = s.write(msg).await {
+            if let Ok(mut c) = s.core.lock() {
+                c.unclaim(&request_id);
+            }
+            return Err(e);
+        }
         s.apply(&self.store, |c| c.responded(&request_id, now_ms()));
         Ok(())
     }
@@ -398,9 +532,7 @@ impl Claude {
         let s = self.get(key)?;
         s.shutdown(tokio::time::Instant::now() + CLOSE_GRACE, true)
             .await;
-        if let Ok(mut all) = self.sessions.lock() {
-            all.remove(key);
-        }
+        forget(&self.sessions, key, &s);
         Ok(())
     }
 
@@ -436,6 +568,7 @@ impl Claude {
     }
 
     pub fn settings_set(&self, settings: &Settings) -> Result<(), String> {
+        validate_claude_path(settings)?;
         self.with_store(|s| s.save_settings(settings))
     }
 }
@@ -446,9 +579,10 @@ fn handle_line(s: &Session, store: &Mutex<Store>, line: &str) {
         Err(_) => return eprintln!("[claude] non-JSON bridge line ignored"),
     };
     if msg["type"] == "models" {
-        let waiter = s.models.lock().ok().and_then(|mut m| m.pop_front());
+        let id = msg["requestId"].as_str().unwrap_or_default();
+        let waiter = s.models.lock().ok().and_then(|mut m| m.remove(id));
         if let Some(tx) = waiter {
-            let _ = tx.1.send(msg["models"].clone());
+            let _ = tx.send(msg["models"].clone());
         }
         return;
     }
@@ -457,7 +591,34 @@ fn handle_line(s: &Session, store: &Mutex<Store>, line: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::bridge_path;
+    use super::*;
+
+    #[test]
+    fn cwd_expands_home() {
+        let home = std::env::var("HOME").unwrap();
+        assert_eq!(validate_cwd("~").unwrap(), home);
+        assert_eq!(validate_cwd("~/").unwrap(), format!("{home}/"));
+        assert!(validate_cwd("~nobody").unwrap_err().contains("absolu"));
+        assert!(validate_cwd("/.").unwrap_err().contains("racine"));
+    }
+
+    #[tokio::test]
+    async fn long_lines_skipped() {
+        let mut r: &[u8] = b"ok\n0123456789abc\nnext\nlast";
+        let mut got = Vec::new();
+        while let Some(l) = read_line(&mut r, 5).await.unwrap() {
+            got.push(l);
+        }
+        assert_eq!(
+            got,
+            [
+                Some("ok".into()),
+                None,
+                Some("next".into()),
+                Some("last".into())
+            ]
+        );
+    }
 
     #[test]
     fn bridge_path_prefers_resources_then_dev_bridge() {
