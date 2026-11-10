@@ -6,6 +6,8 @@ import type { Block, ChatMessage, ToolStatus } from "./reduce";
 
 // Links stay plain text with the URL visible (not clickable for now). Raw HTML is never rendered.
 const components = {
+  // Remote images are never loaded: shown as text.
+  img: ({ src, alt }: { src?: string; alt?: string }) => <span className="md-link">[image : {alt || "sans description"} — {src}]</span>,
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
     <span className="md-link">
       {children} ({href})

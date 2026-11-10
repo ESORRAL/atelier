@@ -90,3 +90,21 @@ test("replayed history with two user turns", () => {
   expect(s.messages.filter((m) => m.role === "user")).toMatchObject([{ text: "un" }, { text: "deux" }]);
   expect(s.messages[1].role).toBe("assistant"); // the interrupt sample holds two assistant turns itself
 });
+
+test("tool_result recreates only the message holding the tool", () => {
+  const turn = (id: string) => [
+    sdk({ type: "assistant", message: { content: [{ type: "tool_use", id, name: "Read", input: {} }] } }),
+    sdk({ type: "result", subtype: "success", total_cost_usd: 0 }),
+  ];
+  const s = run([{ kind: "user", text: "a" }, ...turn("t1"), ...turn("t2")] as any);
+  const s2 = run([sdk({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "t2", content: "ok" }] } })] as any, s);
+  expect(s2.messages[0]).toBe(s.messages[0]);
+  expect(s2.messages[1]).toBe(s.messages[1]);
+  expect(s2.messages[2]).not.toBe(s.messages[2]);
+});
+
+test("permission_done removes the request from the queue", () => {
+  let s = reduce(initialState, { kind: "permission_request", requestId: "r1", toolName: "Bash", input: {}, toolUseID: "t", canAlways: false });
+  s = reduce(s, { kind: "permission_done", requestId: "r1" });
+  expect(s.permissions).toEqual([]);
+});

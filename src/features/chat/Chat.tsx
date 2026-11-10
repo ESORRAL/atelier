@@ -45,6 +45,7 @@ export default function Chat() {
   const keyRef = useRef<string | null>(null);
   const queue = useRef<SessionEvent[]>([]);
   const frame = useRef(0);
+  const token = useRef(0); // identifies the current session; stale channels are ignored
   const log = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
 
@@ -62,7 +63,8 @@ export default function Chat() {
   }, [refresh]);
 
   // Token buffer flushed at most once per frame (DESIGN.md §5.2).
-  const onEvent = useCallback((e: SessionEvent) => {
+  const makeOnEvent = useCallback((mine: number) => (e: SessionEvent) => {
+    if (mine !== token.current) return;
     queue.current.push(e);
     if (!frame.current) {
       frame.current = requestAnimationFrame(() => {
@@ -85,6 +87,8 @@ export default function Chat() {
 
   const start = async (dir: string, resumeFrom?: SessionEntry) => {
     setLocalError(null);
+    const mine = ++token.current;
+    queue.current = [];
     if (keyRef.current) await sessionClose(keyRef.current).catch(() => {});
     keyRef.current = null;
     setKey(null);
@@ -101,8 +105,12 @@ export default function Chat() {
         resumeFrom?.model ?? settings.current?.defaultModel ?? null,
         settings.current?.defaultPermissionMode ?? "default",
         resumeFrom?.claudeSessionId ?? null,
-        onEvent,
+        makeOnEvent(mine),
       );
+      if (mine !== token.current) {
+        sessionClose(k).catch(() => {}); // a newer start superseded this one
+        return;
+      }
       keyRef.current = k;
       setKey(k);
       refresh();
@@ -247,9 +255,14 @@ export default function Chat() {
       <div className="sr-only" role="status">{announce}</div>
       <PermissionHost
         requests={s.permissions}
-        onDecide={(requestId, decision, message) =>
-          key && permissionRespond(key, requestId, decision as "allow_once" | "allow_always" | "deny", message).catch((e) => setLocalError(errText(e)))
-        }
+        onDecide={(requestId, decision, message) => {
+          if (!key) return;
+          const done = () => dispatch({ kind: "permission_done", requestId });
+          if (s.permissions.find((p) => p.requestId === requestId)?.cancelled) return done();
+          permissionRespond(key, requestId, decision as "allow_once" | "allow_always" | "deny", message).then(done, (e) =>
+            setLocalError(errText(e)),
+          );
+        }}
       />
     </section>
   );

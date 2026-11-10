@@ -29,7 +29,7 @@ export type ChatState = {
   nextId: number;
 };
 
-export type ChatAction = SessionEvent | { kind: "reset" };
+export type ChatAction = SessionEvent | { kind: "reset" } | { kind: "permission_done"; requestId: string };
 
 export const initialState: ChatState = {
   messages: [],
@@ -99,15 +99,17 @@ function reduceSdk(s: ChatState, m: Obj): ChatState {
           : r.is_error
             ? "failed"
             : "done";
+      const touches = (b: Block) => b.type === "tool" && results.some((x) => x.tool_use_id === b.id);
       return {
         ...s,
+        // Only messages holding a matching tool block are recreated, so the others keep their identity.
         messages: s.messages.map((msg) =>
-          msg.role !== "assistant"
+          msg.role !== "assistant" || !msg.blocks.some(touches)
             ? msg
             : {
                 ...msg,
                 blocks: msg.blocks.map((b) => {
-                  const r = b.type === "tool" ? results.find((x) => x.tool_use_id === b.id) : undefined;
+                  const r = touches(b) && b.type === "tool" ? results.find((x) => x.tool_use_id === b.id) : undefined;
                   return r && b.type === "tool" ? { ...b, status: status(r) } : b;
                 }),
               },
@@ -144,6 +146,8 @@ export function reduce(s: ChatState, a: ChatAction): ChatState {
       return reduceSdk(s, a.message as Obj);
     case "permission_request":
       return { ...s, permissions: [...s.permissions, a] };
+    case "permission_done":
+      return { ...s, permissions: s.permissions.filter((p) => p.requestId !== a.requestId) };
     case "permission_cancelled":
       return { ...s, permissions: s.permissions.map((p) => (p.requestId === a.requestId ? { ...p, cancelled: true } : p)) };
     case "state":
