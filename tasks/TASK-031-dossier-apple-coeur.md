@@ -44,8 +44,8 @@ npm run build:bridge && cd src-tauri && cargo fmt --check && cargo clippy -- -D 
 Pas d'UI, pas d'API Apple Music.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : `pick_folder` (tauri-plugin-dialog 2.8, appel côté Rust) et `music_open` (URL pure `music_url`, xdg-open détaché `process_group(0)`, thread de récolte du handle, exception au superviseur commentée).
+- Fichiers touchés : `src-tauri/src/desktop/mod.rs`, `lib.rs`, `Cargo.toml`, `Cargo.lock`.
+- Vérification : fmt, clippy -D warnings, cargo test OK (35 tests lib, dont 3 nouveaux). `capabilities/main.json` inchangé.
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : `cargo search` annonce 3.0.0-alpha pour le plugin ; pris `2` (stable). Non testé en vrai : la boîte de dialogue.
