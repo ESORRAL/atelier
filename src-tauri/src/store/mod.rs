@@ -33,6 +33,20 @@ pub struct Settings {
     pub default_model: Option<String>,
     pub default_permission_mode: PermissionMode,
     pub recent_cwds: Vec<String>,
+    #[serde(default = "default_vault_path")]
+    pub vault_path: Option<String>,
+    #[serde(default = "default_vault_project")]
+    pub vault_project: String,
+}
+
+fn default_vault_path() -> Option<String> {
+    std::env::var("ATELIER_VAULT")
+        .ok()
+        .filter(|v| !v.is_empty())
+}
+
+fn default_vault_project() -> String {
+    "01 - Projets/Atelier".into()
 }
 
 impl Default for Settings {
@@ -42,6 +56,8 @@ impl Default for Settings {
             default_model: None,
             default_permission_mode: PermissionMode::Default,
             recent_cwds: Vec::new(),
+            vault_path: default_vault_path(),
+            vault_project: default_vault_project(),
         }
     }
 }
@@ -194,11 +210,27 @@ mod tests {
             default_model: Some("m".into()),
             default_permission_mode: PermissionMode::AcceptEdits,
             recent_cwds: vec!["/a".into()],
+            vault_path: Some("/v".into()),
+            vault_project: "P".into(),
         };
         s.save_settings(&v).unwrap();
         assert_eq!(s.load_settings().unwrap(), v);
         let json = fs::read_to_string(s.base.join("settings.json")).unwrap();
         assert!(json.contains("\"defaultPermissionMode\": \"acceptEdits\""));
+    }
+
+    #[test]
+    fn old_settings_without_vault_fields() {
+        let s = store("oldsettings");
+        fs::write(
+            s.base.join("settings.json"),
+            br#"{"claudePath":null,"defaultModel":null,"defaultPermissionMode":"default","recentCwds":["/a"]}"#,
+        )
+        .unwrap();
+        let v = s.load_settings().unwrap();
+        assert_eq!(v.recent_cwds, ["/a"]);
+        assert_eq!(v.vault_project, "01 - Projets/Atelier");
+        assert_eq!(v.vault_path, default_vault_path());
     }
 
     #[test]
