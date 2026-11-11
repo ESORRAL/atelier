@@ -352,11 +352,17 @@ impl Claude {
             kill: Mutex::new(Some(kill_tx)),
             task: Mutex::new(None),
         });
-        session.apply(&self.store, |_| first);
-        // Registered before the reader starts, so its cleanup cannot run first.
-        if let Ok(mut all) = self.sessions.lock() {
-            all.insert(key.clone(), session.clone());
+        // Checked and registered under one lock (two resumes of one key may race), and before
+        // the reader starts, so its cleanup cannot run first.
+        let registered = self.sessions.lock().is_ok_and(|mut all| {
+            !all.contains_key(&key) && all.insert(key.clone(), session.clone()).is_none()
+        });
+        if !registered {
+            proc.kill();
+            let _ = proc.wait().await;
+            return Err("Cette session est déjà ouverte".into());
         }
+        session.apply(&self.store, |_| first);
 
         if let Some(stderr) = proc.stderr.take() {
             let key = key.clone();
@@ -386,10 +392,17 @@ impl Claude {
             loop {
                 tokio::select! {
                     line = line_rx.recv() => match line {
-                        Some(Some(l)) => {
-                            let _turn = s.turn.lock().await;
-                            handle_line(&s, &store, &l);
-                        }
+                        // Waiting for `turn` must not stop a kill: `send` may hold it on a frozen bridge.
+                        Some(Some(l)) => tokio::select! {
+                            turn = s.turn.lock() => {
+                                let _turn = turn;
+                                handle_line(&s, &store, &l);
+                            }
+                            _ = &mut kill_rx, if !killed => {
+                                killed = true;
+                                proc.kill();
+                            }
+                        },
                         Some(None) => s.apply(&store, |_| vec![SessionEvent::Error {
                             message: "Message du pont trop long (plus de 16 Mo), ignoré".into(),
                             fatal: false,
@@ -405,6 +418,8 @@ impl Claude {
             // The bridge left: also take down whatever it left in its group (claude).
             proc.kill();
             let _ = proc.wait().await;
+            // After any turn in flight (its writes now fail fast), so `exited` is the last state.
+            let _turn = s.turn.lock().await;
             s.stdin.lock().await.take();
             if let Ok(mut m) = s.models.lock() {
                 m.clear(); // pending `session_models` calls fail instead of hanging
