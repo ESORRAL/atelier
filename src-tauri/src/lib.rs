@@ -1,4 +1,5 @@
 pub mod claude;
+pub mod desktop;
 pub mod music;
 pub mod notify;
 pub mod store;
@@ -16,6 +17,7 @@ pub fn run() {
     use claude::commands::*;
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let store = store::Store::open(app.path().app_data_dir()?)?;
             app.manage(claude::Claude::new(store));
@@ -46,6 +48,8 @@ pub fn run() {
             music::commands::music_status,
             music::commands::music_control,
             music::commands::music_set_volume,
+            desktop::pick_folder,
+            desktop::music_open,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Atelier");
