@@ -44,8 +44,8 @@ npm run build:bridge && cd src-tauri && cargo fmt --check && cargo clippy -- -D 
 Pas d'UI, pas d'horodatage par tour.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : `usage_summary` (validation 1-365, jours vides, tri croissant), agrégation pure `summarize` + `local_day` (libc).
+- Fichiers touchés : store/usage.rs, store/mod.rs, claude/commands.rs, lib.rs.
+- Vérification : fmt, clippy -D warnings, cargo test (29 ok, 3 tests usage).
+- Raccourcis pris (`shortcut:`) : aucun nouveau (celui du contrat §7).
+- À remonter à l'architecte : `UsageSummary` est dans `store::usage` ; lit les journaux via `Claude::history`, pas de méthode ajoutée à session.rs.

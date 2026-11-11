@@ -41,6 +41,7 @@ pub fn run() {
             session_history,
             settings_get,
             settings_set,
+            usage_summary,
             music::commands::music_players,
             music::commands::music_status,
             music::commands::music_control,
