@@ -17,10 +17,7 @@ export const MessageView = memo(({ message }: { message: ChatMessage }) => {
   const phases = toPhases(message);
   return (
     <article className="msg msg--claude" aria-busy={running}>
-      <h3 className="msg__who">
-        <span className="msg__lamp" aria-hidden="true" />
-        Claude
-      </h3>
+      <h3 className="sr-only">Claude</h3>
       {phases.map((p, i) => {
         const last = i === phases.length - 1;
         return (
