@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { Folder, Plus, X } from "@phosphor-icons/react";
 import { sessionsList, settingsGet, type SessionEntry, type SessionEvent } from "../../ipc/claude";
+import { pickFolder } from "../../ipc/desktop";
 import { Tally } from "../../ui/Tally";
 import { ChatSession, euro } from "./ChatSession";
 import {
@@ -150,6 +151,9 @@ export default function Chat({ slot, onInfo, onEvent, controlsRef }: ChatProps) 
           >
             <label htmlFor="chat-cwd" className="sr-only">Dossier du projet</label>
             <input ref={cwdInput} id="chat-cwd" value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="/chemin/vers/le/projet" list="chat-recent" />
+            <button type="button" className="btn btn--ghost" onClick={() => pickFolder().then((d) => d && setCwd(d), () => {})}>
+              Parcourir…
+            </button>
             <datalist id="chat-recent">{recent.map((r) => <option key={r} value={r} />)}</datalist>
             <button type="submit" className="btn btn--primary" disabled={!cwd.trim()}>
               Démarrer une session

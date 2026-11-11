@@ -8,6 +8,7 @@ import { getTheme, setTheme } from "./ui/theme";
 import { BeamsBackground } from "@/components/ui/beams-background";
 import { Logo } from "./ui/Logo";
 import { MiniPlayer } from "./features/music/MiniPlayer";
+import { MusicPanel } from "./features/music/MusicPanel";
 import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
 import { isTabId, TABS, type TabId } from "./shell/tabs";
@@ -17,7 +18,7 @@ import { FocusTimer } from "./features/focus/FocusTimer";
 import { useFocus } from "./features/focus/useFocus";
 import "./shell/shell.css";
 
-const MEDIA_TABS: TabId[] = ["music", "instagram"];
+const MEDIA_TABS: TabId[] = ["instagram"];
 
 const Chat = lazy(() => import("./features/chat/Chat"));
 const Agents = lazy(() => import("./features/agents"));
@@ -56,11 +57,13 @@ export default function App() {
   const [panel, setPanel] = usePersisted("atelier.panel", window.innerWidth >= 1280 ? "open" : "closed", isOpenClosed);
   const [drawer, setDrawer] = usePersisted("atelier.drawer", "closed", isOpenClosed);
   const [palette, setPalette] = useState(false);
+  const [music, setMusic] = useState(false);
   const [info, setInfo] = useState<ChatInfo>(EMPTY_INFO);
   const controls = useRef<ChatControls | null>(null);
   const focus = useFocus();
   const inFocus = focus.state.active;
   const hidden = inFocus ? MEDIA_TABS : [];
+  const musicShown = music && !inFocus; // Focus hides the panel like the media tabs
 
   // Raw events per session key: kept in a ref (tokens arrive fast), rendered at most once per frame while open.
   const events = useRef<SessionEventLog>(new Map());
@@ -95,6 +98,10 @@ export default function App() {
   };
   const flip = (v: "open" | "closed") => (v === "open" ? "closed" : "open");
   const togglePanel = () => setPanel(flip);
+  const closeMusic = () => {
+    setMusic(false);
+    document.getElementById("rail-music")?.focus();
+  };
   const toggleDrawer = () => setDrawer(flip);
   const toggleFocus = () => {
     if (!inFocus) {
@@ -113,6 +120,7 @@ export default function App() {
     { id: "new", label: "Nouvelle session", group: "Actions", run: () => { goTo("chat"); controls.current?.newSession(); } },
     { id: "interrupt", label: "Interrompre", group: "Actions", run: () => controls.current?.interrupt() },
     { id: "focus", label: inFocus ? "Quitter le mode Focus" : "Activer le mode Focus", group: "Actions", shortcut: "Ctrl+Maj+F", run: toggleFocus },
+    ...(inFocus ? [] : [{ id: "music", label: musicShown ? "Fermer le panneau Musique" : "Ouvrir le panneau Musique", group: "Actions", run: () => (musicShown ? closeMusic() : setMusic(true)) }]),
     { id: "theme", label: "Basculer le thème", group: "Actions", run: toggleTheme },
     { id: "panel", label: "Replier ou ouvrir le panneau droit", group: "Actions", run: togglePanel },
     { id: "drawer", label: "Replier ou ouvrir le journal", group: "Actions", shortcut: "Ctrl+²", run: toggleDrawer },
@@ -170,7 +178,7 @@ export default function App() {
           <Terminal size="var(--icon-sm)" aria-hidden="true" /> Journal
         </button>
       </header>
-      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} />
+      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} musicOpen={musicShown} musicHidden={inFocus} onMusic={() => (musicShown ? closeMusic() : setMusic(true))} />
       <div className="shell__center">
         <div className="app__eclipse" aria-hidden="true">
           <div className="app__eclipse-disc">
@@ -231,6 +239,7 @@ export default function App() {
           )}
         </aside>
       )}
+      {musicShown && <MusicPanel onClose={closeMusic} />}
       {palette && <Palette commands={commands} onClose={() => setPalette(false)} />}
     </div>
   );

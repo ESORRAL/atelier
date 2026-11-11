@@ -21,3 +21,7 @@ export const musicPlayers = () => invoke<PlayerInfo[]>("music_players");
 export const musicStatus = (player: string | null) => invoke<NowPlaying | null>("music_status", { player });
 export const musicControl = (player: string, action: MusicAction) => invoke<null>("music_control", { player, action });
 export const musicSetVolume = (player: string, volume: number) => invoke<null>("music_set_volume", { player, volume });
+
+export type MusicTarget = "home" | "search" | "library" | "playlists";
+/** Opens Apple Music web in the default browser; the core builds the URL (contracts/ipc.md §8). */
+export const musicOpen = (target: MusicTarget, query: string | null) => invoke<null>("music_open", { target, query });
