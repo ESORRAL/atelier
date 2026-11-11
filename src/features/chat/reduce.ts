@@ -29,7 +29,7 @@ export type ChatState = {
   nextId: number;
 };
 
-export type ChatAction = SessionEvent | { kind: "reset" } | { kind: "permission_done"; requestId: string };
+export type ChatAction = SessionEvent | { kind: "reset" } | { kind: "zero_cost" } | { kind: "permission_done"; requestId: string };
 
 export const initialState: ChatState = {
   messages: [],
@@ -140,6 +140,8 @@ export function reduce(s: ChatState, a: ChatAction): ChatState {
   switch (a.kind) {
     case "reset":
       return initialState;
+    case "zero_cost": // after replaying a past session: its total is already in the index base
+      return { ...s, costUsd: 0 };
     case "user":
       return { ...s, error: null, nextId: s.nextId + 1, messages: [...s.messages, { id: `u${s.nextId}`, role: "user", text: a.text }] };
     case "sdk":
@@ -151,7 +153,7 @@ export function reduce(s: ChatState, a: ChatAction): ChatState {
     case "permission_cancelled":
       return { ...s, permissions: s.permissions.map((p) => (p.requestId === a.requestId ? { ...p, cancelled: true } : p)) };
     case "state":
-      return { ...s, sessionState: a.state, error: a.error ?? s.error };
+      return { ...s, sessionState: a.state, error: a.error ?? null }; // a new state ends any previous error
     case "error":
       return { ...s, error: a.message };
   }

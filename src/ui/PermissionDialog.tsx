@@ -184,7 +184,7 @@ export function PermissionHost(props: {
           {cur.blockedPath && <p className="permission__meta">Chemin bloqué : {reveal(cur.blockedPath)}</p>}
           {cur.canAlways && (
             <p className="permission__meta">
-              « Toujours autoriser » s'applique à <code>{scope}</code> dans ce projet, révocable dans Réglages.
+              « Toujours autoriser » s'applique à <code>{scope}</code> dans ce projet. L'écran Réglages ne permet pas encore de le révoquer.
             </p>
           )}
         </div>
