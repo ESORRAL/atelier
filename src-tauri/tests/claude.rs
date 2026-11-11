@@ -288,6 +288,69 @@ async fn resume_reuses_key_and_adds_cost() {
 }
 
 #[tokio::test]
+async fn close_kills_a_frozen_bridge_while_a_send_is_stuck() {
+    let (c, cwd) = claude("frozen");
+    let (sink, mut rx) = sink();
+    let key = c
+        .start_with_bridge(args(&cwd), &fake_bridge(), sink)
+        .await
+        .unwrap();
+    c.send(&key, "freeze".into()).await.unwrap();
+    let pids = pids(&until(&mut rx, |e| matches!(e, SessionEvent::Sdk { .. })).await);
+    // Larger than the pipe: this write blocks, holding the turn, while the bridge's late
+    // line waits for it.
+    let stuck = c.send(&key, "x".repeat(8 << 20));
+    let closing = async {
+        tokio::time::sleep(Duration::from_millis(600)).await;
+        let t = Instant::now();
+        c.close(&key).await.unwrap();
+        t.elapsed()
+    };
+    let (sent, elapsed) = tokio::time::timeout(Duration::from_secs(10), async {
+        tokio::join!(stuck, closing)
+    })
+    .await
+    .expect("session_close hung");
+    assert!(sent.is_err());
+    assert!(elapsed < Duration::from_secs(4), "{elapsed:?}");
+    assert_gone(&pids);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn concurrent_resumes_open_one_session() {
+    let (c, cwd) = claude("double");
+    let (first, mut rx) = sink();
+    let key = c
+        .start_with_bridge(args(&cwd), &fake_bridge(), first)
+        .await
+        .unwrap();
+    c.send(&key, "bonjour".into()).await.unwrap();
+    until(&mut rx, is_state(SessionState::Idle)).await;
+    c.close(&key).await.unwrap();
+
+    let c = Arc::new(c);
+    let start = |c: Arc<Claude>| {
+        let mut a = args(&cwd);
+        a.resume = Some("fake-sess".into());
+        tokio::spawn(async move { c.start_with_bridge(a, &fake_bridge(), sink().0).await })
+    };
+    let (a, b) = tokio::join!(start(c.clone()), start(c.clone()));
+    let results = [a.unwrap(), b.unwrap()];
+    let ok: Vec<_> = results.iter().filter_map(|r| r.as_ref().ok()).collect();
+    assert_eq!(ok, [&key], "{results:?}");
+    assert!(
+        results
+            .iter()
+            .any(|r| r.as_ref().is_err_and(|e| e.contains("déjà ouverte")))
+    );
+    c.close(&key).await.unwrap();
+    assert_eq!(
+        c.send(&key, "x".into()).await.unwrap_err(),
+        "Session inconnue"
+    );
+}
+
+#[tokio::test]
 async fn cwd_and_claude_path_validated() {
     let (c, cwd) = claude("validate");
     for bad in ["relative/dir", "/", "/nonexistent-atelier-dir"] {

@@ -216,6 +216,9 @@ impl Core {
 
     /// A turn of `session_send`, once written to the bridge.
     pub fn user(&mut self, text: &str, now: u64) -> Vec<SessionEvent> {
+        if matches!(self.state, SessionState::Closed | SessionState::Crashed) {
+            return Vec::new(); // the bridge is gone: a turn written just before cannot run
+        }
         if self.entry.title.is_empty() {
             self.entry.title = text.chars().take(TITLE_CHARS).collect();
         }
@@ -419,6 +422,7 @@ mod tests {
         assert_eq!(c.state, WaitingPermission);
         assert!(c.claim("r1"));
         c.exited(3);
+        assert!(c.user("late", 4).is_empty(), "no running after crashed");
         c.unclaim("r1");
         assert!(!c.claim("r1"), "nothing pending on a dead bridge");
     }
