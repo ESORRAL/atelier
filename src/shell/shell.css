@@ -52,8 +52,26 @@
 .rail__item--end { margin-top: auto; }
 
 /* ---------- Center: views + drawer ---------- */
-.shell__center { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.shell__views { flex: 1; }
+.shell__center { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.shell__center .shell__views { position: relative; z-index: 1; flex: 1; background: transparent; }
+
+/* Background eclipse (WebGL shader), top right, veiled by the surface color so text stays legible.
+   Without WebGL the container's own background is the old flat surface with the lamp glow. */
+.app__eclipse {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--color-bg-surface) var(--glow-lamp) no-repeat;
+}
+.app__eclipse-disc { position: absolute; width: 90vmax; height: 90vmax; right: -28vmax; top: -38vmax; }
+.app__eclipse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-surface);
+  opacity: var(--eclipse-veil);
+}
 .shell__view { height: 100%; }
 
 .drawer {

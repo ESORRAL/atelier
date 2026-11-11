@@ -1,0 +1,21 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  perspective: var(--depth-near);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-display);
+  line-height: 1;
+  color: var(--color-accent);
+}
+.logo__glyph { display: block; transform-origin: 50% 50%; }
+
+/* Claude is working: the A turns slowly around its vertical axis. */
+@keyframes logo-turn {
+  from { transform: rotateY(calc(var(--sway-angle) * -6)); }
+  to { transform: rotateY(calc(var(--sway-angle) * 6)); }
+}
+.logo--working .logo__glyph {
+  animation: logo-turn var(--dur-sway) var(--ease-sway) infinite alternate;
+}
+:root[data-idle] .logo--working .logo__glyph { animation-play-state: paused; }

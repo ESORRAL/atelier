@@ -42,7 +42,7 @@ const errText = (e: unknown) => (typeof e === "string" ? e : "Une erreur est sur
 const euro = (usd: number) => `${usd.toFixed(4)} $`;
 
 /** What the app shell shows about the current session (right panel). */
-export type ChatInfo = { key: string | null; cwd: string; model: string | null; costUsd: number; state: string | null };
+export type ChatInfo = { key: string | null; cwd: string; model: string | null; costUsd: number; state: string | null; working: boolean };
 /** Imperative actions the shell's command palette can trigger. */
 export type ChatControls = { newSession: () => void; interrupt: () => void };
 
@@ -182,7 +182,7 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
   };
   if (controlsRef) controlsRef.current = { newSession, interrupt };
   useEffect(() => {
-    onInfo?.({ key, cwd, model: s.model, costUsd: costBase + s.costUsd, state: s.sessionState ? STATE_LABEL[s.sessionState] : null });
+    onInfo?.({ key, cwd, model: s.model, costUsd: costBase + s.costUsd, state: s.sessionState ? STATE_LABEL[s.sessionState] : null, working: s.sessionState === "running" });
   }, [onInfo, key, cwd, s.model, s.costUsd, costBase, s.sessionState]);
   const busy = s.sessionState === "running" || s.sessionState === "waiting_permission";
 

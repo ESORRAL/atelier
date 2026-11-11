@@ -10,6 +10,12 @@ import "./ui/base.css";
 import { getTheme, setTheme } from "./ui/theme";
 import App from "./App";
 
+// Ambient loops (logo sway, welcome halo) pause while the window is hidden or unfocused.
+const idle = () => document.documentElement.toggleAttribute("data-idle", document.hidden || !document.hasFocus());
+window.addEventListener("blur", idle);
+window.addEventListener("focus", idle);
+document.addEventListener("visibilitychange", idle);
+
 // Apply the saved theme before the first render (no flash).
 setTheme(getTheme());
 

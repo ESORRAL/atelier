@@ -51,6 +51,7 @@
   display: grid;
   justify-items: center;
   padding: var(--space-9) var(--space-6) var(--space-8);
+  overflow-x: hidden; /* the halo may spill past the panel on narrow windows */
 }
 .welcome__panel {
   width: min(var(--welcome-w), 100%);
@@ -166,6 +167,14 @@
   color: var(--color-text-secondary);
 }
 
+/* Messages arrive with a slight 3D tilt-in, hinged on the author's side (entrance only). */
+@keyframes msg-tilt-in {
+  from { opacity: 0; transform: perspective(var(--depth-far)) rotateX(var(--tilt-max)) translateY(var(--space-4)); }
+}
+.msg { animation: msg-tilt-in var(--dur-slow) var(--ease-enter) both; }
+.msg--claude { transform-origin: 0 0; }
+.msg--user { transform-origin: 100% 0; }
+
 .msg--user {
   align-self: flex-end;
   max-width: 80%;
@@ -273,3 +282,7 @@
 .composer__hint { font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--color-text-muted); }
 
 .chat__error { margin: 0 auto var(--space-4); max-width: var(--measure-chat); padding: var(--space-3) var(--space-5); background: var(--color-danger-bg); color: var(--color-danger); border-radius: var(--radius-full); }
+
+/* The swaying top-bar lamp is the chat's activity indicator: tool tallies stay still (one loop at a time). */
+.chat__log .tally__lamp,
+.chat__log .tally__icon { animation: none; }
