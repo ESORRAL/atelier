@@ -7,6 +7,7 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 
 use super::{Claude, SessionEvent, StartArgs, bridge_path};
+use crate::store::usage::{self, UsageSummary};
 use crate::store::{PermissionMode, SessionEntry, Settings};
 
 type Res<T> = Result<T, String>;
@@ -108,4 +109,24 @@ pub fn settings_get(claude: State<'_, Claude>) -> Res<Settings> {
 #[tauri::command]
 pub fn settings_set(claude: State<'_, Claude>, settings: Settings) -> Res<()> {
     claude.settings_set(&settings)
+}
+
+#[tauri::command]
+pub fn usage_summary(claude: State<'_, Claude>, days: u32) -> Res<UsageSummary> {
+    if !(1..=365).contains(&days) {
+        return Err("Période invalide : 1 à 365 jours".into());
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64);
+    // Unreadable journal: the session counts for 0.
+    let sessions: Vec<_> = claude
+        .sessions_list()?
+        .iter()
+        .map(|e| {
+            let events = claude.history(&e.key).unwrap_or_default();
+            (e.updated_at, usage::last_model_usage(&events))
+        })
+        .collect();
+    Ok(usage::summarize(&sessions, now, days, usage::local_day))
 }
