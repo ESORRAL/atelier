@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { MagnifyingGlass, SidebarSimple, Terminal } from "@phosphor-icons/react";
+import { Crosshair, MagnifyingGlass, SidebarSimple, Terminal } from "@phosphor-icons/react";
 import type { SessionEvent } from "./ipc/claude";
 import type { ChatControls, ChatInfo, SessionEventLog } from "./features/chat/Chat";
 import { logEvent } from "./features/chat/sessions";
@@ -12,7 +12,11 @@ import { Rail } from "./shell/Rail";
 import { isTabId, TABS, type TabId } from "./shell/tabs";
 import { shortcutAction } from "./shell/shortcuts";
 import type { Command } from "./shell/palette";
+import { FocusTimer } from "./features/focus/FocusTimer";
+import { useFocus } from "./features/focus/useFocus";
 import "./shell/shell.css";
+
+const MEDIA_TABS: TabId[] = ["music", "instagram"];
 
 const Chat = lazy(() => import("./features/chat/Chat"));
 const Demo = lazy(() => import("./features/demo/Demo"));
@@ -52,6 +56,9 @@ export default function App() {
   const [palette, setPalette] = useState(false);
   const [info, setInfo] = useState<ChatInfo>(EMPTY_INFO);
   const controls = useRef<ChatControls | null>(null);
+  const focus = useFocus();
+  const inFocus = focus.state.active;
+  const hidden = inFocus ? MEDIA_TABS : [];
 
   // Raw events per session key: kept in a ref (tokens arrive fast), rendered at most once per frame while open.
   const events = useRef<SessionEventLog>(new Map());
@@ -85,15 +92,23 @@ export default function App() {
   const flip = (v: "open" | "closed") => (v === "open" ? "closed" : "open");
   const togglePanel = () => setPanel(flip);
   const toggleDrawer = () => setDrawer(flip);
+  const toggleFocus = () => {
+    if (!inFocus) {
+      focus.enter();
+      if (MEDIA_TABS.includes(tab)) setTab("chat");
+    } else if (window.confirm("Quitter le Focus avant la fin ?")) focus.leave();
+  };
   const goTo = (id: TabId) => {
+    if (hidden.includes(id)) return;
     setDemo(false);
     setTab(id);
   };
 
   const commands: Command[] = [
-    ...TABS.map((t, i) => ({ id: `tab-${t.id}`, label: t.label, group: "Onglets", shortcut: `Ctrl+${i + 1}`, run: () => goTo(t.id) })),
+    ...TABS.filter((t) => !hidden.includes(t.id)).map((t) => ({ id: `tab-${t.id}`, label: t.label, group: "Onglets", shortcut: `Ctrl+${TABS.indexOf(t) + 1}`, run: () => goTo(t.id) })),
     { id: "new", label: "Nouvelle session", group: "Actions", run: () => { goTo("chat"); controls.current?.newSession(); } },
     { id: "interrupt", label: "Interrompre", group: "Actions", run: () => controls.current?.interrupt() },
+    { id: "focus", label: inFocus ? "Quitter le mode Focus" : "Activer le mode Focus", group: "Actions", shortcut: "Ctrl+Maj+F", run: toggleFocus },
     { id: "theme", label: "Basculer le thème", group: "Actions", run: toggleTheme },
     { id: "panel", label: "Replier ou ouvrir le panneau droit", group: "Actions", run: togglePanel },
     { id: "drawer", label: "Replier ou ouvrir le journal", group: "Actions", shortcut: "Ctrl+²", run: toggleDrawer },
@@ -107,6 +122,7 @@ export default function App() {
     e.preventDefault();
     if (a.kind === "palette") setPalette((p) => !p);
     else if (a.kind === "drawer") toggleDrawer();
+    else if (a.kind === "focus") toggleFocus();
     else if (TABS[a.index]) goTo(TABS[a.index].id);
   };
   useEffect(() => {
@@ -116,7 +132,7 @@ export default function App() {
   }, []);
 
   const showPanel = tab === "chat" && !demo && panel === "open";
-  const View = TABS.find((t) => t.id === tab)?.view;
+  const View = hidden.includes(tab) ? undefined : TABS.find((t) => t.id === tab)?.view;
 
   return (
     <div className={`shell${showPanel ? " shell--panel" : ""}`}>
@@ -127,6 +143,12 @@ export default function App() {
         </span>
         <div className="topbar__slot" ref={setSlot} />
         <MiniPlayer />
+        {inFocus && (
+          <FocusTimer state={focus.state} now={focus.now} notice={focus.notice} onDismiss={focus.dismiss} onDurations={focus.setDurations} />
+        )}
+        <button type="button" className="btn btn--ghost" aria-pressed={inFocus} onClick={toggleFocus} title="Mode Focus (Ctrl+Maj+F)">
+          <Crosshair size="var(--icon-sm)" aria-hidden="true" /> Focus
+        </button>
         {import.meta.env.DEV && (
           <button type="button" className="btn btn--ghost" onClick={() => setDemo(!demo)}>
             {demo ? "Retour au chat" : "Démo des composants"}
@@ -144,7 +166,7 @@ export default function App() {
           <Terminal size="var(--icon-sm)" aria-hidden="true" /> Journal
         </button>
       </header>
-      <Rail active={demo ? null : tab} onSelect={goTo} />
+      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} />
       <div className="shell__center">
         <div className="app__eclipse" aria-hidden="true">
           <div className="app__eclipse-disc">

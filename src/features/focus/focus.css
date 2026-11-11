@@ -1,0 +1,12 @@
+.focus { display: flex; align-items: center; gap: var(--space-3); }
+.focus__time { font-variant-numeric: tabular-nums; color: var(--color-text-primary); }
+.focus__dur { display: flex; align-items: center; gap: var(--space-2); color: var(--color-text-secondary); }
+.focus__dur input {
+  width: 5ch;
+  background: var(--color-bg-selected);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+}
+.focus__dur input:focus-visible { outline: var(--focus-ring-w) solid var(--color-accent); outline-offset: var(--focus-ring-offset); }
+.focus__notice { color: var(--color-text-primary); }

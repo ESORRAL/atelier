@@ -1,12 +1,14 @@
 export type ShortcutAction =
   | { kind: "palette" }
   | { kind: "tab"; index: number } // 0-based
-  | { kind: "drawer" };
+  | { kind: "drawer" }
+  | { kind: "focus" };
 
 type Keys = Pick<KeyboardEvent, "key" | "code" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey">;
 
 /** DESIGN.md §5.6: letters by `key`, digits/punctuation by `code` (AZERTY-safe), F-key alternatives. */
 export function shortcutAction(e: Keys): ShortcutAction | null {
+  if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === "f") return { kind: "focus" };
   if (e.altKey || e.metaKey || e.shiftKey) return null;
   if (!e.ctrlKey) {
     const f = /^F([1-9]|12)$/.exec(e.key);

@@ -23,3 +23,7 @@ describe("shortcuts", () => {
     expect(k({ key: "k" })).toBeNull();
   });
 });
+
+it("Ctrl+Shift+F toggles focus", () => {
+  expect(k({ key: "F", code: "KeyF", ctrlKey: true, shiftKey: true })).toEqual({ kind: "focus" });
+});
