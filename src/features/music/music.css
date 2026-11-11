@@ -1,0 +1,24 @@
+.music { max-width: 720px; margin: 0 auto; padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+.music__source { display: flex; align-items: center; gap: var(--space-4); font-size: var(--text-sm); color: var(--color-text-secondary); }
+.music__source select {
+  font: inherit; color: var(--color-text-primary); background: var(--color-bg-raised);
+  border: var(--border-w) solid var(--color-border-strong); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-4);
+}
+.music__card { display: flex; gap: var(--space-6); background: var(--color-bg-raised); border-radius: var(--radius-lg); padding: var(--space-6); box-shadow: var(--shadow-card); }
+.music__art {
+  flex: none; width: calc(var(--space-9) * 2); height: calc(var(--space-9) * 2); display: grid; place-items: center;
+  background: var(--color-bg-selected); color: var(--color-accent); border-radius: var(--radius-md);
+}
+.music__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); justify-content: center; }
+.music__title { margin: 0; font-size: var(--text-2xl); line-height: var(--lh-2xl); overflow-wrap: anywhere; }
+.music__sub { margin: 0; color: var(--color-text-secondary); }
+.music__time { display: flex; align-items: center; gap: var(--space-4); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-muted); }
+.music__bar { flex: 1; height: var(--space-3); accent-color: var(--color-accent); }
+.music__controls { display: flex; align-items: center; gap: var(--space-3); }
+.music__vol { display: flex; align-items: center; gap: var(--space-3); margin-left: auto; color: var(--color-text-secondary); }
+.music__vol input { accent-color: var(--color-accent); }
+.music__controls .btn:focus-visible, .mini .btn:focus-visible, .music__source select:focus-visible, .music__vol input:focus-visible {
+  outline: var(--focus-ring-w) solid var(--color-focus-ring); outline-offset: var(--focus-ring-offset);
+}
+.mini { display: flex; align-items: center; gap: var(--space-2); }
+.mini__title { max-width: calc(var(--space-9) * 3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-text-secondary); }
