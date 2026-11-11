@@ -24,7 +24,7 @@ pub fn music_url(target: &str, query: Option<&str>) -> Result<String, String> {
 }
 
 /// Percent-encodes every byte outside the RFC 3986 unreserved set.
-fn encode(s: &str) -> String {
+pub fn encode(s: &str) -> String {
     s.bytes()
         .map(|b| match b {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
@@ -49,7 +49,11 @@ pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String
 
 #[tauri::command]
 pub fn music_open(target: String, query: Option<String>) -> Result<(), String> {
-    let url = music_url(&target, query.as_deref())?;
+    open_detached(&music_url(&target, query.as_deref())?)
+}
+
+/// Opens a URL the caller has already validated with `xdg-open`.
+pub fn open_detached(url: &str) -> Result<(), String> {
     // Exception to "every process goes through supervisor": xdg-open returns at once and the
     // launched browser must outlive Atelier, so it gets its own process group and is not tracked.
     let mut child = Command::new("xdg-open")
