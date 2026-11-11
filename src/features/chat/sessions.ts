@@ -57,6 +57,9 @@ export function patchTab(t: SessionTabs, id: number, patch: Partial<Pick<Session
   return { ...t, list: t.list.map((x) => (x.id === id ? { ...x, ...patch } : x)) };
 }
 
+/** Requests still awaiting an answer; a cancelled one only waits to be dismissed. */
+export const pendingCount = (permissions: { cancelled?: boolean }[]) => permissions.filter((p) => !p.cancelled).length;
+
 export function tallyOf(t: Pick<SessionTab, "state" | "pending">): TallyState {
   if (t.pending > 0 || t.state === "waiting_permission") return "waiting-permission";
   if (t.state === "running") return "running";

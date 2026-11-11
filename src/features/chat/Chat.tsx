@@ -71,7 +71,8 @@ export default function Chat({ slot, onInfo, onEvent, controlsRef }: ChatProps) 
   const close = (id: number) => setTabs((t) => closeTab(t, id));
   const onStatus = useCallback((id: number, patch: Parameters<typeof patchTab>[2]) => setTabs((t) => patchTab(t, id, patch)), []);
   const onStartError = useCallback((id: number, message: string) => {
-    setTabs((t) => selectTab(closeTab(t, id), null)); // the folder stays in the field, ready to fix
+    // Back to the welcome screen (the folder stays in the field) only if the failing tab is on screen.
+    setTabs((t) => (t.active === id ? selectTab(closeTab(t, id), null) : closeTab(t, id)));
     setError(message);
   }, []);
 

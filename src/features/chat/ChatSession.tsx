@@ -21,7 +21,7 @@ import { PermissionHost } from "../../ui/PermissionDialog";
 import { MessageView } from "./MessageView";
 import { canSend, matchModel } from "./logic";
 import { initialState, reduce } from "./reduce";
-import type { SessionTab } from "./sessions";
+import { pendingCount, type SessionTab } from "./sessions";
 import type { ChatInfo } from "./Chat";
 
 const STATE_LABEL: Record<string, string> = {
@@ -142,7 +142,8 @@ export function ChatSession({ id, cwd, resume, active, slot, onStatus, onStartEr
   }, [s.messages, active]);
 
   // Shown again: focus goes to the composer, unless a permission dialog takes it.
-  const hasPermission = s.permissions.length > 0;
+  const pending = pendingCount(s.permissions);
+  const hasPermission = pending > 0;
   useEffect(() => {
     if (active && !hasPermission) input.current?.focus();
   }, [active]);
@@ -150,8 +151,8 @@ export function ChatSession({ id, cwd, resume, active, slot, onStatus, onStartEr
   const firstUser = s.messages.find((m) => m.role === "user");
   const title = firstUser?.role === "user" ? firstUser.text : undefined;
   useEffect(() => {
-    onStatus(id, { key, state: s.sessionState, pending: s.permissions.length, ...(title ? { title } : {}) });
-  }, [onStatus, id, key, s.sessionState, s.permissions.length, title]);
+    onStatus(id, { key, state: s.sessionState, pending, ...(title ? { title } : {}) });
+  }, [onStatus, id, key, s.sessionState, pending, title]);
 
   const send = () => {
     const text = draft.trim();
@@ -296,11 +297,15 @@ export function ChatSession({ id, cwd, resume, active, slot, onStatus, onStartEr
           cwd={cwd}
           onDecide={(requestId, decision, message) => {
             if (!key) return;
-            const done = () => dispatch({ kind: "permission_done", requestId });
-            if (s.permissions.find((p) => p.requestId === requestId)?.cancelled) return done();
-            permissionRespond(key, requestId, decision as "allow_once" | "allow_always" | "deny", message).then(done, (e) =>
-              setLocalError(errText(e)),
-            );
+            const req = s.permissions.find((p) => p.requestId === requestId);
+            if (!req) return;
+            // Removed before the call: hiding the tab mid-call must not show the request again.
+            dispatch({ kind: "permission_done", requestId });
+            if (req.cancelled) return;
+            permissionRespond(key, requestId, decision as "allow_once" | "allow_always" | "deny", message).catch((e) => {
+              dispatch(req); // not answered: back in the queue
+              setLocalError(errText(e));
+            });
           }}
         />
       )}

@@ -10,6 +10,7 @@ import {
   MAX_TABS,
   noTabs,
   openTab,
+  pendingCount,
   patchTab,
   selectTab,
   tallyOf,
@@ -86,6 +87,11 @@ test("tallyOf flags a pending permission first", () => {
   expect(tallyOf({ state: "idle", pending: 0 })).toBe("done");
   expect(tallyOf({ state: "crashed", pending: 0 })).toBe("failed");
   expect(tallyOf({ state: null, pending: 0 })).toBe("queued");
+});
+
+test("pendingCount ignores cancelled requests", () => {
+  expect(pendingCount([{ cancelled: true }, {}, { cancelled: false }])).toBe(2);
+  expect(pendingCount([{ cancelled: true }])).toBe(0);
 });
 
 test("cycleStep reads Ctrl+Tab and Ctrl+Maj+Tab only", () => {
