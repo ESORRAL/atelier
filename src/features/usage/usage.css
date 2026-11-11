@@ -1,0 +1,23 @@
+.usage { max-width: 960px; margin: 0 auto; padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+.usage__head { display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap; }
+.usage__head h1 { font-size: var(--text-xl); line-height: var(--lh-xl); margin: 0; }
+.usage__range { display: flex; gap: var(--space-2); }
+.usage__range button {
+  font: inherit; font-size: var(--text-sm); color: var(--color-text-primary); background: var(--color-bg-raised);
+  border: var(--border-w) solid var(--color-border-strong); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-4); cursor: pointer;
+}
+.usage__range button[aria-pressed="true"] { background: var(--color-bg-selected); border-color: var(--color-accent); }
+.usage__range button:focus-visible { outline: var(--focus-ring-w) solid var(--color-focus-ring); outline-offset: var(--focus-ring-offset); }
+.usage__total { margin: 0 0 0 auto; font-size: var(--text-md); color: var(--color-text-secondary); }
+.usage__fig { margin: 0; background: var(--color-bg-raised); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-card); }
+.usage__fig figcaption { font-size: var(--text-lg); line-height: var(--lh-lg); margin-bottom: var(--space-4); }
+.usage__svg { width: 100%; height: 180px; display: block; }
+.usage__grid { stroke: var(--color-chart-grid); stroke-width: var(--border-w); }
+.usage__seg { stroke: var(--color-bg-raised); stroke-width: 2px; }
+.usage__legend { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-4); padding: 0; margin: var(--space-4) 0 0; font-size: var(--text-sm); color: var(--color-text-secondary); }
+.usage__swatch { display: inline-block; width: var(--space-4); height: var(--space-4); border-radius: var(--radius-xs); margin-right: var(--space-3); vertical-align: middle; }
+.usage__table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.usage__table th, .usage__table td { text-align: right; padding: var(--space-3) var(--space-4); border-bottom: var(--border-w) solid var(--color-border-subtle); }
+.usage__table th:first-child, .usage__table td:first-child { text-align: left; }
+.usage__table td:not(:first-child) { font-family: var(--font-mono); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
