@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 1.4 (phase 4). 1.4 : `pick_folder` et `music_open` (§8).
 Version 1.3 (phase 4). 1.3 : commandes `music_*` et `usage_summary` (§6, §7).
 Version 1.2 (phase 3). 1.2 : états revus (`idle` dès que le pont est prêt, `running` dès l'envoi), reprise sur la même clé, index créé au premier message.
 Version 1.1 (phase 2 : Chat). 1.1 : ajout de `SessionEvent` `user`, pour réafficher les messages de l'utilisateur à la reprise. Seul l'architecte modifie ce fichier. Les noms sont exacts : les tâches
@@ -196,3 +197,17 @@ Calcul : pour chaque entrée d'index dont `updatedAt` tombe dans la fenêtre, le
 de son journal (cumulé sur la session) ; jour = jour local de `updatedAt`. `days` est trié du plus ancien
 au plus récent, jours vides inclus (coût 0). `shortcut:` une session qui s'étale sur plusieurs jours est
 comptée sur son dernier jour ; à affiner en journalisant l'heure de chaque `result`.
+
+## 8. Choix de dossier et ouverture d'Apple Music (phase 4)
+
+| Commande | Arguments | Retour | Effet |
+|---|---|---|---|
+| `pick_folder` | — | `string \| null` | boîte native « Choisir un dossier » ; `null` si annulée |
+| `music_open` | `target: "home" \| "search" \| "library" \| "playlists"`, `query: string \| null` | `null` | ouvre Apple Music web dans le navigateur par défaut |
+
+`music_open` construit l'URL **côté cœur** à partir de `target` ; l'UI ne fournit jamais d'URL :
+`home` → `https://music.apple.com/`, `search` → `https://music.apple.com/search?term=<query encodé>`
+(`query` obligatoire, 1 à 200 caractères), `library` → `https://music.apple.com/library`, `playlists` →
+`https://music.apple.com/library/playlists`. Ouverture par `xdg-open`, **détaché** du groupe de process de
+l'app (le navigateur lancé ne doit pas mourir avec Atelier) : c'est la seule exception à « tout process passe
+par `supervisor` », justifiée parce que `xdg-open` rend la main aussitôt.
