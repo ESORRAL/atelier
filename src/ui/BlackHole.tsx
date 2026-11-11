@@ -16,6 +16,8 @@ export interface BlackHoleProps {
   scale?: number;
   /** Film grain, 0 to 0.5. */
   noise?: number;
+  /** Disc center in the canvas, 0..1 from the bottom-left corner. */
+  center?: [number, number];
   /** Render resolution, 0.25 to 1. Lower is cheaper; fine for a soft background. */
   quality?: number;
   /** Frame cap, 0 for none. */
@@ -42,6 +44,7 @@ const FRAGMENT = `
   uniform float u_scale;
   uniform float u_noise;
   uniform vec2 u_resolution;
+  uniform vec2 u_center;
   varying vec2 vUv;
 
   float grain(vec2 st) {
@@ -49,7 +52,7 @@ const FRAGMENT = `
   }
 
   vec2 centered(vec2 uv) {
-    vec2 p = uv - 0.5;
+    vec2 p = uv - u_center;
     p.x *= u_resolution.x / max(u_resolution.y, 1.0);
     return p;
   }
@@ -118,14 +121,15 @@ export function BlackHole({
   speed = 0.6,
   scale = 1.2,
   noise = 0.1,
+  center = [0.5, 0.5],
   quality = 1,
   maxFps = 0,
   className,
 }: BlackHoleProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // The draw loop reads the latest props from here, so changing one never rebuilds the program.
-  const props = useRef({ color1, color2, color3, speed, scale, noise, quality, maxFps });
-  props.current = { color1, color2, color3, speed, scale, noise, quality, maxFps };
+  const props = useRef({ color1, color2, color3, speed, scale, noise, center, quality, maxFps });
+  props.current = { color1, color2, color3, speed, scale, noise, center, quality, maxFps };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -158,6 +162,7 @@ export function BlackHole({
       scale: uniform("u_scale"),
       noise: uniform("u_noise"),
       resolution: uniform("u_resolution"),
+      center: uniform("u_center"),
     };
 
     let colors = [tokenToVec3(color1), tokenToVec3(color2), tokenToVec3(color3)];
@@ -195,6 +200,7 @@ export function BlackHole({
       gl.uniform1f(u.scale, p.scale);
       gl.uniform1f(u.noise, p.noise);
       gl.uniform2f(u.resolution, canvas.width, canvas.height);
+      gl.uniform2f(u.center, p.center[0], p.center[1]);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     };
 

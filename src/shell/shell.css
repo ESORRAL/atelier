@@ -64,7 +64,8 @@
   pointer-events: none;
   background: var(--color-bg-surface) var(--glow-lamp) no-repeat;
 }
-.app__eclipse-disc { position: absolute; width: 90vmax; height: 90vmax; right: -28vmax; top: -38vmax; }
+/* The canvas covers the whole area (no visible edge); the shader places the disc top right. */
+.app__eclipse-disc { position: absolute; inset: 0; }
 .app__eclipse::after {
   content: "";
   position: absolute;

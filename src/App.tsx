@@ -153,7 +153,7 @@ export default function App() {
       <div className="shell__center">
         <div className="app__eclipse" aria-hidden="true">
           <div className="app__eclipse-disc">
-            <BlackHole quality={0.5} maxFps={30} speed={0.35} />
+            <BlackHole center={[0.84, 0.88]} scale={0.6} quality={0.5} maxFps={30} speed={0.35} />
           </div>
         </div>
         <main className="app__main shell__views">
