@@ -2,6 +2,7 @@ pub mod claude;
 pub mod desktop;
 pub mod music;
 pub mod notify;
+pub mod project;
 pub mod store;
 pub mod supervisor;
 
@@ -50,6 +51,9 @@ pub fn run() {
             music::commands::music_set_volume,
             desktop::pick_folder,
             desktop::music_open,
+            project::commands::project_info,
+            project::commands::graph_summary,
+            project::commands::graph_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Atelier");
