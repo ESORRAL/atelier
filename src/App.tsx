@@ -14,6 +14,7 @@ import type { Command } from "./shell/palette";
 import "./shell/shell.css";
 
 const Chat = lazy(() => import("./features/chat/Chat"));
+const Agents = lazy(() => import("./features/agents"));
 const Demo = lazy(() => import("./features/demo/Demo"));
 
 function stored(key: string): string | null {
@@ -56,7 +57,7 @@ export default function App() {
   const events = useRef<SessionEventLog>(new Map());
   const [, bump] = useState(0);
   const drawerOpen = useRef(false);
-  drawerOpen.current = drawer === "open";
+  drawerOpen.current = drawer === "open" || tab === "agents"; // the live Agents tab also needs re-renders
   const frame = useRef(0);
   const schedule = () => {
     if (!drawerOpen.current || frame.current) return;
@@ -158,6 +159,9 @@ export default function App() {
           </div>
           {demo ? (
             <Suspense fallback={null}><Demo /></Suspense>
+          ) : tab === "agents" ? (
+            // shortcut: only switches to the Chat tab; showing the origin session needs a ChatControls.openSession(key).
+            <Suspense fallback={null}><Agents events={events.current} onOpenSession={() => goTo("chat")} /></Suspense>
           ) : (
             View && <Suspense fallback={null}><View /></Suspense>
           )}
