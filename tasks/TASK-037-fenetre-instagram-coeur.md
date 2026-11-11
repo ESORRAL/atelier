@@ -48,8 +48,8 @@ npm run build:bridge && cd src-tauri && cargo fmt --check && cargo clippy -- -D 
 Pas d'UI, aucun script dans la page, aucune lecture du contenu d'Instagram.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : module `windows` avec `pause_window_open` (async ; `show`+`set_focus` si la fenêtre existe) et `pause_window_close`. Liste blanche https §13 + `about:blank`, `l.facebook.com` mis à part, liens https refusés envoyés à `open_detached`, `on_new_window` → `Deny`. `data_directory` = `<app_data_dir>/instagram-webview`. Pas de script, pas de capability.
+- Fichiers touchés : `src-tauri/src/windows/{mod,commands}.rs`, `src-tauri/src/lib.rs`.
+- Vérification (sortie résumée) : fmt et clippy OK, `cargo test` 38+8+4 OK (allowlist, no_capability_reaches_instagram). Essai réel (patch temporaire retiré, `timeout 60`) : `OPEN Ok(())`, navigation sur `https://www.instagram.com/` puis captcha fbsbx/google, aucun refus.
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : `build.rs` n'a pas `AppManifest::commands` (ADR-0003 §2) ; hors de mes chemins. Le test ADR « `__TAURI__` absent / invoke refusé » dans l'app reste à écrire.
