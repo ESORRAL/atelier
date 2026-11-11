@@ -5,14 +5,13 @@ import {
   GearSix,
   InstagramLogo,
   Brain,
-  MusicNotes,
   Robot,
   ShareNetwork,
   FolderSimple,
   type Icon,
 } from "@phosphor-icons/react";
 
-export type TabId = "chat" | "agents" | "projects" | "brain" | "graph" | "usage" | "music" | "instagram" | "settings";
+export type TabId = "chat" | "agents" | "projects" | "brain" | "graph" | "usage" | "instagram" | "settings";
 
 // Chat and Agents are not listed: App keeps it mounted so a tab switch never ends the session.
 export const TABS: { id: TabId; label: string; icon: Icon; view?: LazyExoticComponent<ComponentType> }[] = [
@@ -22,7 +21,6 @@ export const TABS: { id: TabId; label: string; icon: Icon; view?: LazyExoticComp
   { id: "brain", label: "Second cerveau", icon: Brain, view: lazy(() => import("../features/brain")) },
   { id: "graph", label: "Graphe", icon: ShareNetwork, view: lazy(() => import("../features/graph")) },
   { id: "usage", label: "Usage", icon: ChartBar, view: lazy(() => import("../features/usage")) },
-  { id: "music", label: "Musique", icon: MusicNotes, view: lazy(() => import("../features/music")) },
   { id: "instagram", label: "Instagram", icon: InstagramLogo, view: lazy(() => import("../features/instagram")) },
   { id: "settings", label: "Réglages", icon: GearSix, view: lazy(() => import("../features/settings")) },
 ];

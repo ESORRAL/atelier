@@ -1,6 +1,8 @@
+import { Fragment } from "react";
+import { MusicNotes } from "@phosphor-icons/react";
 import { TABS, type TabId } from "./tabs";
 
-export function Rail({ active, onSelect, hidden = [] }: { active: TabId | null; onSelect: (id: TabId) => void; hidden?: TabId[] }) {
+export function Rail({ active, onSelect, hidden = [], musicOpen = false, onMusic, musicHidden = false }: { active: TabId | null; onSelect: (id: TabId) => void; hidden?: TabId[]; musicOpen?: boolean; onMusic: () => void; musicHidden?: boolean }) {
   // Up/Down move focus between rail items (roving tabindex).
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     const d = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
@@ -16,10 +18,24 @@ export function Rail({ active, onSelect, hidden = [] }: { active: TabId | null; 
         if (hidden.includes(t.id)) return null;
         const on = t.id === active;
         return (
+          <Fragment key={t.id}>
+          {t.id === "settings" && !musicHidden && (
+            <button
+              id="rail-music"
+              type="button"
+              className={`rail__item rail__item--sep${musicOpen ? " rail__item--active" : ""}`}
+              aria-label="Musique"
+              aria-pressed={musicOpen}
+              title="Musique"
+              tabIndex={-1}
+              onClick={onMusic}
+            >
+              <MusicNotes size="var(--icon-md)" weight={musicOpen ? "fill" : "regular"} aria-hidden="true" />
+            </button>
+          )}
           <button
-            key={t.id}
             type="button"
-            className={`rail__item${on ? " rail__item--active" : ""}${t.id === "music" ? " rail__item--sep" : ""}${t.id === "settings" ? " rail__item--end" : ""}`}
+            className={`rail__item${on ? " rail__item--active" : ""}${t.id === "settings" ? " rail__item--end" : ""}`}
             aria-label={t.label}
             aria-current={on ? "page" : undefined}
             title={`${t.label} (Ctrl+${i + 1})`}
@@ -28,6 +44,7 @@ export function Rail({ active, onSelect, hidden = [] }: { active: TabId | null; 
           >
             <t.icon size="var(--icon-md)" weight={on ? "fill" : "regular"} aria-hidden="true" />
           </button>
+          </Fragment>
         );
       })}
     </nav>

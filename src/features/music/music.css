@@ -22,3 +22,28 @@
 }
 .mini { display: flex; align-items: center; gap: var(--space-2); }
 .mini__title { max-width: calc(var(--space-9) * 3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-text-secondary); }
+
+/* ---------- Side panel ---------- */
+.music-panel {
+  position: absolute; top: var(--topbar-h); right: 0; bottom: 0; width: var(--music-panel-w); z-index: var(--z-panel);
+  display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5); overflow: auto;
+  background: var(--color-bg-raised); border-left: var(--border-w) solid var(--color-border-subtle); box-shadow: var(--shadow-overlay);
+  animation: music-panel-in var(--dur-base) ease-out;
+}
+@keyframes music-panel-in { from { transform: translateX(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .music-panel { animation: none; } }
+.music-panel__head { display: flex; align-items: center; justify-content: space-between; }
+.music-panel__title { margin: 0; font-size: var(--text-lg); line-height: var(--lh-lg); }
+.music-panel__search { display: flex; gap: var(--space-3); }
+.music-panel__search input {
+  flex: 1; min-width: 0; font: inherit; color: var(--color-text-primary); background: var(--color-bg-base);
+  border: var(--border-w) solid var(--color-border-strong); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-4);
+}
+.music-panel__links { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.music-panel .btn:focus-visible, .music-panel__search input:focus-visible {
+  outline: var(--focus-ring-w) solid var(--color-focus-ring); outline-offset: var(--focus-ring-offset);
+}
+/* The remote inside the panel is narrow: stack the card. */
+.music-panel .music { padding: 0; }
+.music-panel .music__card { flex-direction: column; padding: var(--space-5); }
+.music-panel .music__title { font-size: var(--text-lg); line-height: var(--lh-lg); }
