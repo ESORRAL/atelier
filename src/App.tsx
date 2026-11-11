@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { MagnifyingGlass, SidebarSimple, Terminal } from "@phosphor-icons/react";
 import type { SessionEvent } from "./ipc/claude";
-import type { ChatControls, ChatInfo } from "./features/chat/Chat";
+import type { ChatControls, ChatInfo, SessionEventLog } from "./features/chat/Chat";
+import { logEvent } from "./features/chat/sessions";
 import { getTheme, setTheme } from "./ui/theme";
 import { BeamsBackground } from "@/components/ui/beams-background";
 import { Logo } from "./ui/Logo";
@@ -14,9 +15,6 @@ import "./shell/shell.css";
 
 const Chat = lazy(() => import("./features/chat/Chat"));
 const Demo = lazy(() => import("./features/demo/Demo"));
-
-const LOG_MAX = 200;
-const LOG_LINE_MAX = 4000;
 
 function stored(key: string): string | null {
   try {
@@ -54,8 +52,8 @@ export default function App() {
   const [info, setInfo] = useState<ChatInfo>(EMPTY_INFO);
   const controls = useRef<ChatControls | null>(null);
 
-  // Raw event log: kept in a ref (tokens arrive fast), rendered at most once per frame while open.
-  const events = useRef<string[]>([]);
+  // Raw events per session key: kept in a ref (tokens arrive fast), rendered at most once per frame while open.
+  const events = useRef<SessionEventLog>(new Map());
   const [, bump] = useState(0);
   const drawerOpen = useRef(false);
   drawerOpen.current = drawer === "open";
@@ -67,17 +65,12 @@ export default function App() {
       bump((n) => n + 1);
     });
   };
-  const onEvent = useCallback((e: SessionEvent) => {
-    let line = JSON.stringify(e);
-    if (line.length > LOG_LINE_MAX) line = `${line.slice(0, LOG_LINE_MAX)}…`;
-    events.current.push(line);
-    if (events.current.length > LOG_MAX) events.current.shift();
+  // shortcut: logs of closed sessions are kept (200 lines each) until the app quits, fine for a few dozen sessions a day.
+  const onEvent = useCallback((key: string, e: SessionEvent) => {
+    logEvent(events.current, key, e);
     schedule();
   }, []);
-  const onSessionReset = useCallback(() => {
-    events.current = [];
-    schedule();
-  }, []);
+  const shownEvents = (info.key && events.current.get(info.key)) || [];
 
   const logEnd = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -160,7 +153,7 @@ export default function App() {
           {/* Chat stays mounted behind other tabs so the session keeps running. */}
           <div className="shell__view" hidden={demo || tab !== "chat"}>
             <Suspense fallback={null}>
-              <Chat slot={slot} onInfo={setInfo} onEvent={onEvent} onSessionReset={onSessionReset} controlsRef={controls} />
+              <Chat slot={slot} onInfo={setInfo} onEvent={onEvent} controlsRef={controls} />
             </Suspense>
           </div>
           {demo ? (
@@ -173,10 +166,10 @@ export default function App() {
           <section className="drawer" aria-label="Journal des événements">
             <h2 className="drawer__title">Journal des événements</h2>
             <div className="drawer__log" role="log" aria-live="off" tabIndex={0}>
-              {events.current.length === 0 ? (
+              {shownEvents.length === 0 ? (
                 <p className="drawer__empty">Aucun événement pour cette session.</p>
               ) : (
-                events.current.map((l, i) => <div key={i} className="drawer__line">{l}</div>)
+                shownEvents.map((l, i) => <div key={i} className="drawer__line">{l}</div>)
               )}
               <div ref={logEnd} />
             </div>

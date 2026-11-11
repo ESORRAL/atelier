@@ -50,8 +50,8 @@ npm ci && npm run lint && npm test && npm run build
 Pas de Rust, pas de glisser-déposer des onglets, pas de restauration des onglets au redémarrage.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : `Chat` devient un conteneur (barre d'onglets, accueil, Ctrl+Tab / Ctrl+Maj+Tab) ; chaque onglet est un `ChatSession` monté en permanence (son `reduce`, son `Channel`, sa file de permissions). Fermer un onglet le démonte, ce qui appelle `session_close`. Le dialogue de permission n'est rendu que pour la session affichée ; l'onglet caché montre « Autorisation requise ». 8 onglets au plus, message clair au-delà. Reprendre une session déjà ouverte sélectionne son onglet. App : `onEvent(key, e)`, journal de 200 lignes par clé (`SessionEventLog` exporté par `Chat`).
+- Fichiers touchés : `src/features/chat/{Chat.tsx,ChatSession.tsx,sessions.ts,sessions.test.ts,chat.css}`, `src/App.tsx`.
+- Vérification (sortie résumée) : lint OK, 63 tests verts (51 + 12), build OK.
+- Raccourcis pris (`shortcut:`) : les journaux des sessions fermées restent en mémoire jusqu'à la sortie de l'app.
+- À remonter à l'architecte : le bouton « Nouvelle session » de la barre du haut est remplacé par le « + » des onglets. Non testé dans l'app réelle (pas de `tauri dev`).
