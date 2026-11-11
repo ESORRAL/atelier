@@ -239,7 +239,7 @@ export default function App() {
           )}
         </aside>
       )}
-      {musicShown && <MusicPanel onClose={closeMusic} />}
+      <MusicPanel open={musicShown} onClose={closeMusic} />
       {palette && <Palette commands={commands} onClose={() => setPalette(false)} />}
     </div>
   );

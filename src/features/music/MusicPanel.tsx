@@ -6,15 +6,25 @@ import { searchTerm, trapIndex } from "./panel";
 
 const FOCUSABLE = "button:not(:disabled), input, select, [href], [tabindex]:not([tabindex='-1'])";
 
-/** Right-hand slide-in panel: the remote plus Apple Music shortcuts. Esc closes; Tab stays inside. */
-export function MusicPanel({ onClose }: { onClose: () => void }) {
+// Matches --dur-base: the content stays mounted until the slide-out ends, then unmounts (stops polling).
+const SLIDE_MS = 240;
+
+/** Left slide-in panel (from behind the rail): the remote plus Apple Music shortcuts. Esc closes; Tab stays inside. */
+export function MusicPanel({ open: isOpen, onClose }: { open: boolean; onClose: () => void }) {
   const root = useRef<HTMLElement>(null);
   const [q, setQ] = useState("");
   const [error, setError] = useState(false);
+  const [mounted, setMounted] = useState(isOpen);
 
   useEffect(() => {
-    root.current?.querySelector<HTMLElement>("input")?.focus();
-  }, []);
+    if (isOpen) {
+      setMounted(true);
+      root.current?.querySelector<HTMLElement>("input")?.focus();
+      return;
+    }
+    const t = setTimeout(() => setMounted(false), SLIDE_MS);
+    return () => clearTimeout(t);
+  }, [isOpen]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
@@ -35,7 +45,7 @@ export function MusicPanel({ onClose }: { onClose: () => void }) {
   const term = searchTerm(q);
 
   return (
-    <aside ref={root} className="music-panel" aria-label="Musique" onKeyDown={onKeyDown}>
+    <aside ref={root} className={`music-panel${isOpen ? " music-panel--open" : ""}`} aria-label="Musique" aria-hidden={!isOpen} onKeyDown={onKeyDown}>
       <header className="music-panel__head">
         <h2 className="music-panel__title">Musique</h2>
         <button type="button" className="btn btn--ghost" aria-label="Fermer la musique" onClick={onClose}>
@@ -60,7 +70,7 @@ export function MusicPanel({ onClose }: { onClose: () => void }) {
         <button type="button" className="btn btn--ghost" onClick={() => open("home", null)}>Ouvrir Apple Music</button>
       </div>
       {error && <p className="chat__error" role="alert">Impossible d'ouvrir Apple Music.</p>}
-      <Music />
+      {mounted && <Music />}
     </aside>
   );
 }

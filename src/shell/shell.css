@@ -15,6 +15,8 @@
 
 /* ---------- Rail ---------- */
 .rail {
+  position: relative;
+  z-index: calc(var(--z-panel) + 1); /* the music panel slides out from behind the rail */
   display: flex;
   flex-direction: column;
   align-items: center;
