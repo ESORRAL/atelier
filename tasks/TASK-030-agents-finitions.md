@@ -46,8 +46,8 @@ npm ci && npm run lint && npm test && npm run build
 Pas de Rust, pas d'arrêt d'un sous-agent.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : cartes alimentées événement par événement (store par session, 500 agents max), `openSession(key)` dans ChatControls, durée en cours (tick 1 s), « Session fermée » si l'onglet n'existe pas.
+- Fichiers touchés : agents/{reduce,index}.ts(x), reduce.test.ts, chat/Chat.tsx, App.tsx, shell/tabs.ts
+- Vérification : lint, 82 tests, build OK.
+- Raccourcis pris : aucun.
+- À remonter à l'architecte : la durée d'un agent en cours part de la réception (pas de l'historique rejoué).

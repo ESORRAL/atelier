@@ -21,7 +21,7 @@ export type { SessionEventLog } from "./sessions";
 /** What the app shell shows about the displayed session (right panel). */
 export type ChatInfo = { key: string | null; cwd: string; model: string | null; costUsd: number; state: string | null; working: boolean };
 /** Imperative actions the shell's command palette can trigger. */
-export type ChatControls = { newSession: () => void; interrupt: () => void };
+export type ChatControls = { newSession: () => void; interrupt: () => void; openSession: (key: string) => boolean };
 
 const NO_INFO: ChatInfo = { key: null, cwd: "", model: null, costUsd: 0, state: null, working: false };
 
@@ -76,7 +76,18 @@ export default function Chat({ slot, onInfo, onEvent, controlsRef }: ChatProps) 
     setError(message);
   }, []);
 
-  if (controlsRef) controlsRef.current = { newSession: () => setTabs((t) => selectTab(t, null)), interrupt: () => !welcome && interruptRef.current?.() };
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+  if (controlsRef)
+    controlsRef.current = {
+      newSession: () => setTabs((t) => selectTab(t, null)),
+      interrupt: () => !welcome && interruptRef.current?.(),
+      openSession: (key) => {
+        const tab = tabsRef.current.list.find((x) => x.key === key);
+        if (tab) setTabs((t) => selectTab(t, tab.id));
+        return !!tab;
+      },
+    };
 
   // Ctrl+Tab / Ctrl+Maj+Tab switch sessions while the Chat is on screen.
   useEffect(() => {
