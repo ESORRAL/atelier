@@ -1,7 +1,7 @@
 ---
 id: TASK-019
 title: Corrections d'audit — cœur Rust, store et pont
-status: todo
+status: done
 phase: 3
 agent: core
 model: opus
@@ -56,8 +56,8 @@ cd bridge && npm ci --ignore-scripts && node --test && cd ../src-tauri && cargo 
 Pas d'UI (TASK-020), pas de paquet (TASK-018).
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : les 10 points. États `idle`/`running` (verrou `turn` : une réponse n'est jamais traitée avant son tour) ; `stream_event` non journalisés, index écrit au premier envoi puis seulement sur changement ; reprise sur la même clé, coût additionné ; store `sync_all` + `.bak` ; permission remise en attente ; tour `user` journalisé après écriture ; validation `cwd`/`claudePath` ; session terminée retirée de la table, lignes > 16 Mo ignorées ; `requestId` des modèles ; `targets` = deb, rpm, appimage.
+- Fichiers touchés : `src-tauri/src/claude/{mod,session}.rs`, `src-tauri/src/store/mod.rs`, `src-tauri/tests/{claude.rs,fake-bridge.mjs}`, `bridge/main{,.test}.mjs`, `src-tauri/tauri.conf.json`.
+- Vérification : node 17/17 ; fmt, clippy OK ; cargo test 26 + 6 + 4 OK (claude ×6 sans échec).
+- Raccourcis pris : aucun ; l'ancien `shortcut:` des modèles est levé.
+- À remonter : `session_close` sur une session crashée renvoie maintenant `Session inconnue` (TASK-020 doit l'ignorer). Une reprise d'une session déjà ouverte est refusée.

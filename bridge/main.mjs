@@ -1,4 +1,4 @@
-// Atelier bridge: NDJSON on stdio <-> Claude Agent SDK. See contracts/bridge-protocol.md (v1).
+// Atelier bridge: NDJSON on stdio <-> Claude Agent SDK. See contracts/bridge-protocol.md (v1.1).
 import { readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
@@ -130,8 +130,9 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
       if (!MODES.has(m.mode)) return error(`invalid permission mode: ${m.mode}`);
       return control('set_permission_mode', () => session.q.setPermissionMode(m.mode));
     },
-    list_models() {
-      return control('list_models', async () => send({ type: 'models', models: await session.q.supportedModels() }));
+    list_models(m) {
+      if (typeof m.requestId !== 'string') return error('list_models requires requestId');
+      return control('list_models', async () => send({ type: 'models', requestId: m.requestId, models: await session.q.supportedModels() }));
     },
     permission_response(m) {
       const p = pending.get(m.requestId);

@@ -130,9 +130,15 @@ async fn full_session_with_fake_bridge() {
         .await
         .unwrap();
     assert!(key.starts_with("s-"));
+    // Idle as soon as `start` is written, without waiting for the first `init`.
+    let mut all = until(&mut rx, is_state(SessionState::Idle)).await;
+    assert!(
+        c.sessions_list().unwrap().is_empty(),
+        "no entry before a turn"
+    );
 
     c.send(&key, "bonjour".into()).await.unwrap();
-    let mut all = until(&mut rx, is_state(SessionState::Idle)).await;
+    all.extend(until(&mut rx, is_state(SessionState::Idle)).await);
     let pids = pids(&all);
 
     c.send(&key, "perm".into()).await.unwrap();
@@ -185,7 +191,7 @@ async fn full_session_with_fake_bridge() {
         [cwd.to_str().unwrap()]
     );
 
-    // Journal, replayed in order: exactly what was emitted.
+    // Journal, replayed in order: exactly what was emitted, minus the streaming fragments.
     while let Ok(e) = rx.try_recv() {
         all.push(e);
     }
@@ -193,9 +199,13 @@ async fn full_session_with_fake_bridge() {
     let emitted: Vec<Value> = all
         .iter()
         .map(|e| serde_json::to_value(e).unwrap())
+        .filter(|v| v["message"]["type"] != "stream_event")
         .collect();
+    assert!(emitted.len() < all.len(), "stream events were emitted");
     assert_eq!(history[0], json!({"kind": "state", "state": "starting"}));
-    assert_eq!(history[1], json!({"kind": "user", "text": "bonjour"}));
+    assert_eq!(history[1], json!({"kind": "state", "state": "idle"}));
+    assert_eq!(history[2], json!({"kind": "user", "text": "bonjour"}));
+    assert_eq!(history[3], json!({"kind": "state", "state": "running"}));
     assert_eq!(
         history.last().unwrap(),
         &json!({"kind": "state", "state": "closed"})
@@ -227,7 +237,147 @@ async fn bridge_death_during_permission_crashes() {
         .await
         .unwrap_err();
     assert!(err.contains("inconnue"), "{err}");
+    // A crashed session is dropped from the live table.
+    assert_eq!(c.close(&key).await.unwrap_err(), "Session inconnue");
+}
+
+#[tokio::test]
+async fn resume_reuses_key_and_adds_cost() {
+    let (c, cwd) = claude("resume");
+    let (first, mut rx) = sink();
+    let key = c
+        .start_with_bridge(args(&cwd), &fake_bridge(), first)
+        .await
+        .unwrap();
+    c.send(&key, "bonjour".into()).await.unwrap();
+    until(
+        &mut rx,
+        |e| matches!(e, SessionEvent::Sdk { message } if message["type"] == "result"),
+    )
+    .await;
     c.close(&key).await.unwrap();
+
+    let (second, mut rx) = sink();
+    let mut a = args(&cwd);
+    a.resume = Some("fake-sess".into());
+    let again = c
+        .start_with_bridge(a, &fake_bridge(), second)
+        .await
+        .unwrap();
+    assert_eq!(again, key);
+    c.send(&key, "suite".into()).await.unwrap();
+    until(
+        &mut rx,
+        |e| matches!(e, SessionEvent::Sdk { message } if message["type"] == "result"),
+    )
+    .await;
+    c.close(&key).await.unwrap();
+
+    let list = c.sessions_list().unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].title, "bonjour");
+    // 0.01 before the resume + 0.01 from the new process
+    assert!(
+        (list[0].cost_usd - 0.02).abs() < 1e-9,
+        "{}",
+        list[0].cost_usd
+    );
+    let history = c.history(&key).unwrap();
+    let users: Vec<_> = history.iter().filter(|e| e["kind"] == "user").collect();
+    assert_eq!(users.len(), 2);
+}
+
+#[tokio::test]
+async fn close_kills_a_frozen_bridge_while_a_send_is_stuck() {
+    let (c, cwd) = claude("frozen");
+    let (sink, mut rx) = sink();
+    let key = c
+        .start_with_bridge(args(&cwd), &fake_bridge(), sink)
+        .await
+        .unwrap();
+    c.send(&key, "freeze".into()).await.unwrap();
+    let pids = pids(&until(&mut rx, |e| matches!(e, SessionEvent::Sdk { .. })).await);
+    // Larger than the pipe: this write blocks, holding the turn, while the bridge's late
+    // line waits for it.
+    let stuck = c.send(&key, "x".repeat(8 << 20));
+    let closing = async {
+        tokio::time::sleep(Duration::from_millis(600)).await;
+        let t = Instant::now();
+        c.close(&key).await.unwrap();
+        t.elapsed()
+    };
+    let (sent, elapsed) = tokio::time::timeout(Duration::from_secs(10), async {
+        tokio::join!(stuck, closing)
+    })
+    .await
+    .expect("session_close hung");
+    assert!(sent.is_err());
+    assert!(elapsed < Duration::from_secs(4), "{elapsed:?}");
+    assert_gone(&pids);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn concurrent_resumes_open_one_session() {
+    let (c, cwd) = claude("double");
+    let (first, mut rx) = sink();
+    let key = c
+        .start_with_bridge(args(&cwd), &fake_bridge(), first)
+        .await
+        .unwrap();
+    c.send(&key, "bonjour".into()).await.unwrap();
+    until(&mut rx, is_state(SessionState::Idle)).await;
+    c.close(&key).await.unwrap();
+
+    let c = Arc::new(c);
+    let start = |c: Arc<Claude>| {
+        let mut a = args(&cwd);
+        a.resume = Some("fake-sess".into());
+        tokio::spawn(async move { c.start_with_bridge(a, &fake_bridge(), sink().0).await })
+    };
+    let (a, b) = tokio::join!(start(c.clone()), start(c.clone()));
+    let results = [a.unwrap(), b.unwrap()];
+    let ok: Vec<_> = results.iter().filter_map(|r| r.as_ref().ok()).collect();
+    assert_eq!(ok, [&key], "{results:?}");
+    assert!(
+        results
+            .iter()
+            .any(|r| r.as_ref().is_err_and(|e| e.contains("déjà ouverte")))
+    );
+    c.close(&key).await.unwrap();
+    assert_eq!(
+        c.send(&key, "x".into()).await.unwrap_err(),
+        "Session inconnue"
+    );
+}
+
+#[tokio::test]
+async fn cwd_and_claude_path_validated() {
+    let (c, cwd) = claude("validate");
+    for bad in ["relative/dir", "/", "/nonexistent-atelier-dir"] {
+        let (sink, _rx) = sink();
+        let mut a = args(&cwd);
+        a.cwd = bad.into();
+        let err = c
+            .start_with_bridge(a, &fake_bridge(), sink)
+            .await
+            .unwrap_err();
+        assert!(
+            ["absolu", "racine", "introuvable"]
+                .iter()
+                .any(|w| err.contains(w)),
+            "{bad}: {err}"
+        );
+    }
+    for bad in ["claude", "/nonexistent/claude", "/etc/passwd"] {
+        let err = c
+            .settings_set(&Settings {
+                claude_path: Some(bad.into()),
+                ..Settings::default()
+            })
+            .unwrap_err();
+        assert!(err.starts_with("Chemin de Claude Code"), "{bad}: {err}");
+    }
+    c.settings_set(&Settings::default()).unwrap();
 }
 
 #[tokio::test]
@@ -268,11 +418,15 @@ async fn unknown_key_and_missing_claude() {
         "Session inconnue"
     );
     assert_eq!(c.history("s-0-0").unwrap_err(), "Session inconnue");
+    // Valid when saved, gone when the session starts.
+    let gone = cwd.join("claude");
+    std::fs::copy("/bin/true", &gone).unwrap();
     c.settings_set(&Settings {
-        claude_path: Some("/nonexistent/claude".into()),
+        claude_path: Some(gone.to_str().unwrap().into()),
         ..Settings::default()
     })
     .unwrap();
+    std::fs::remove_file(&gone).unwrap();
     let (sink, _rx) = sink();
     let err = c
         .start_with_bridge(args(&cwd), &fake_bridge(), sink)
