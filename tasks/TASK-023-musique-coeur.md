@@ -44,8 +44,8 @@ npm run build:bridge && cd src-tauri && cargo fmt --check && cargo clippy -- -D 
 Pas d'UI, pas de pochette, pas de lecteur local.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : module `music` (4 commandes MPRIS, crate mpris 2.1.0, spawn_blocking), logique pure testée.
+- Fichiers touchés : src-tauri/src/music/{mod,commands}.rs, lib.rs (module + 4 handlers), Cargo.toml/lock.
+- Vérification : fmt, clippy -D warnings, cargo test OK (3 tests music). Aucun lecteur MPRIS actif : pas d'essai réel.
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : `music_status` renvoie `null` aussi si le bus est absent ; `music_players` renvoie `[]`.
