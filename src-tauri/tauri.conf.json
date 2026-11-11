@@ -19,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: https://*.mzstatic.com; media-src 'self' https://audio-ssl.itunes.apple.com https://*.mzstatic.com"
+      "csp": "default-src 'self'"
     }
   },
   "bundle": {
