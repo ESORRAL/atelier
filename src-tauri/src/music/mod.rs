@@ -1,6 +1,7 @@
 //! MPRIS remote control. Pure logic (choice, conversion, validation) lives here and is tested
 //! without D-Bus; `commands.rs` does the blocking calls.
 
+pub mod catalog;
 pub mod commands;
 
 use serde::Serialize;
