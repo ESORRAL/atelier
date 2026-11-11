@@ -48,9 +48,6 @@ pub fn run() {
             music::commands::music_status,
             music::commands::music_control,
             music::commands::music_set_volume,
-            music::catalog::music_search,
-            music::catalog::music_lookup,
-            music::catalog::music_open_url,
             desktop::pick_folder,
             desktop::music_open,
         ])
