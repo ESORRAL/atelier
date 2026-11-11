@@ -28,7 +28,7 @@ Spécification de design de référence. Chaque section `##` se lit seule. Valeu
 
 Refusé : charte et typo d'Anthropic ou look Claude Desktop (crème + serif + terracotta `#D97757`), template de chat IA (dégradés violets, verre dépoli), kit de cartes SaaS identiques (une seule ombre grise partout), labels en capitales espacées, emoji-icônes.
 
-**Logo « A »** (`src/ui/Logo.tsx`, `design/logo.svg`, icône `design/logo-1024.png`) : un A majuscule ambre (`--color-accent`, police d'interface en graisse display), sans pictogramme. Le fond de la zone principale est une éclipse WebGL (`src/ui/BlackHole.tsx`, shader adapté de GradFlow, couleurs lues dans les tokens), en haut à droite, voilée par la couleur de surface (`--eclipse-veil`) pour garder le texte lisible ; rendue à demi-résolution, 30 i/s, en pause fenêtre inactive ; sans WebGL, le fond plat avec `--glow-lamp`.
+**Logo « A »** (`src/ui/Logo.tsx`, `design/logo.svg`, icône `design/logo-1024.png`) : un A majuscule ambre (`--color-accent`, police d'interface en graisse display), sans pictogramme. Le fond de la zone principale est une éclipse WebGL (`src/components/ui/black-hole.tsx`, composant GradFlow tel quel, couleurs Veilleuse passées en hex), centrée, voilée par la couleur de surface (`--eclipse-veil`) pour garder le texte lisible ; pleine résolution et pleine cadence (choix de l'utilisateur) ; sans WebGL, le fond plat avec `--glow-lamp`.
 
 Principe directeur : *la lampe éclaire ce qui compte*. Le fond reste dans la pénombre ; la lumière (ambre) va à l'action et au focus, le jaune vif aux attentes (permission).
 
@@ -404,7 +404,7 @@ Le poste principal est en AZERTY français. Lettres liées par `event.key` (mné
 - Mouvements autonomes, **un seul visible à la fois** : pulse du voyant running/waiting, rotation `CircleNotch`, et les deux boucles « lampe » ci-dessous. Aucun autre fond animé.
 - **3D « Veilleuse »** (CSS seul, pas de WebGL ; voir `design/RESEARCH.md`) :
   - *Le A tourne* : le logo de la barre du haut pivote autour de son axe vertical (`rotateY ±6× --sway-angle`, `--dur-sway`, `--ease-sway`, perspective `--depth-near`), seulement pendant que Claude écrit ; immobile pendant une demande de permission.
-  - *L'éclipse* (fond) : le shader `BlackHole` tourne en boucle lente derrière la zone principale ; il ne dessine plus quand la fenêtre est cachée ou sans focus (`data-idle`).
+  - *L'éclipse* (fond) : le shader `BlackHole` tourne en boucle lente derrière la zone principale, à chaque image (la version tel quel n'a pas de pause fenêtre inactive).
   - *Entrée inclinée des messages* : chaque message entre une fois (`rotateX(--tilt-max)` + 12 px + fondu, `--dur-slow`, `--ease-enter`), charnière du côté de l'auteur. Jamais rejoué au streaming.
   - Dans le fil du chat, les voyants des outils ne pulsent plus : le A qui tourne porte l'activité.
   - Les boucles se mettent en pause (`html[data-idle]`) quand la fenêtre est cachée ou sans focus (`visibilitychange`, `blur`).
@@ -475,3 +475,6 @@ Format : nombres FR (`12 400 tokens`, `3,42 €`), heures `14:02`, durées `1 mi
 8. Interdits WebKitGTK : `backdrop-filter`, `color-mix()`, `oklch()`, `@property`, polices/scripts CDN ; icônes Phosphor (SVG, `currentColor`), aucun emoji.
 9. Musique, Instagram, Graphe, Usage en import dynamique ; rien de média dans le chunk du Chat ; jamais d'`iframe`/HTML externe.
 10. Texte UI en français, casse de phrase, tutoiement, verbes précis (« Autoriser une fois », pas « OK ») ; contraste ≥ 4.5:1 pour le texte, ≥ 3:1 pour les bords de contrôle, vérifié par script ; `--color-danger-solid` jamais seul sans libellé.
+11. Tailwind CSS v4 et shadcn sont autorisés (`components.json`, `src/index.css`, `cn` dans `src/lib/utils.ts`). Les variables shadcn (`--background`, `--primary`…) sont des alias des tokens ; la variante `dark:` suit `data-theme`, sinon le système. Le CSS produit par Tailwind est exempté de la règle 8 : il protège `color-mix()` et `@property` par `@supports`.
+12. `src/components/ui/` contient des composants tiers copiés tels quels (changements marqués « Atelier: ») ; la règle « jamais de hex » s'applique partout sauf là. Le Chat rend les tours de Claude avec `ai-thinking-and-tool-calls.tsx`, alimenté par `src/features/chat/toTrace.ts`.
+13. La CSP (`default-src 'self'`) interdit les `<style>` en ligne : keyframes et règles vont dans un fichier `.css` importé ; les attributs `style` posés par React restent permis. Aucun lien cliquable dans un rendu de Claude : le texte, puis l'URL visible.

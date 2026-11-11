@@ -64,7 +64,7 @@
   pointer-events: none;
   background: var(--color-bg-surface) var(--glow-lamp) no-repeat;
 }
-/* The canvas covers the whole area (no visible edge); the shader places the disc top right. */
+/* The canvas covers the whole area (no visible edge); the verbatim shader centres the disc. */
 .app__eclipse-disc { position: absolute; inset: 0; }
 .app__eclipse::after {
   content: "";
