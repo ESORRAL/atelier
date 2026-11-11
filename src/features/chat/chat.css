@@ -175,37 +175,16 @@
 .msg--claude { transform-origin: 0 0; }
 .msg--user { transform-origin: 100% 0; }
 
+/* User bubble as in the reference component: right-aligned, muted, rounded. */
 .msg--user {
   align-self: flex-end;
   max-width: 80%;
-  padding: var(--space-4) var(--space-5);
-  background: var(--color-bubble-user-bg);
-  border: var(--border-w) solid var(--color-bubble-user-border);
-  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xs) var(--radius-lg);
+  padding: var(--space-3) var(--space-5);
+  background: var(--muted);
+  border-radius: var(--radius-lg);
 }
-.msg--claude {
-  padding: var(--space-5) var(--space-6);
-  background: var(--color-bg-raised);
-  border: var(--border-w) solid var(--color-border-subtle);
-  border-radius: var(--radius-xs) var(--radius-lg) var(--radius-lg) var(--radius-lg);
-  box-shadow: var(--shadow-card);
-}
-.msg__who {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-  font-size: var(--text-sm);
-  line-height: var(--lh-sm);
-  font-weight: var(--weight-bold);
-  color: var(--color-text-secondary);
-}
-.msg__lamp {
-  width: var(--tally-size);
-  height: var(--tally-size);
-  border-radius: var(--radius-full);
-  background: var(--color-accent);
-}
+/* Claude's turn has no card: thinking, tool rail and prose read as body text (reference component). */
+.msg--claude { display: flex; flex-direction: column; gap: var(--space-2); }
 .msg__text { white-space: pre-wrap; font-size: var(--text-read); line-height: var(--lh-read); overflow-wrap: anywhere; }
 .msg__stopped { font-size: var(--text-sm); color: var(--color-warning); font-weight: var(--weight-medium); }
 
