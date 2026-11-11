@@ -1,9 +1,10 @@
 import { expect, test } from "vitest";
 import streamRaw from "../../../spikes/bridge/samples/stream.ndjson?raw";
 import interruptRaw from "../../../spikes/bridge/samples/interrupt.ndjson?raw";
+import subagentRaw from "../../../spikes/bridge/samples/subagent.ndjson?raw";
 import { initialState, reduce, type ChatState } from "./reduce";
 
-const raw: Record<string, string> = { stream: streamRaw, interrupt: interruptRaw };
+const raw: Record<string, string> = { stream: streamRaw, interrupt: interruptRaw, subagent: subagentRaw };
 const load = (f: string) =>
   raw[f]
     .split("\n")
@@ -74,6 +75,16 @@ test("tool card: running, then done / failed / denied from tool_result", () => {
     s,
   );
   expect(assistant(s).blocks.map((b) => b.type === "tool" && b.status)).toEqual(["done", "failed", "denied"]);
+  expect(assistant(s).blocks.map((b) => b.type === "tool" && b.result)).toEqual(["ok", "boom", "refused"]);
+});
+
+test("thinking keeps the SDK's thinking_duration_ms; array tool_result keeps its text", () => {
+  const s = run(load("subagent") as any);
+  const blocks = s.messages.flatMap((m) => (m.role === "assistant" ? m.blocks : []));
+  const thinking = blocks.find((b) => b.type === "thinking");
+  expect(thinking?.type === "thinking" && typeof thinking.durationMs).toBe("number");
+  const agent = blocks.find((b) => b.type === "tool" && b.name === "Agent");
+  expect(agent?.type === "tool" && agent.result).toContain("hi");
 });
 
 test("permission queue: add then mark cancelled; state event", () => {

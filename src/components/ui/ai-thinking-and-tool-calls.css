@@ -1,0 +1,5 @@
+/* Atelier: keyframes moved out of the component's inline <style>, which the CSP (default-src 'self') blocks. */
+@keyframes agent-pixel-on { 0%,100%{opacity:.15;transform:scale(.9)} 50%{opacity:.95;transform:scale(1.1)} }
+@keyframes agent-fade { from{opacity:0;transform:translateY(2px)} to{opacity:1;transform:translateY(0)} }
+@keyframes agent-row-in { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+@keyframes agent-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }

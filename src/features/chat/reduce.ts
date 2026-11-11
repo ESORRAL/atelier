@@ -3,8 +3,8 @@ import type { SessionEvent, SessionState } from "../../ipc/claude";
 export type ToolStatus = "running" | "done" | "failed" | "denied";
 export type Block =
   | { type: "text"; text: string }
-  | { type: "thinking"; text: string }
-  | { type: "tool"; id: string; name: string; input: unknown; status: ToolStatus };
+  | { type: "thinking"; text: string; durationMs?: number }
+  | { type: "tool"; id: string; name: string; input: unknown; status: ToolStatus; result?: string }; // result: tool_result text
 
 export type ChatMessage =
   | { id: string; role: "user"; text: string }
@@ -43,6 +43,13 @@ export const initialState: ChatState = {
 };
 
 type Obj = Record<string, any>; // SDK messages are untyped on purpose (bridge-protocol §4)
+
+/** tool_result content is a string or an array of content blocks; only the text parts are kept. */
+function resultText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.map((c: Obj) => (c?.type === "text" && typeof c.text === "string" ? c.text : "")).filter(Boolean).join("\n");
+}
 
 /** Last assistant message if its turn is still open, else a fresh one. */
 function withCurrent(s: ChatState, edit: (m: Extract<ChatMessage, { role: "assistant" }>) => Extract<ChatMessage, { role: "assistant" }>): ChatState {
@@ -83,7 +90,8 @@ function reduceSdk(s: ChatState, m: Obj): ChatState {
       const blocks: Block[] = [];
       for (const c of content) {
         if (c.type === "text") blocks.push({ type: "text", text: c.text ?? "" });
-        else if (c.type === "thinking") blocks.push({ type: "thinking", text: c.thinking ?? "" });
+        else if (c.type === "thinking")
+          blocks.push({ type: "thinking", text: c.thinking ?? "", durationMs: typeof m.thinking_duration_ms === "number" ? m.thinking_duration_ms : undefined });
         else if (c.type === "tool_use") blocks.push({ type: "tool", id: c.id, name: c.name, input: c.input, status: "running" });
       }
       return withCurrent(s, (a) => ({ ...a, blocks: [...a.blocks, ...blocks], live: null }));
@@ -110,7 +118,7 @@ function reduceSdk(s: ChatState, m: Obj): ChatState {
                 ...msg,
                 blocks: msg.blocks.map((b) => {
                   const r = touches(b) && b.type === "tool" ? results.find((x) => x.tool_use_id === b.id) : undefined;
-                  return r && b.type === "tool" ? { ...b, status: status(r) } : b;
+                  return r && b.type === "tool" ? { ...b, status: status(r), result: resultText(r.content) } : b;
                 }),
               },
         ),

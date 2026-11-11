@@ -3,7 +3,7 @@ import { MagnifyingGlass, SidebarSimple, Terminal } from "@phosphor-icons/react"
 import type { SessionEvent } from "./ipc/claude";
 import type { ChatControls, ChatInfo } from "./features/chat/Chat";
 import { getTheme, setTheme } from "./ui/theme";
-import { BlackHole } from "./ui/BlackHole";
+import { BlackHole } from "@/components/ui/black-hole";
 import { Logo } from "./ui/Logo";
 import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
@@ -153,7 +153,8 @@ export default function App() {
       <div className="shell__center">
         <div className="app__eclipse" aria-hidden="true">
           <div className="app__eclipse-disc">
-            <BlackHole center={[0.84, 0.88]} scale={0.6} quality={0.5} maxFps={30} speed={0.35} />
+            {/* Veilleuse amber, surface and coral as hex: the verbatim component only takes hex (user's choice). */}
+            <BlackHole color1="#F2A54A" color2="#1B1511" color3="#FF8E72" />
           </div>
         </div>
         <main className="app__main shell__views">

@@ -6,6 +6,7 @@ import "@fontsource/bricolage-grotesque/latin-700.css";
 import "@fontsource/bricolage-grotesque/latin-800.css";
 import "@fontsource/fragment-mono/latin-400.css";
 import "../design/tokens.css";
+import "./index.css";
 import "./ui/base.css";
 import { getTheme, setTheme } from "./ui/theme";
 import App from "./App";

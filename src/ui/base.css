@@ -12,6 +12,13 @@ p {
   margin: 0;
 }
 
+/* Tailwind's preflight resets heading weights; restore the browser's bold the screens were drawn with. */
+h1,
+h2,
+h3 {
+  font-weight: var(--weight-bold);
+}
+
 body {
   background: var(--color-bg-base);
   color: var(--color-text-primary);
