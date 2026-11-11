@@ -1,4 +1,5 @@
 //! Module `store`: see contracts/ipc.md §4.
+pub mod usage;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};

@@ -40,6 +40,7 @@ pub fn run() {
             session_history,
             settings_get,
             settings_set,
+            usage_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Atelier");
