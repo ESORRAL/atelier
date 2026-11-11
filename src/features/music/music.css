@@ -25,13 +25,20 @@
 
 /* ---------- Side panel ---------- */
 .music-panel {
-  position: absolute; top: var(--topbar-h); right: 0; bottom: 0; width: var(--music-panel-w); z-index: var(--z-panel);
+  position: absolute; top: var(--topbar-h); left: var(--rail-w); bottom: 0; width: var(--music-panel-w); z-index: var(--z-panel);
   display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5); overflow: auto;
-  background: var(--color-bg-raised); border-left: var(--border-w) solid var(--color-border-subtle); box-shadow: var(--shadow-overlay);
-  animation: music-panel-in var(--dur-base) ease-out;
+  background: var(--color-bg-raised); border-right: var(--border-w) solid var(--color-border-subtle); box-shadow: var(--shadow-overlay);
+  /* Closed: parked behind the rail (which sits above it), hidden from focus once the slide-out ends. */
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform var(--dur-base) var(--ease-exit), visibility 0s linear var(--dur-base);
+  will-change: transform;
 }
-@keyframes music-panel-in { from { transform: translateX(100%); } to { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .music-panel { animation: none; } }
+.music-panel--open {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform var(--dur-base) var(--ease-enter), visibility 0s;
+}
 .music-panel__head { display: flex; align-items: center; justify-content: space-between; }
 .music-panel__title { margin: 0; font-size: var(--text-lg); line-height: var(--lh-lg); }
 .music-panel__search { display: flex; gap: var(--space-3); }
