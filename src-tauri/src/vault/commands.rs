@@ -34,7 +34,12 @@ pub fn vault_open(claude: State<'_, Claude>, path: String) -> Result<(), String>
         .ok_or("Chemin du vault invalide.")?;
     resolve(&resolve_root(Path::new(&base), &s.vault_project)?, &path)?;
     // The file part of the URL is relative to the vault, not to the project root.
-    let file = format!("{}/{}", s.vault_project.trim_matches('/'), path);
+    let project = s.vault_project.trim_matches('/');
+    let file = if project.is_empty() {
+        path
+    } else {
+        format!("{project}/{path}")
+    };
     crate::desktop::open_detached(&obsidian_url(&name, &file))
 }
 

@@ -58,6 +58,54 @@ fn journal_insertion() {
 }
 
 #[test]
+fn journal_refuses_symlinks_and_binary() {
+    let root = tmp("jsym");
+    let outside = tmp("jsym-out");
+    fs::write(outside.join("t.md"), "target").unwrap();
+    // planted temp-name symlinks are never followed (unique names, O_EXCL)
+    symlink(outside.join("t.md"), root.join("Journal.md.tmp")).unwrap();
+    append_journal(&root, "A").unwrap();
+    assert_eq!(fs::read_to_string(outside.join("t.md")).unwrap(), "target");
+    fs::remove_file(root.join("Journal.md")).unwrap();
+    // Journal.md itself a symlink: refused, target untouched
+    symlink(outside.join("t.md"), root.join("Journal.md")).unwrap();
+    assert!(append_journal(&root, "B").is_err());
+    assert_eq!(fs::read_to_string(outside.join("t.md")).unwrap(), "target");
+    // non-UTF-8 journal: refused, content kept
+    fs::remove_file(root.join("Journal.md")).unwrap();
+    fs::write(root.join("Journal.md"), [0xff, 0xfe, b'x']).unwrap();
+    assert!(append_journal(&root, "C").is_err());
+    assert_eq!(
+        fs::read(root.join("Journal.md")).unwrap(),
+        [0xff, 0xfe, b'x']
+    );
+}
+
+#[test]
+fn root_must_stay_under_vault() {
+    let base = tmp("rootbase");
+    let outside = tmp("rootout");
+    fs::create_dir_all(base.join("P")).unwrap();
+    symlink(&outside, base.join("evil")).unwrap();
+    assert!(resolve_root(&base, "P").is_ok());
+    assert!(resolve_root(&base, "evil").is_err());
+}
+
+#[test]
+fn hidden_dirs_skipped_and_empty_project_url() {
+    let root = tmp("hidden");
+    fs::create_dir_all(root.join(".obsidian")).unwrap();
+    fs::write(root.join(".obsidian/x.md"), "needle").unwrap();
+    fs::write(root.join("a.md"), "needle").unwrap();
+    assert_eq!(list(&root).unwrap().len(), 1);
+    assert_eq!(search(&root, "needle").unwrap().len(), 1);
+    assert_eq!(
+        obsidian_url("V", "a.md"),
+        "obsidian://open?vault=V&file=a.md"
+    );
+}
+
+#[test]
 fn url_is_encoded() {
     let u = obsidian_url("My Vault", "01/é.md");
     assert!(u.starts_with("obsidian://open?vault=My%20Vault&file="));

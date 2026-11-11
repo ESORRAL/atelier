@@ -31,7 +31,12 @@ pub fn resolve_root(base: &Path, project: &str) -> Result<PathBuf, String> {
     if project.split('/').any(|c| c == "..") || project.starts_with('/') {
         return Err("Dossier de projet du vault invalide.".into());
     }
-    fs::canonicalize(base.join(project)).map_err(|_| NOT_CONFIGURED.to_string())
+    let base = fs::canonicalize(base).map_err(|_| NOT_CONFIGURED.to_string())?;
+    let root = fs::canonicalize(base.join(project)).map_err(|_| NOT_CONFIGURED.to_string())?;
+    if !root.starts_with(&base) {
+        return Err("Dossier de projet du vault invalide.".into());
+    }
+    Ok(root)
 }
 
 /// Validates a note path: relative, `.md`, no `..`, and once resolved (symlinks followed) still
@@ -61,7 +66,7 @@ fn read_capped(path: &Path) -> Result<String, String> {
     if buf.len() as u64 > MAX_FILE {
         return Err("Note trop volumineuse (1 Mio au plus).".into());
     }
-    Ok(String::from_utf8_lossy(&buf).into_owned())
+    String::from_utf8(buf).map_err(|_| "La note n'est pas en UTF-8.".to_string())
 }
 
 pub fn read(root: &Path, rel: &str) -> Result<String, String> {
@@ -73,10 +78,13 @@ pub fn read(root: &Path, rel: &str) -> Result<String, String> {
 fn walk(root: &Path) -> Vec<(String, u64)> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
-    while let Some(dir) = stack.pop() {
+    'walk: while let Some(dir) = stack.pop() {
         let Ok(rd) = fs::read_dir(&dir) else { continue };
         for e in rd.flatten() {
             let Ok(ft) = e.file_type() else { continue };
+            if e.file_name().to_string_lossy().starts_with('.') {
+                continue; // .obsidian, .trash, hidden files
+            }
             let p = e.path();
             if ft.is_dir() {
                 stack.push(p);
@@ -90,11 +98,13 @@ fn walk(root: &Path) -> Vec<(String, u64)> {
                 if let Ok(r) = p.strip_prefix(root) {
                     out.push((r.to_string_lossy().into_owned(), ms));
                 }
+                if out.len() >= MAX_FILES {
+                    break 'walk;
+                }
             }
         }
     }
     out.sort_by_key(|(_, m)| std::cmp::Reverse(*m));
-    out.truncate(MAX_FILES);
     out
 }
 
@@ -204,10 +214,11 @@ pub fn append_journal(root: &Path, block: &str) -> Result<(), String> {
         return Err("Le récap doit faire de 1 à 20 000 caractères.".into());
     }
     let path = root.join("Journal.md");
-    let old = if path.exists() {
-        read_capped(&path)?
-    } else {
-        String::new()
+    let old = match fs::symlink_metadata(&path) {
+        Ok(m) if m.is_file() => read_capped(&path)?,
+        Ok(_) => return Err("Journal.md n'est pas un fichier ordinaire.".into()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(_) => return Err("Lecture impossible.".into()),
     };
     let block = block.trim_end();
     let lines: Vec<&str> = old.split_inclusive('\n').collect();
@@ -222,13 +233,25 @@ pub fn append_journal(root: &Path, block: &str) -> Result<(), String> {
         None if old.is_empty() => format!("{block}\n"),
         None => format!("{block}\n\n{old}"),
     };
-    let mut tmp = path.as_os_str().to_owned();
-    tmp.push(".tmp");
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let tmp = root.join(format!(".Journal.{}.{stamp}.tmp", std::process::id()));
     let io = |_| "Écriture du journal impossible.".to_string();
-    let mut f = fs::File::create(&tmp).map_err(io)?;
-    f.write_all(new.as_bytes()).map_err(io)?;
-    f.sync_all().map_err(io)?;
-    fs::rename(&tmp, &path).map_err(io)
+    // create_new = O_EXCL: never follows a planted symlink.
+    let res = (|| {
+        let mut f = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&tmp)?;
+        f.write_all(new.as_bytes())?;
+        f.sync_all()?;
+        fs::rename(&tmp, &path)
+    })();
+    if res.is_err() {
+        let _ = fs::remove_file(&tmp);
+    }
+    res.map_err(io)
 }
 
 #[cfg(test)]
