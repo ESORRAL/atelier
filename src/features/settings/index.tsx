@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { settingsGet, settingsSet, type PermissionMode, type Settings as Cfg } from "../../ipc/claude";
+import { pickFolder } from "../../ipc/desktop";
 import { getTheme, setTheme, type Theme } from "../../ui/theme";
 import { normalize, validateSettings } from "./validate";
 import "./settings.css";
@@ -94,6 +95,32 @@ export default function Settings() {
         <select value={theme} onChange={(e) => { const t = e.target.value as Theme; setTheme(t); setThemeState(t); }}>
           {THEME_LABELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
+      </label>
+
+      <div className="settings__field">
+        <label htmlFor={`${id}-vault`}>Vault Obsidian</label>
+        <div className="settings__row">
+          <input
+            id={`${id}-vault`}
+            value={cfg.vaultPath ?? ""}
+            onChange={(e) => patch({ vaultPath: e.target.value })}
+            placeholder="Aucun vault choisi"
+            spellCheck={false}
+          />
+          <button
+            type="button"
+            className="settings__btn"
+            onClick={() => pickFolder().then((d) => d && patch({ vaultPath: d }), (e) => setStatus({ ok: false, text: msg(e) }))}
+          >
+            Parcourir…
+          </button>
+        </div>
+      </div>
+
+      <label className="settings__field">
+        Dossier du projet dans le vault
+        <input value={cfg.vaultProject} onChange={(e) => patch({ vaultProject: e.target.value })} spellCheck={false} />
+        <span className="settings__hint">Relatif au vault, par exemple « 01 - Projets/Atelier ».</span>
       </label>
 
       <fieldset className="settings__field">
