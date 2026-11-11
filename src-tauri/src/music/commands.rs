@@ -7,6 +7,7 @@ fn all() -> Result<Vec<Player>, String> {
         PlayerFinder::new().map_err(|_| "Bus D-Bus de session indisponible.".to_string())?;
     finder
         .find_all()
+        .map(|ps| ps.into_iter().filter(|p| !is_own(p.bus_name())).collect())
         .map_err(|_| "Aucun lecteur de musique n'est ouvert.".to_string())
 }
 

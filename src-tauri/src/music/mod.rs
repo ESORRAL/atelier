@@ -73,6 +73,11 @@ pub fn check_volume(v: f64) -> Result<f64, String> {
 }
 
 /// Index of the player to use: the first one playing, else the first one.
+/// Atelier's own web view registers as an MPRIS player while a preview plays: never offer it as a remote target.
+pub fn is_own(bus_name: &str) -> bool {
+    bus_name.starts_with("org.mpris.MediaPlayer2.org.webkit.app")
+}
+
 pub fn pick(playing: &[bool]) -> Option<usize> {
     playing
         .iter()
@@ -105,6 +110,15 @@ pub fn to_now_playing(r: Raw) -> NowPlaying {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn own_webview_player_is_excluded() {
+        assert!(is_own(
+            "org.mpris.MediaPlayer2.org.webkit.app-773f.Sandboxed.instance-40"
+        ));
+        assert!(!is_own("org.mpris.MediaPlayer2.firefox.instance_1_1904"));
+        assert!(!is_own("org.mpris.MediaPlayer2.spotify"));
+    }
 
     #[test]
     fn pick_prefers_playing_then_first() {

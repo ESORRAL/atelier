@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowSquareOut, MusicNote, Pause, Play, UserCircle, VinylRecord } from "@phosphor-icons/react";
 import { musicLookup, musicOpen, musicOpenUrl, musicSearch, type SearchResults } from "../../ipc/music";
 import { back, canGoBack, current, duration, push, togglePreview, type View } from "./browse";
 import { searchTerm } from "./panel";
+import { currentPreview, playPreview, stopPreview, subscribePreview } from "./preview";
 
 function Art({ url, fallback }: { url: string | null; fallback: React.ReactNode }) {
   const [failed, setFailed] = useState(false);
@@ -21,29 +22,15 @@ export function MusicBrowser({ active }: { active: boolean }) {
   const [stack, setStack] = useState<View[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [playing, setPlaying] = useState<number | null>(null);
+  const [playing, setPlaying] = useState<number | null>(currentPreview());
   const [previewError, setPreviewError] = useState(false);
-  const audio = useRef<HTMLAudioElement>(null);
   const term = searchTerm(q);
   const view = current(stack);
+  void active; // the preview keeps playing when the panel closes or the window loses focus (user's choice)
 
-  const stop = useCallback(() => {
-    audio.current?.pause();
-    setPlaying(null);
-  }, []);
-
-  // Stop on panel close and when the window loses focus (data-idle on <html>).
-  useEffect(() => {
-    if (!active) stop();
-  }, [active, stop]);
-  useEffect(() => {
-    const mo = new MutationObserver(() => document.documentElement.hasAttribute("data-idle") && stop());
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-idle"] });
-    return () => mo.disconnect();
-  }, [stop]);
+  useEffect(() => subscribePreview(setPlaying), []);
 
   const run = (p: Promise<SearchResults>, next: Omit<View, "data">, replace = false) => {
-    stop();
     setBusy(true);
     setError(null);
     p.then(
@@ -53,16 +40,9 @@ export function MusicBrowser({ active }: { active: boolean }) {
   };
 
   const togglePlay = (id: number, url: string) => {
-    const el = audio.current;
-    if (!el) return;
     setPreviewError(false);
-    if (togglePreview(playing, id) == null) return stop();
-    el.src = url;
-    setPlaying(id);
-    el.play().catch(() => {
-      setPlaying(null);
-      setPreviewError(true);
-    });
+    if (togglePreview(playing, id) == null) return stopPreview();
+    playPreview(id, url).catch(() => setPreviewError(true));
   };
 
   const empty = view && !view.data.artists.length && !view.data.albums.length && !view.data.songs.length;
@@ -81,7 +61,6 @@ export function MusicBrowser({ active }: { active: boolean }) {
         <input id="music-search" value={q} maxLength={200} placeholder="Rechercher sur Apple Music" onChange={(e) => setQ(e.target.value)} />
         <button type="submit" className="btn btn--primary" disabled={!term || busy}>Rechercher</button>
       </form>
-      <audio ref={audio} onEnded={() => setPlaying(null)} onError={() => { setPlaying(null); setPreviewError(true); }} />
       {error && <p className="chat__error" role="alert">{error}</p>}
       {previewError && <p className="mb__note" role="status">Aperçu indisponible.</p>}
       {busy && <p className="mb__note" role="status">Chargement…</p>}
@@ -89,7 +68,7 @@ export function MusicBrowser({ active }: { active: boolean }) {
         <div className="mb__view">
           <div className="mb__nav">
             {canGoBack(stack) && (
-              <button type="button" className="btn btn--ghost" onClick={() => { stop(); setStack(back); }}>
+              <button type="button" className="btn btn--ghost" onClick={() => setStack(back)}>
                 <ArrowLeft size="var(--icon-sm)" aria-hidden="true" /> Retour
               </button>
             )}
