@@ -4,6 +4,7 @@ pub mod music;
 pub mod notify;
 pub mod store;
 pub mod supervisor;
+pub mod windows;
 
 use tauri::Manager;
 
@@ -50,6 +51,8 @@ pub fn run() {
             music::commands::music_set_volume,
             desktop::pick_folder,
             desktop::music_open,
+            windows::commands::pause_window_open,
+            windows::commands::pause_window_close,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Atelier");
