@@ -19,7 +19,7 @@ import {
   type PermissionMode,
   type Settings,
 } from "../../ipc/claude";
-import { Logo } from "../../ui/Logo";
+import { BlackHole } from "../../ui/BlackHole";
 import { PermissionHost } from "../../ui/PermissionDialog";
 import { MessageView } from "./MessageView";
 import { canSend, matchModel } from "./logic";
@@ -276,8 +276,8 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
         >
           <div className="welcome__panel">
             <div className="welcome__hero" aria-hidden="true">
-              <span className="welcome__halo" />
-              <Logo size="var(--logo-hero)" />
+              <BlackHole className="welcome__eclipse" />
+              <span className="welcome__letter">A</span>
             </div>
             <h1 className="welcome__title">Sur quel projet <span className="welcome__nowrap">travailles-tu&nbsp;?</span></h1>
             <p className="welcome__lede">Choisis un dossier, Claude ouvrira une session dedans.</p>

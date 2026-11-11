@@ -28,7 +28,7 @@ Spécification de design de référence. Chaque section `##` se lit seule. Valeu
 
 Refusé : charte et typo d'Anthropic ou look Claude Desktop (crème + serif + terracotta `#D97757`), template de chat IA (dégradés violets, verre dépoli), kit de cartes SaaS identiques (une seule ombre grise partout), labels en capitales espacées, emoji-icônes.
 
-**Logo « suspension »** (`src/ui/Logo.tsx`, `design/logo.svg`, icône `design/logo-1024.png`) : une lampe à dôme ambre pendue à sa tige, l'ampoule corail à moitié visible sous le bord, un cône et une flaque de lumière dessous. Volume suggéré par un reflet (`--color-accent-hover`). Couleurs uniquement par variables CSS dans l'app. Silhouette volontairement fermée et pleine : ni étoile, ni rayons, ni éclat — rien qui rappelle la marque Claude/Anthropic. Props `size`, `working` (se balance pendant que Claude écrit, §6.1). Toujours `aria-hidden` : le texte « Atelier » porte le nom.
+**Logo « A »** (`src/ui/Logo.tsx`, `design/logo.svg`, icône `design/logo-1024.png`) : un A majuscule ambre (`--color-accent`, police d'interface en graisse display), sans pictogramme. Sur l'accueil, la grande marque est une éclipse WebGL (`src/ui/BlackHole.tsx`, shader adapté de GradFlow, couleurs lues dans les tokens) avec le A au centre de son disque sombre ; sans WebGL, un halo `--glow-orb` la remplace.
 
 Principe directeur : *la lampe éclaire ce qui compte*. Le fond reste dans la pénombre ; la lumière (ambre) va à l'action et au focus, le jaune vif aux attentes (permission).
 
@@ -403,11 +403,11 @@ Le poste principal est en AZERTY français. Lettres liées par `event.key` (mné
 - Le mouvement répond à une action (ouvrir, déplier, confirmer) ou signale une attente. Rien d'autre ne bouge.
 - Mouvements autonomes, **un seul visible à la fois** : pulse du voyant running/waiting, rotation `CircleNotch`, et les deux boucles « lampe » ci-dessous. Aucun autre fond animé.
 - **3D « Veilleuse »** (CSS seul, pas de WebGL ; voir `design/RESEARCH.md`) :
-  - *La lampe se balance* : le logo de la barre du haut oscille autour de sa tige (`rotateY ±3×`, `rotateZ ±1× --sway-angle`, `--dur-sway`, `--ease-sway`, perspective `--depth-near`) **uniquement** quand la session est `running`. Immobile en attente d'autorisation : rien ne bouge pendant une permission.
-  - *Le halo respire* (accueil) : `--glow-orb` derrière la grande marque (`--logo-hero`) s'échelonne 0.9→1.06 et 0.65→1 d'opacité en `--dur-breathe`. N'existe que sans session, donc jamais en même temps que la lampe qui se balance.
-  - *Profondeur au pointeur* (accueil) : la marque s'incline vers le pointeur (≤ 2 × `--tilt-max`, `--depth-far`), le halo dérive à l'opposé (≤ `--parallax`). Positions écrites en variables CSS `--px/--py`, aucun rendu React.
+  - *Le A tourne* : le logo de la barre du haut pivote autour de son axe vertical (`rotateY ±6× --sway-angle`, `--dur-sway`, `--ease-sway`, perspective `--depth-near`), seulement pendant que Claude écrit ; immobile pendant une demande de permission.
+  - *L'éclipse* (accueil) : le shader `BlackHole` tourne en boucle lente derrière le A ; il ne dessine plus quand la fenêtre est cachée ou sans focus (`data-idle`).
+  - *Profondeur au pointeur* (accueil) : l'éclipse et son A s'inclinent ensemble vers le pointeur (≤ 2 × `--tilt-max`, perspective `--depth-far`).
   - *Entrée inclinée des messages* : chaque message entre une fois (`rotateX(--tilt-max)` + 12 px + fondu, `--dur-slow`, `--ease-enter`), charnière du côté de l'auteur. Jamais rejoué au streaming.
-  - Dans le fil du chat, les voyants des outils ne pulsent plus : la lampe qui se balance porte l'activité.
+  - Dans le fil du chat, les voyants des outils ne pulsent plus : le A qui tourne porte l'activité.
   - Les boucles se mettent en pause (`html[data-idle]`) quand la fenêtre est cachée ou sans focus (`visibilitychange`, `blur`).
   - Dialogue de permission : aucune animation propre, aucun effet dessus ni sur ses boutons, garde de 500 ms intacte.
 - Animer `opacity` et `transform` uniquement (pas `height`, `filter`, `box-shadow`).

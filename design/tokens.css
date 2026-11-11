@@ -58,8 +58,7 @@
   --ease-enter: cubic-bezier(0, 0, 0, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   /* 3D & ambient motion (DESIGN.md §6.1) — one continuous motion on screen at a time */
-  --dur-sway: 2800ms;    /* logo lamp swaying while Claude works */
-  --dur-breathe: 6400ms; /* welcome lamp halo breathing */
+  --dur-sway: 2800ms;    /* logo A turning while Claude works */
   --ease-sway: cubic-bezier(0.45, 0, 0.55, 1);
   --depth-near: 240px;   /* perspective of small 3D objects (logo) */
   --depth-far: 900px;    /* perspective of panels and message cards */
@@ -100,7 +99,7 @@
   --icon-sm: 16px;
   --icon-md: 20px;
   --icon-lg: 28px;
-  --logo-hero: 88px;  /* welcome lamp mark */
+  --logo-hero: 176px; /* welcome eclipse (shader) with the A mark */
   --parallax: 16px;   /* max halo drift behind the welcome mark */
   --send-size: 40px;  /* round send button inside the composer pill */
   --follow-gap: 48px; /* auto-scroll threshold, mirrors Chat.tsx */
@@ -298,7 +297,6 @@
     --dur-slow: 0ms;
     --dur-pulse: 0ms; /* components must render a static lamp when this is 0 */
     --dur-sway: 0ms;
-    --dur-breathe: 0ms;
     --tilt-max: 0deg;
     --parallax: 0px;
   }
