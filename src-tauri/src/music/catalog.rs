@@ -204,17 +204,35 @@ fn client() -> Result<&'static reqwest::Client, String> {
     Ok(CLIENT.get_or_init(|| c))
 }
 
+/// Largest Apple response we accept; a search page is a few hundred KiB at most.
+const MAX_BODY: usize = 2 * 1024 * 1024;
+const TOO_BIG: &str = "Réponse trop volumineuse d'Apple Music.";
+
+/// Appends `chunk` to `buf`, refusing to grow past `cap` bytes.
+fn push_capped(buf: &mut Vec<u8>, chunk: &[u8], cap: usize) -> Result<(), String> {
+    if buf.len() + chunk.len() > cap {
+        return Err(TOO_BIG.into());
+    }
+    buf.extend_from_slice(chunk);
+    Ok(())
+}
+
 async fn fetch(url: String) -> Result<Value, String> {
-    let res = client()?.get(url).send().await.map_err(|_| OFFLINE)?;
+    let mut res = client()?.get(url).send().await.map_err(|_| OFFLINE)?;
     if !res.status().is_success() {
         return Err(format!(
             "Apple Music a répondu par une erreur ({}).",
             res.status().as_u16()
         ));
     }
-    res.json()
-        .await
-        .map_err(|_| "Réponse d'Apple Music illisible.".into())
+    if res.content_length().is_some_and(|n| n > MAX_BODY as u64) {
+        return Err(TOO_BIG.into());
+    }
+    let mut body = Vec::new();
+    while let Some(chunk) = res.chunk().await.map_err(|_| OFFLINE)? {
+        push_capped(&mut body, &chunk, MAX_BODY)?;
+    }
+    serde_json::from_slice(&body).map_err(|_| "Réponse d'Apple Music illisible.".into())
 }
 
 #[tauri::command]
@@ -264,6 +282,20 @@ pub fn music_open_url(url: String) -> Result<(), String> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn body_is_capped() {
+        let fill = |chunks: &[&[u8]]| {
+            let mut buf = Vec::new();
+            chunks
+                .iter()
+                .try_for_each(|c| push_capped(&mut buf, c, 4))
+                .map(|_| buf)
+        };
+        assert_eq!(fill(&[b"ab", b"cd"]), Ok(b"abcd".to_vec()));
+        assert_eq!(fill(&[b"ab", b"cd", b"e"]), Err(TOO_BIG.to_string()));
+        assert_eq!(fill(&[b"abcde"]), Err(TOO_BIG.to_string()));
+    }
 
     #[test]
     fn url_building_encodes_term() {
