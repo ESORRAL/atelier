@@ -61,7 +61,7 @@
   --dur-sway: 2800ms;    /* logo A turning while Claude works */
   --ease-sway: cubic-bezier(0.45, 0, 0.55, 1);
   --depth-near: 240px;   /* perspective of small 3D objects (logo) */
-  --eclipse-veil: 0.75; /* how much the surface color covers the background eclipse (text legibility) */
+  --eclipse-veil: 0.9; /* how much the surface color covers the background eclipse (text legibility) */
   --depth-far: 900px;    /* perspective of panels and message cards */
   --sway-angle: 4deg;    /* logo sway: rotateZ ±1×, rotateY ±3× */
   --tilt-max: 6deg;      /* welcome hero pointer tilt, and card tilt-in start */
