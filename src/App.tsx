@@ -6,6 +6,7 @@ import { logEvent } from "./features/chat/sessions";
 import { getTheme, setTheme } from "./ui/theme";
 import { BeamsBackground } from "@/components/ui/beams-background";
 import { Logo } from "./ui/Logo";
+import { MiniPlayer } from "./features/music/MiniPlayer";
 import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
 import { isTabId, TABS, type TabId } from "./shell/tabs";
@@ -141,6 +142,7 @@ export default function App() {
           Atelier
         </span>
         <div className="topbar__slot" ref={setSlot} />
+        <MiniPlayer />
         {inFocus && (
           <FocusTimer state={focus.state} now={focus.now} notice={focus.notice} onDismiss={focus.dismiss} onDurations={focus.setDurations} />
         )}
