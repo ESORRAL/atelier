@@ -108,3 +108,10 @@ test("permission_done removes the request from the queue", () => {
   s = reduce(s, { kind: "permission_done", requestId: "r1" });
   expect(s.permissions).toEqual([]);
 });
+
+test("a state event clears the previous error unless it carries one", () => {
+  const err = reduce(initialState, { kind: "error", message: "boom", fatal: false });
+  expect(err.error).toBe("boom");
+  expect(reduce(err, { kind: "state", state: "running" }).error).toBeNull();
+  expect(reduce(err, { kind: "state", state: "crashed", error: "x" }).error).toBe("x");
+});

@@ -130,9 +130,11 @@ export default function App() {
           Atelier
         </span>
         <div className="topbar__slot" ref={setSlot} />
-        <button type="button" className="btn btn--ghost" onClick={() => setDemo(!demo)}>
-          {demo ? "Retour au chat" : "Démo des composants"}
-        </button>
+        {import.meta.env.DEV && (
+          <button type="button" className="btn btn--ghost" onClick={() => setDemo(!demo)}>
+            {demo ? "Retour au chat" : "Démo des composants"}
+          </button>
+        )}
         <button type="button" className="btn btn--ghost" onClick={() => setPalette(true)} title="Palette de commandes (Ctrl+K)">
           <MagnifyingGlass size="var(--icon-sm)" aria-hidden="true" /> Ctrl+K
         </button>

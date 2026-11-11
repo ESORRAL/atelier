@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Folder, Stop, PaperPlaneRight } from "@phosphor-icons/react";
+import { Folder, Stop, PaperPlaneRight, Plus } from "@phosphor-icons/react";
 import {
   permissionRespond,
   sessionClose,
@@ -9,16 +9,19 @@ import {
   sessionModels,
   sessionSend,
   sessionSetModel,
+  sessionSetPermissionMode,
   sessionsList,
   sessionStart,
   settingsGet,
   type ModelInfo,
   type SessionEntry,
   type SessionEvent,
+  type PermissionMode,
   type Settings,
 } from "../../ipc/claude";
 import { PermissionHost } from "../../ui/PermissionDialog";
 import { MessageView } from "./MessageView";
+import { canSend, matchModel } from "./logic";
 import { initialState, reduce } from "./reduce";
 import "./chat.css";
 
@@ -30,6 +33,11 @@ const STATE_LABEL: Record<string, string> = {
   closed: "Session terminée",
   crashed: "Session interrompue",
 };
+const MODES: [PermissionMode, string][] = [
+  ["default", "Demander à chaque fois"],
+  ["acceptEdits", "Accepter les modifications"],
+  ["plan", "Plan seulement"],
+];
 const errText = (e: unknown) => (typeof e === "string" ? e : "Une erreur est survenue.");
 const euro = (usd: number) => `${usd.toFixed(4)} $`;
 
@@ -53,6 +61,9 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
   const [recent, setRecent] = useState<string[]>([]);
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
+  const [chosenModel, setChosenModel] = useState<string | null>(null); // local choice wins over s.model
+  const [costBase, setCostBase] = useState(0); // index cost at resume; the SDK total restarts at 0
+  const [mode, setMode] = useState<PermissionMode>("default");
   const [draft, setDraft] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const settings = useRef<Settings | null>(null);
@@ -91,9 +102,10 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
     }
   }, []);
 
-  // Models become available once the bridge is ready.
+  // Models are loaded as soon as a key exists.
   useEffect(() => {
-    if (key && s.sessionState === "idle" && !models.length) sessionModels(key).then(setModels, () => {});
+    // Retried at each state change: the bridge may not answer while still starting.
+    if (key && !models.length) sessionModels(key).then(setModels, () => {});
   }, [key, s.sessionState, models.length]);
 
   // Auto-follow unless the user scrolled up by more than 48 px.
@@ -111,6 +123,8 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
     keyRef.current = null;
     setKey(null);
     setModels([]);
+    setChosenModel(null);
+    setCostBase(resumeFrom?.costUsd ?? 0);
     dispatch({ kind: "reset" });
     onSessionReset?.();
     try {
@@ -120,11 +134,14 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
         const past = await sessionHistory(resumeFrom.key);
         // Pending permission requests of a past session are obsolete.
         past.filter((e) => e.kind === "sdk" || e.kind === "user").forEach(dispatch);
+        dispatch({ kind: "zero_cost" });
       }
+      const pm = settings.current?.defaultPermissionMode ?? "default";
+      setMode(pm);
       const k = await sessionStart(
         dir,
         resumeFrom?.model ?? settings.current?.defaultModel ?? null,
-        settings.current?.defaultPermissionMode ?? "default",
+        pm,
         resumeFrom?.claudeSessionId ?? null,
         makeOnEvent(mine),
       );
@@ -142,7 +159,8 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
 
   const send = () => {
     const text = draft.trim();
-    if (!key || !text) return;
+    if (!key || !canSend(s.sessionState, text)) return;
+    setLocalError(null);
     setDraft("");
     follow.current = true;
     sessionSend(key, text).catch((e) => setLocalError(errText(e)));
@@ -155,6 +173,8 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
     keyRef.current = null;
     setKey(null);
     setModels([]);
+    setChosenModel(null);
+    setCostBase(0);
     setLocalError(null);
     dispatch({ kind: "reset" });
     onSessionReset?.();
@@ -162,8 +182,8 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
   };
   if (controlsRef) controlsRef.current = { newSession, interrupt };
   useEffect(() => {
-    onInfo?.({ key, cwd, model: s.model, costUsd: s.costUsd, state: s.sessionState ? STATE_LABEL[s.sessionState] : null });
-  }, [onInfo, key, cwd, s.model, s.costUsd, s.sessionState]);
+    onInfo?.({ key, cwd, model: s.model, costUsd: costBase + s.costUsd, state: s.sessionState ? STATE_LABEL[s.sessionState] : null });
+  }, [onInfo, key, cwd, s.model, s.costUsd, costBase, s.sessionState]);
   const busy = s.sessionState === "running" || s.sessionState === "waiting_permission";
 
   const last = s.messages[s.messages.length - 1];
@@ -177,6 +197,9 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
         : s.sessionState === "running"
           ? "Claude écrit"
           : "";
+  // A new state event ends the previous local error too.
+  useEffect(() => setLocalError(null), [s.sessionState]);
+  const modelValue = chosenModel ?? matchModel(s.model, models) ?? s.model ?? "";
   const error = localError ?? s.error;
 
   const head = (
@@ -186,19 +209,52 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
         <select
           className="session__model"
           aria-label="Modèle"
-          value={s.model ?? ""}
+          value={modelValue}
           disabled={!models.length}
-          onChange={(e) => key && sessionSetModel(key, e.target.value).catch((x) => setLocalError(errText(x)))}
+          onChange={(e) => {
+            const v = e.target.value;
+            const prev = chosenModel;
+            setChosenModel(v);
+            sessionSetModel(key, v).catch((x) => {
+              setChosenModel(prev);
+              setLocalError(errText(x));
+            });
+          }}
         >
-          {s.model && !models.some((m) => m.value === s.model) && <option value={s.model}>{s.model}</option>}
+          {modelValue && !models.some((m) => m.value === modelValue) && <option value={modelValue}>{modelValue}</option>}
           {models.map((m) => (
             <option key={m.value} value={m.value}>{m.displayName}</option>
           ))}
         </select>
       )}
+      {key && (
+        <select
+          className="session__model"
+          aria-label="Mode de permission"
+          value={mode}
+          onChange={(e) => {
+            const prev = mode;
+            const v = e.target.value as PermissionMode;
+            setMode(v);
+            sessionSetPermissionMode(key, v).catch((x) => {
+              setMode(prev);
+              setLocalError(errText(x));
+            });
+          }}
+        >
+          {MODES.map(([v, l]) => (
+            <option key={v} value={v}>{l}</option>
+          ))}
+        </select>
+      )}
       <span className="session__cost" aria-label="Coût de la session">
-        {euro(s.costUsd)}
+        {euro(costBase + s.costUsd)}
       </span>
+      {key && (
+        <button type="button" className="btn btn--ghost" onClick={newSession}>
+          <Plus size="var(--icon-sm)" aria-hidden="true" /> Nouvelle session
+        </button>
+      )}
     </div>
   );
 
@@ -296,7 +352,7 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
                   <Stop size="var(--icon-sm)" aria-hidden="true" /> Arrêter (Échap)
                 </button>
               )}
-              <button type="button" className="composer__send" onClick={send} disabled={!draft.trim()} aria-label="Envoyer" title="Envoyer (Entrée)">
+              <button type="button" className="composer__send" onClick={send} disabled={!canSend(s.sessionState, draft)} aria-label="Envoyer" title="Envoyer (Entrée)">
                 <PaperPlaneRight size="var(--icon-md)" weight="fill" aria-hidden="true" />
               </button>
             </div>
