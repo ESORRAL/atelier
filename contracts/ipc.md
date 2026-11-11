@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 1.3 (phase 4). 1.3 : commandes `music_*` et `usage_summary` (§6, §7).
 Version 1.2 (phase 3). 1.2 : états revus (`idle` dès que le pont est prêt, `running` dès l'envoi), reprise sur la même clé, index créé au premier message.
 Version 1.1 (phase 2 : Chat). 1.1 : ajout de `SessionEvent` `user`, pour réafficher les messages de l'utilisateur à la reprise. Seul l'architecte modifie ce fichier. Les noms sont exacts : les tâches
 parallèles s'appuient dessus sans se voir.
@@ -151,3 +152,47 @@ Lancé par `node <dossier du pont>/main.mjs` (JavaScript sans compilation). Le c
 `resource_dir()` de Tauri (paquet installé : `/usr/lib/Atelier/bridge/main.mjs`), avec repli sur
 `<racine du repo>/bridge/` en build debug seulement. `bridge/node_modules` doit exister avant tout
 `cargo build` (ressource vérifiée par `tauri-build`) : `npm run build:bridge`.
+
+## 6. Musique (module `music`, phase 4)
+
+Télécommande des lecteurs MPRIS du bureau (Spotify, VLC, Firefox…) par la crate `mpris`. Les appels D-Bus
+sont bloquants : ils passent par `tokio::task::spawn_blocking`. L'UI interroge `music_status` toutes les
+secondes quand le mini-lecteur est visible (pas d'événement poussé en v0.2).
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `music_players` | — | `PlayerInfo[]` |
+| `music_status` | `player: string \| null` | `NowPlaying \| null` (`null` : aucun lecteur) |
+| `music_control` | `player: string`, `action: "play_pause" \| "next" \| "previous" \| "stop"` | `null` |
+| `music_set_volume` | `player: string`, `volume: number` (0 à 1) | `null` |
+
+`player: null` → le lecteur en lecture s'il y en a un, sinon le premier trouvé.
+
+```ts
+type PlayerInfo = { id: string; name: string };            // id = nom de bus D-Bus, name = identité lisible
+type NowPlaying = {
+  player: string; name: string;
+  status: "playing" | "paused" | "stopped";
+  title: string | null; artist: string | null; album: string | null;
+  lengthMs: number | null; positionMs: number | null; volume: number | null;
+  canGoNext: boolean; canGoPrevious: boolean; canControl: boolean;
+};
+```
+`shortcut:` pas de pochette en v0.2 (URL distante ou `file://`, bloquées par la CSP) ; à ajouter en
+servant l'image par le cœur.
+
+## 7. Usage (module `store`, phase 4)
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `usage_summary` | `days: number` (1 à 365) | `UsageSummary` |
+
+```ts
+type ModelUsage = { costUsd: number; inputTokens: number; outputTokens: number };
+type UsageDay = { day: string; costUsd: number; byModel: Record<string, ModelUsage> }; // day = AAAA-MM-JJ, heure locale
+type UsageSummary = { days: UsageDay[]; totalCostUsd: number; byModel: Record<string, ModelUsage> };
+```
+Calcul : pour chaque entrée d'index dont `updatedAt` tombe dans la fenêtre, le dernier `result.modelUsage`
+de son journal (cumulé sur la session) ; jour = jour local de `updatedAt`. `days` est trié du plus ancien
+au plus récent, jours vides inclus (coût 0). `shortcut:` une session qui s'étale sur plusieurs jours est
+comptée sur son dernier jour ; à affiner en journalisant l'heure de chaque `result`.
