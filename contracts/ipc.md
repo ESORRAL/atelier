@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 2.0 (phase 5). 2.0 : second cerveau, graphe, projets, fenêtre Instagram (§10 à §13) ; `Settings` gagne `vaultPath` et `vaultProject`.
 Version 1.6 (phase 4). 1.6 : §9 retiré à la demande de l'utilisateur (seuls des aperçus de 30 s étaient jouables).
 Version 1.5 (phase 4). 1.5 : recherche dans le catalogue Apple (§9).
 Version 1.4 (phase 4). 1.4 : `pick_folder` et `music_open` (§8).
@@ -70,6 +71,8 @@ type Settings = {
   defaultModel: string | null;
   defaultPermissionMode: PermissionMode;
   recentCwds: string[];            // 10 au plus, le plus récent en tête
+  vaultPath: string | null;        // dossier du vault Obsidian ; défaut : $ATELIER_VAULT s'il est défini, sinon null
+  vaultProject: string;            // dossier du projet dans le vault, relatif ; défaut "01 - Projets/Atelier"
 };
 ```
 
@@ -219,3 +222,75 @@ par `supervisor` », justifiée parce que `xdg-open` rend la main aussitôt.
 Commandes `music_search`, `music_lookup`, `music_open_url` supprimées (v1.6) : sans compte développeur
 Apple, l'app ne pouvait jouer que des aperçus de 30 s. La recherche passe par `music_open` (§8), qui ouvre
 les résultats dans Apple Music sur le navigateur. CSP revenue à `default-src 'self'`.
+
+## 10. Second cerveau (module `vault`, phase 5)
+
+Lecture des notes Markdown du projet dans le vault Obsidian ; **une seule écriture possible** : l'ajout en
+tête du journal (récap de fin de journée). Racine = `vaultPath/vaultProject`.
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `vault_list` | — | `VaultNote[]` (notes `.md` de la racine et de ses sous-dossiers, triées par modification décroissante, 500 au plus) |
+| `vault_read` | `path: string` (relatif à la racine) | `string` (Markdown, 1 Mio au plus) |
+| `vault_search` | `query: string` (2 à 100 caractères) | `VaultHit[]` (50 au plus, insensible à la casse et aux accents) |
+| `vault_open` | `path: string` | `null` : ouvre la note dans Obsidian (`obsidian://open?vault=<nom>&file=<chemin>`, xdg-open détaché) |
+| `vault_append_journal` | `markdown: string` (1 à 20 000 caractères) | `null` : insère le bloc sous le titre `# …` de `Journal.md` de la racine |
+
+```ts
+type VaultNote = { path: string; title: string; modified: number };  // title = premier titre # ou nom du fichier ; ms Unix
+type VaultHit = { path: string; title: string; line: number; excerpt: string };  // excerpt ≤ 160 caractères
+```
+- Tout `path` est validé : relatif, extension `.md`, sans `..`, résolu (liens symboliques suivis) **à
+  l'intérieur** de la racine ; sinon erreur française. Vault non réglé ou absent : erreur « Vault Obsidian non
+  configuré » (l'UI propose les Réglages).
+- `vault_append_journal` n'écrit que `Journal.md` de la racine, par écriture atomique ; le crée s'il manque.
+
+## 11. Graphe du code (module `project`, phase 5)
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `graph_summary` | `dir: string` (dossier de projet absolu) | `GraphSummary \| null` (`null` : pas de `graphify-out/graph.json`) |
+| `graph_update` | `dir: string` | `GraphSummary` : lance `graphify update .` dans `dir` (superviseur, 180 s au plus) puis relit |
+
+```ts
+type GraphSummary = {
+  nodes: number; edges: number; builtAtCommit: string | null; headCommit: string | null; // fraîcheur
+  communities: { id: number; name: string; size: number }[];      // 30 plus grandes
+  topNodes: { label: string; degree: number; file: string | null; community: string | null }[]; // 25 plus connectés
+  reportMarkdown: string | null;                                     // GRAPH_REPORT.md, 256 Kio au plus
+};
+```
+Format réel : `graph.json` a `nodes[]` (`id`, `label`, `community`, `community_name`, `source_file`),
+`links[]` (`source`, `target`) et `built_at_commit`. **`graph.html` n'est jamais lu ni affiché.**
+
+## 12. Projets (module `project`, phase 5)
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `project_info` | `dir: string` | `ProjectInfo` (lecture seule) |
+
+```ts
+type ProjectInfo = {
+  isGit: boolean; branch: string | null; dirtyFiles: number;
+  worktrees: { path: string; branch: string | null; head: string; locked: boolean }[];
+  recentCommits: { hash: string; subject: string; date: number }[];   // 10 derniers ; date en ms Unix
+  tasks: { id: string; title: string; status: string; agent: string | null; model: string | null; file: string }[]; // tasks/TASK-*.md
+};
+```
+`git` lancé par le superviseur, **lecture seule** (`rev-parse`, `status --porcelain`, `worktree list
+--porcelain`, `log`), délai 10 s par commande. Tâches : en-tête YAML simple des fiches (`id`, `title`,
+`status`, `agent`, `model`), lu sans dépendance YAML.
+
+## 13. Fenêtre « pause » Instagram (module `windows`, phase 5)
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `pause_window_open` | — | `null` : ouvre la fenêtre `instagram`, ou la ramène au premier plan si elle existe |
+| `pause_window_close` | — | `null` |
+
+Règles d'ADR-0003 **avec les corrections de sa revue** : fenêtre `WebviewWindow` séparée, label
+`instagram`, **aucune capability**, aucune entrée `remote`, aucun script injecté, `data_directory` propre,
+user-agent par défaut. Navigation : `https` uniquement, hôtes `instagram.com`, `cdninstagram.com`,
+`facebook.com`, `fbsbx.com`, `google.com`, `gstatic.com`, `recaptcha.net` (et leurs sous-domaines), plus
+`about:blank` ; tout autre lien (dont le redirecteur `l.facebook.com`) est bloqué dans la fenêtre et ouvert
+dans le navigateur système s'il est `https`.
