@@ -10,8 +10,8 @@ import "./brain.css";
 const msg = (e: unknown) => (typeof e === "string" ? e : e instanceof Error ? e.message : String(e));
 const NOT_SET = "Vault Obsidian non configuré";
 
-// shortcut: views have no navigation API, so replay the Settings tab shortcut (Ctrl+8); replace with a shell callback.
-const openSettings = () => window.dispatchEvent(new KeyboardEvent("keydown", { ctrlKey: true, code: "Digit8", key: "8" }));
+// App listens for "atelier:goto" and switches tab (views have no direct access to the shell).
+const openSettings = () => window.dispatchEvent(new CustomEvent("atelier:goto", { detail: "settings" }));
 
 export default function SecondBrain() {
   const [notes, setNotes] = useState<VaultNote[] | null>(null);
