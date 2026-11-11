@@ -120,6 +120,7 @@ export default function App() {
     { id: "new", label: "Nouvelle session", group: "Actions", run: () => { goTo("chat"); controls.current?.newSession(); } },
     { id: "interrupt", label: "Interrompre", group: "Actions", run: () => controls.current?.interrupt() },
     { id: "focus", label: inFocus ? "Quitter le mode Focus" : "Activer le mode Focus", group: "Actions", shortcut: "Ctrl+Maj+F", run: toggleFocus },
+    ...(inFocus ? [] : [{ id: "music", label: musicShown ? "Fermer le panneau Musique" : "Ouvrir le panneau Musique", group: "Actions", run: () => (musicShown ? closeMusic() : setMusic(true)) }]),
     { id: "theme", label: "Basculer le thème", group: "Actions", run: toggleTheme },
     { id: "panel", label: "Replier ou ouvrir le panneau droit", group: "Actions", run: togglePanel },
     { id: "drawer", label: "Replier ou ouvrir le journal", group: "Actions", shortcut: "Ctrl+²", run: toggleDrawer },
