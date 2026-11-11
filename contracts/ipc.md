@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 1.5 (phase 4). 1.5 : recherche dans le catalogue Apple (§9).
 Version 1.4 (phase 4). 1.4 : `pick_folder` et `music_open` (§8).
 Version 1.3 (phase 4). 1.3 : commandes `music_*` et `usage_summary` (§6, §7).
 Version 1.2 (phase 3). 1.2 : états revus (`idle` dès que le pont est prêt, `running` dès l'envoi), reprise sur la même clé, index créé au premier message.
@@ -211,3 +212,36 @@ comptée sur son dernier jour ; à affiner en journalisant l'heure de chaque `re
 `https://music.apple.com/library/playlists`. Ouverture par `xdg-open`, **détaché** du groupe de process de
 l'app (le navigateur lancé ne doit pas mourir avec Atelier) : c'est la seule exception à « tout process passe
 par `supervisor` », justifiée parce que `xdg-open` rend la main aussitôt.
+
+## 9. Recherche dans le catalogue Apple (module `music`, phase 4)
+
+Source : l'API publique de recherche iTunes (`https://itunes.apple.com/search` et `/lookup`), sans clé ni
+compte. Les requêtes partent **du cœur** (la CSP interdit tout appel réseau depuis l'UI). Ce que tu tapes est
+envoyé à Apple. Pas de playlists ni de bibliothèque de l'utilisateur (compte développeur requis) ; pas de
+lecture complète (DRM) : seuls les **aperçus de 30 s** (`previewUrl`) se jouent dans l'app.
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `music_search` | `term: string` (1 à 200), `kind: "all" \| "artist" \| "album" \| "song"` | `SearchResults` |
+| `music_lookup` | `id: number`, `what: "artist_albums" \| "album_songs"` | `SearchResults` |
+| `music_open_url` | `url: string` | `null` |
+
+```ts
+type MusicArtist = { id: number; name: string; genre: string | null; url: string };
+type MusicAlbum = { id: number; name: string; artist: string; artworkUrl: string | null; year: number | null;
+                    trackCount: number | null; url: string };
+type MusicSong = { id: number; name: string; artist: string; album: string | null; artworkUrl: string | null;
+                   durationMs: number | null; previewUrl: string | null; url: string };
+type SearchResults = { artists: MusicArtist[]; albums: MusicAlbum[]; songs: MusicSong[] };
+```
+- `kind: "all"` : 5 artistes, 10 albums, 15 morceaux au plus (trois requêtes) ; sinon 25 éléments du seul type.
+- Pays : `fr` en dur (réglage plus tard). `artworkUrl` : 200×200 (le cœur remplace la taille de l'URL d'Apple).
+- **Le cœur ne fait confiance à rien dans la réponse** : il ne garde que des URL `https` dont l'hôte est :
+  `url` → `music.apple.com` ou `itunes.apple.com` ; `artworkUrl` → `*.mzstatic.com` ; `previewUrl` →
+  `audio-ssl.itunes.apple.com` ou `*.mzstatic.com`. Une URL qui ne passe pas devient `null` (et un élément
+  sans `url` valide est écarté).
+- `music_open_url` n'ouvre (xdg-open, détaché comme `music_open`) que `https` + `music.apple.com` ou
+  `itunes.apple.com` ; sinon erreur française.
+- Délai de 8 s par requête, erreur française lisible hors ligne (« Pas de connexion à Apple Music »).
+- CSP (`tauri.conf.json`) : seuls ajouts autorisés, `img-src` `https://*.mzstatic.com` et `media-src`
+  `https://audio-ssl.itunes.apple.com https://*.mzstatic.com`. Aucun autre domaine, aucun `connect-src`.
