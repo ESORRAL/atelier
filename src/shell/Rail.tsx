@@ -1,6 +1,6 @@
 import { TABS, type TabId } from "./tabs";
 
-export function Rail({ active, onSelect }: { active: TabId | null; onSelect: (id: TabId) => void }) {
+export function Rail({ active, onSelect, hidden = [] }: { active: TabId | null; onSelect: (id: TabId) => void; hidden?: TabId[] }) {
   // Up/Down move focus between rail items (roving tabindex).
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     const d = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
@@ -13,6 +13,7 @@ export function Rail({ active, onSelect }: { active: TabId | null; onSelect: (id
   return (
     <nav className="rail" aria-label="Onglets" onKeyDown={onKeyDown}>
       {TABS.map((t, i) => {
+        if (hidden.includes(t.id)) return null;
         const on = t.id === active;
         return (
           <button
