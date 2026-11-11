@@ -3,6 +3,7 @@ import { Crosshair, MagnifyingGlass, SidebarSimple, Terminal } from "@phosphor-i
 import type { SessionEvent } from "./ipc/claude";
 import type { ChatControls, ChatInfo, SessionEventLog } from "./features/chat/Chat";
 import { logEvent } from "./features/chat/sessions";
+import { applyAgentEvent, type AgentStore } from "./features/agents/reduce";
 import { getTheme, setTheme } from "./ui/theme";
 import { BeamsBackground } from "@/components/ui/beams-background";
 import { Logo } from "./ui/Logo";
@@ -63,6 +64,7 @@ export default function App() {
 
   // Raw events per session key: kept in a ref (tokens arrive fast), rendered at most once per frame while open.
   const events = useRef<SessionEventLog>(new Map());
+  const agents = useRef<AgentStore>(new Map()); // sub-agent cards: kept apart so the 200-line log never drops a card
   const [, bump] = useState(0);
   const drawerOpen = useRef(false);
   drawerOpen.current = drawer === "open" || tab === "agents"; // the live Agents tab also needs re-renders
@@ -77,6 +79,7 @@ export default function App() {
   // shortcut: logs of closed sessions are kept (200 lines each) until the app quits, fine for a few dozen sessions a day.
   const onEvent = useCallback((key: string, e: SessionEvent) => {
     logEvent(events.current, key, e);
+    if (e.kind === "sdk") applyAgentEvent(agents.current, key, e.message as Record<string, unknown>);
     schedule();
   }, []);
   const shownEvents = (info.key && events.current.get(info.key)) || [];
@@ -184,8 +187,16 @@ export default function App() {
           {demo ? (
             <Suspense fallback={null}><Demo /></Suspense>
           ) : tab === "agents" ? (
-            // shortcut: only switches to the Chat tab; showing the origin session needs a ChatControls.openSession(key).
-            <Suspense fallback={null}><Agents events={events.current} onOpenSession={() => goTo("chat")} /></Suspense>
+            <Suspense fallback={null}>
+              <Agents
+                store={agents.current}
+                onOpenSession={(key) => {
+                  const ok = controls.current?.openSession(key) ?? false;
+                  if (ok) goTo("chat");
+                  return ok;
+                }}
+              />
+            </Suspense>
           ) : (
             View && <Suspense fallback={null}><View /></Suspense>
           )}
