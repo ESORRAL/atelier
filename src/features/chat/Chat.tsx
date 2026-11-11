@@ -19,6 +19,7 @@ import {
   type PermissionMode,
   type Settings,
 } from "../../ipc/claude";
+import { Logo } from "../../ui/Logo";
 import { PermissionHost } from "../../ui/PermissionDialog";
 import { MessageView } from "./MessageView";
 import { canSend, matchModel } from "./logic";
@@ -42,7 +43,7 @@ const errText = (e: unknown) => (typeof e === "string" ? e : "Une erreur est sur
 const euro = (usd: number) => `${usd.toFixed(4)} $`;
 
 /** What the app shell shows about the current session (right panel). */
-export type ChatInfo = { key: string | null; cwd: string; model: string | null; costUsd: number; state: string | null };
+export type ChatInfo = { key: string | null; cwd: string; model: string | null; costUsd: number; state: string | null; working: boolean };
 /** Imperative actions the shell's command palette can trigger. */
 export type ChatControls = { newSession: () => void; interrupt: () => void };
 
@@ -182,7 +183,7 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
   };
   if (controlsRef) controlsRef.current = { newSession, interrupt };
   useEffect(() => {
-    onInfo?.({ key, cwd, model: s.model, costUsd: costBase + s.costUsd, state: s.sessionState ? STATE_LABEL[s.sessionState] : null });
+    onInfo?.({ key, cwd, model: s.model, costUsd: costBase + s.costUsd, state: s.sessionState ? STATE_LABEL[s.sessionState] : null, working: s.sessionState === "running" });
   }, [onInfo, key, cwd, s.model, s.costUsd, costBase, s.sessionState]);
   const busy = s.sessionState === "running" || s.sessionState === "waiting_permission";
 
@@ -263,8 +264,21 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
       {slot ? createPortal(head, slot) : head}
 
       {!key ? (
-        <div className="welcome">
+        <div
+          className="welcome"
+          onPointerMove={(e) => {
+            // Pointer position in [-0.5, 0.5], read by CSS for the hero tilt and halo parallax.
+            const el = e.currentTarget;
+            const r = el.getBoundingClientRect();
+            el.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+            el.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+          }}
+        >
           <div className="welcome__panel">
+            <div className="welcome__hero" aria-hidden="true">
+              <span className="welcome__halo" />
+              <Logo size="var(--logo-hero)" />
+            </div>
             <h1 className="welcome__title">Sur quel projet <span className="welcome__nowrap">travailles-tu&nbsp;?</span></h1>
             <p className="welcome__lede">Choisis un dossier, Claude ouvrira une session dedans.</p>
             <form

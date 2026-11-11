@@ -62,15 +62,6 @@ body {
   font-weight: var(--weight-display);
   letter-spacing: var(--tracking-display);
 }
-/* The half-lit lamp: amber half, coral rim. */
-.topbar__lamp {
-  width: var(--icon-md);
-  height: var(--icon-md);
-  border-radius: var(--radius-full);
-  border: var(--focus-ring-w) solid var(--color-coral);
-  background: linear-gradient(90deg, var(--color-accent) 50%, var(--color-bg-base) 50%);
-  box-shadow: 0 0 var(--space-4) var(--color-accent);
-}
 .topbar__slot {
   flex: 1;
   min-width: 0;

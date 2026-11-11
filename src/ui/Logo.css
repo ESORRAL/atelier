@@ -1,0 +1,21 @@
+.logo {
+  display: inline-block;
+  flex: none;
+  perspective: var(--depth-near);
+}
+.logo__svg { display: block; overflow: visible; transform-origin: 50% 5%; }
+.logo__shade { fill: var(--color-accent); }
+.logo__sheen { fill: none; stroke: var(--color-accent-hover); stroke-width: 2.5; stroke-linecap: round; }
+.logo__bulb { fill: var(--color-coral); }
+.logo__light { stop-color: var(--color-accent); }
+.logo__pool { fill: var(--color-accent); opacity: 0.35; }
+
+/* Claude is working: the pendant lamp sways, hung from its stem (the only continuous motion). */
+@keyframes logo-sway {
+  from { transform: rotateY(calc(var(--sway-angle) * -3)) rotateZ(calc(var(--sway-angle) * -1)); }
+  to { transform: rotateY(calc(var(--sway-angle) * 3)) rotateZ(var(--sway-angle)); }
+}
+.logo--working .logo__svg {
+  animation: logo-sway var(--dur-sway) var(--ease-sway) infinite alternate;
+}
+:root[data-idle] .logo--working .logo__svg { animation-play-state: paused; }

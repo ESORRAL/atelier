@@ -21,12 +21,14 @@ Spécification de design de référence. Chaque section `##` se lit seule. Valeu
 | Idée | Traduction visuelle |
 |---|---|
 | Bois sombre | Fonds brun très sombre (`#17120E` → `#2D241D`), jamais de noir pur ni de gris neutre. Surfaces mates. |
-| La lampe | **Signature unique de l'app** : un halo ambre radial très doux (`--glow-lamp`) en haut de la zone principale, et un liseré clair sur le bord haut des cartes (`--shadow-card`), comme la lumière qui accroche. Le logo est une lampe à moitié allumée (◐ ambre cerclé corail). |
+| La lampe | **Signature unique de l'app** : un halo ambre radial très doux (`--glow-lamp`) en haut de la zone principale, et un liseré clair sur le bord haut des cartes (`--shadow-card`), comme la lumière qui accroche. Le logo est une **suspension à dôme** (voir ci-dessous). |
 | Deux accents chauds | **Ambre** (`#F2A54A` sombre / `#9A520E` clair) : action principale, focus, envoi, liens. **Corail** (`#FF8E72` / `#A63F26`) : la voix de l'utilisateur (bulles), le cercle du logo. |
 | Formes généreuses | Rayons larges par hiérarchie : pilules pour les contrôles et le composer, cartes à 20 px, panneau d'accueil à 28 px. Coins « bec » (6 px) côté auteur sur les messages. |
 | Voyants « tally » | Conservés : voyant rond de 8 px + icône + libellé, dans une pastille, avec un léger halo « lampe allumée ». Jaune lampe vif pour « attend ta décision ». |
 
 Refusé : charte et typo d'Anthropic ou look Claude Desktop (crème + serif + terracotta `#D97757`), template de chat IA (dégradés violets, verre dépoli), kit de cartes SaaS identiques (une seule ombre grise partout), labels en capitales espacées, emoji-icônes.
+
+**Logo « suspension »** (`src/ui/Logo.tsx`, `design/logo.svg`, icône `design/logo-1024.png`) : une lampe à dôme ambre pendue à sa tige, l'ampoule corail à moitié visible sous le bord, un cône et une flaque de lumière dessous. Volume suggéré par un reflet (`--color-accent-hover`). Couleurs uniquement par variables CSS dans l'app. Silhouette volontairement fermée et pleine : ni étoile, ni rayons, ni éclat — rien qui rappelle la marque Claude/Anthropic. Props `size`, `working` (se balance pendant que Claude écrit, §6.1). Toujours `aria-hidden` : le texte « Atelier » porte le nom.
 
 Principe directeur : *la lampe éclaire ce qui compte*. Le fond reste dans la pénombre ; la lumière (ambre) va à l'action et au focus, le jaune vif aux attentes (permission).
 
@@ -399,10 +401,18 @@ Le poste principal est en AZERTY français. Lettres liées par `event.key` (mné
 
 ### 6.1 Principes de mouvement
 - Le mouvement répond à une action (ouvrir, déplier, confirmer) ou signale une attente. Rien d'autre ne bouge.
-- Seuls deux mouvements autonomes : pulse du voyant running/waiting et rotation `CircleNotch`. Aucun fond animé.
+- Mouvements autonomes, **un seul visible à la fois** : pulse du voyant running/waiting, rotation `CircleNotch`, et les deux boucles « lampe » ci-dessous. Aucun autre fond animé.
+- **3D « Veilleuse »** (CSS seul, pas de WebGL ; voir `design/RESEARCH.md`) :
+  - *La lampe se balance* : le logo de la barre du haut oscille autour de sa tige (`rotateY ±3×`, `rotateZ ±1× --sway-angle`, `--dur-sway`, `--ease-sway`, perspective `--depth-near`) **uniquement** quand la session est `running`. Immobile en attente d'autorisation : rien ne bouge pendant une permission.
+  - *Le halo respire* (accueil) : `--glow-orb` derrière la grande marque (`--logo-hero`) s'échelonne 0.9→1.06 et 0.65→1 d'opacité en `--dur-breathe`. N'existe que sans session, donc jamais en même temps que la lampe qui se balance.
+  - *Profondeur au pointeur* (accueil) : la marque s'incline vers le pointeur (≤ 2 × `--tilt-max`, `--depth-far`), le halo dérive à l'opposé (≤ `--parallax`). Positions écrites en variables CSS `--px/--py`, aucun rendu React.
+  - *Entrée inclinée des messages* : chaque message entre une fois (`rotateX(--tilt-max)` + 12 px + fondu, `--dur-slow`, `--ease-enter`), charnière du côté de l'auteur. Jamais rejoué au streaming.
+  - Dans le fil du chat, les voyants des outils ne pulsent plus : la lampe qui se balance porte l'activité.
+  - Les boucles se mettent en pause (`html[data-idle]`) quand la fenêtre est cachée ou sans focus (`visibilitychange`, `blur`).
+  - Dialogue de permission : aucune animation propre, aucun effet dessus ni sur ses boutons, garde de 500 ms intacte.
 - Animer `opacity` et `transform` uniquement (pas `height`, `filter`, `box-shadow`).
 - Panneaux et tiroirs : glissement 8 px + fondu `dur-base`. Dialogues : fondu + échelle 0.98→1 `dur-fast`.
-- `prefers-reduced-motion` : tout instantané, voyants fixes, rotation remplacée par l'icône statique `Hourglass`.
+- `prefers-reduced-motion` : tout instantané, voyants fixes, rotation remplacée par l'icône statique `Hourglass` ; lampe immobile, halo fixe, aucune inclinaison (`--tilt-max`, `--parallax`, `--dur-sway`, `--dur-breathe` à 0, et `animation: none` global).
 
 ### 6.2 Son & notifications
 | Événement | Notification desktop | Son |

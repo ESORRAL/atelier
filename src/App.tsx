@@ -3,6 +3,7 @@ import { MagnifyingGlass, SidebarSimple, Terminal } from "@phosphor-icons/react"
 import type { SessionEvent } from "./ipc/claude";
 import type { ChatControls, ChatInfo } from "./features/chat/Chat";
 import { getTheme, setTheme } from "./ui/theme";
+import { Logo } from "./ui/Logo";
 import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
 import { isTabId, TABS, type TabId } from "./shell/tabs";
@@ -39,7 +40,7 @@ function usePersisted<T extends string>(key: string, initial: T, valid: (v: unkn
 }
 const isOpenClosed = (v: unknown): v is "open" | "closed" => v === "open" || v === "closed";
 
-const EMPTY_INFO: ChatInfo = { key: null, cwd: "", model: null, costUsd: 0, state: null };
+const EMPTY_INFO: ChatInfo = { key: null, cwd: "", model: null, costUsd: 0, state: null, working: false };
 
 export default function App() {
   const [demo, setDemo] = useState(false);
@@ -126,7 +127,7 @@ export default function App() {
     <div className={`shell${showPanel ? " shell--panel" : ""}`}>
       <header className="topbar shell__topbar">
         <span className="topbar__brand">
-          <span className="topbar__lamp" aria-hidden="true" />
+          <Logo size="var(--icon-lg)" working={info.working} />
           Atelier
         </span>
         <div className="topbar__slot" ref={setSlot} />

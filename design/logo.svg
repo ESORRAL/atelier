@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="1024" height="1024">
+  <!-- Atelier « Veilleuse » mark: pendant dome lamp, half-hidden coral bulb, cone and pool of light.
+       Same geometry as src/ui/Logo.tsx (which uses CSS variables instead of these hex values). -->
+  <defs>
+    <radialGradient id="room" cx="50%" cy="35%" r="75%">
+      <stop offset="0" stop-color="#2D241D"/>
+      <stop offset="1" stop-color="#17120E"/>
+    </radialGradient>
+    <linearGradient id="cone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F2A54A" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#F2A54A" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#room)"/>
+  <g transform="translate(6.4 4.8) scale(0.8)">
+    <path d="M14 36.5h36l9 21H5Z" fill="url(#cone)"/>
+    <ellipse cx="32" cy="57" rx="22" ry="3.5" fill="#F2A54A" opacity="0.35"/>
+    <circle cx="32" cy="37" r="5.5" fill="#FF8E72"/>
+    <rect x="30.5" y="3" width="3" height="12" rx="1.5" fill="#F2A54A"/>
+    <path fill="#F2A54A" d="M9.6 34.2C10.3 21.9 19.6 13.6 32.3 13.8 44.6 14 53.8 22.3 54.4 34c.1 1.4-1 2.5-2.4 2.5H12c-1.4 0-2.5-1-2.4-2.3Z"/>
+    <path d="M17.5 29.5c1.6-6.4 6.6-10.4 12.6-11" fill="none" stroke="#F7BA6B" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>

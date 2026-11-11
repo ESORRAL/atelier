@@ -57,6 +57,14 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-enter: cubic-bezier(0, 0, 0, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* 3D & ambient motion (DESIGN.md §6.1) — one continuous motion on screen at a time */
+  --dur-sway: 2800ms;    /* logo lamp swaying while Claude works */
+  --dur-breathe: 6400ms; /* welcome lamp halo breathing */
+  --ease-sway: cubic-bezier(0.45, 0, 0.55, 1);
+  --depth-near: 240px;   /* perspective of small 3D objects (logo) */
+  --depth-far: 900px;    /* perspective of panels and message cards */
+  --sway-angle: 4deg;    /* logo sway: rotateZ ±1×, rotateY ±3× */
+  --tilt-max: 6deg;      /* welcome hero pointer tilt, and card tilt-in start */
 
   /* Z-index */
   --z-base: 0;
@@ -92,6 +100,8 @@
   --icon-sm: 16px;
   --icon-md: 20px;
   --icon-lg: 28px;
+  --logo-hero: 88px;  /* welcome lamp mark */
+  --parallax: 16px;   /* max halo drift behind the welcome mark */
   --send-size: 40px;  /* round send button inside the composer pill */
   --follow-gap: 48px; /* auto-scroll threshold, mirrors Chat.tsx */
 
@@ -120,6 +130,7 @@
   --color-bubble-user-border: #6A3A2D; /* decorative */
   --color-card-highlight: #FFE6C80F;   /* lamp light catching the top edge of a card */
   --glow-lamp: radial-gradient(ellipse 70% 55% at 50% 0%, #F2A54A1F, #F2A54A00 70%);
+  --glow-orb: radial-gradient(circle, #F2A54A38, #FF8E7214 45%, #F2A54A00 70%);
 
   /* Agent / task states (always paired with icon + label) */
   --color-state-queued: #AD967F;
@@ -190,6 +201,7 @@
     --color-bubble-user-border: #EDBFAE;
     --color-card-highlight: #FFFFFF;
     --glow-lamp: radial-gradient(ellipse 70% 55% at 50% 0%, #F2A54A33, #F2A54A00 70%);
+    --glow-orb: radial-gradient(circle, #F2A54A4D, #FF8E7226 45%, #F2A54A00 70%);
     --color-state-queued: #6B5543;
     --color-state-running: #1F5FAF;
     --color-state-waiting: #7A4A00;
@@ -246,6 +258,7 @@
   --color-bubble-user-border: #EDBFAE;
   --color-card-highlight: #FFFFFF;
   --glow-lamp: radial-gradient(ellipse 70% 55% at 50% 0%, #F2A54A33, #F2A54A00 70%);
+  --glow-orb: radial-gradient(circle, #F2A54A4D, #FF8E7226 45%, #F2A54A00 70%);
   --color-state-queued: #6B5543;
   --color-state-running: #1F5FAF;
   --color-state-waiting: #7A4A00;
@@ -284,5 +297,9 @@
     --dur-base: 0ms;
     --dur-slow: 0ms;
     --dur-pulse: 0ms; /* components must render a static lamp when this is 0 */
+    --dur-sway: 0ms;
+    --dur-breathe: 0ms;
+    --tilt-max: 0deg;
+    --parallax: 0px;
   }
 }
