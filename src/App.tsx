@@ -6,6 +6,7 @@ import { logEvent } from "./features/chat/sessions";
 import { getTheme, setTheme } from "./ui/theme";
 import { BeamsBackground } from "@/components/ui/beams-background";
 import { Logo } from "./ui/Logo";
+import { MiniPlayer } from "./features/music/MiniPlayer";
 import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
 import { isTabId, TABS, type TabId } from "./shell/tabs";
@@ -125,6 +126,7 @@ export default function App() {
           Atelier
         </span>
         <div className="topbar__slot" ref={setSlot} />
+        <MiniPlayer />
         {import.meta.env.DEV && (
           <button type="button" className="btn btn--ghost" onClick={() => setDemo(!demo)}>
             {demo ? "Retour au chat" : "Démo des composants"}
