@@ -61,6 +61,7 @@
   --dur-sway: 2800ms;    /* logo A turning while Claude works */
   --ease-sway: cubic-bezier(0.45, 0, 0.55, 1);
   --depth-near: 240px;   /* perspective of small 3D objects (logo) */
+  --eclipse-veil: 0.75; /* how much the surface color covers the background eclipse (text legibility) */
   --depth-far: 900px;    /* perspective of panels and message cards */
   --sway-angle: 4deg;    /* logo sway: rotateZ ±1×, rotateY ±3× */
   --tilt-max: 6deg;      /* welcome hero pointer tilt, and card tilt-in start */
@@ -99,7 +100,6 @@
   --icon-sm: 16px;
   --icon-md: 20px;
   --icon-lg: 28px;
-  --logo-hero: 176px; /* welcome eclipse (shader) with the A mark */
   --parallax: 16px;   /* max halo drift behind the welcome mark */
   --send-size: 40px;  /* round send button inside the composer pill */
   --follow-gap: 48px; /* auto-scroll threshold, mirrors Chat.tsx */

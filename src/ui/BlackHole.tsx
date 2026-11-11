@@ -16,6 +16,10 @@ export interface BlackHoleProps {
   scale?: number;
   /** Film grain, 0 to 0.5. */
   noise?: number;
+  /** Render resolution, 0.25 to 1. Lower is cheaper; fine for a soft background. */
+  quality?: number;
+  /** Frame cap, 0 for none. */
+  maxFps?: number;
   className?: string;
 }
 
@@ -114,12 +118,14 @@ export function BlackHole({
   speed = 0.6,
   scale = 1.2,
   noise = 0.1,
+  quality = 1,
+  maxFps = 0,
   className,
 }: BlackHoleProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // The draw loop reads the latest props from here, so changing one never rebuilds the program.
-  const props = useRef({ color1, color2, color3, speed, scale, noise });
-  props.current = { color1, color2, color3, speed, scale, noise };
+  const props = useRef({ color1, color2, color3, speed, scale, noise, quality, maxFps });
+  props.current = { color1, color2, color3, speed, scale, noise, quality, maxFps };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -161,7 +167,7 @@ export function BlackHole({
     };
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2) * Math.min(Math.max(props.current.quality, 0.25), 1);
       const width = Math.max(1, Math.round(canvas.clientWidth * dpr));
       const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
       if (canvas.width !== width || canvas.height !== height) {
@@ -194,10 +200,15 @@ export function BlackHole({
 
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const root = document.documentElement;
+    let lastFrame = 0;
     const loop = (now: number) => {
+      const cap = props.current.maxFps;
       // data-idle is set by main.tsx when the window is hidden or unfocused: draw nothing.
       if (root.hasAttribute("data-idle")) last = null;
-      else draw(now);
+      else if (!cap || now - lastFrame >= 1000 / cap - 2) {
+        lastFrame = now;
+        draw(now);
+      }
       if (!still) frame = requestAnimationFrame(loop);
     };
     frame = requestAnimationFrame(loop);

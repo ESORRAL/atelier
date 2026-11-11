@@ -3,6 +3,7 @@ import { MagnifyingGlass, SidebarSimple, Terminal } from "@phosphor-icons/react"
 import type { SessionEvent } from "./ipc/claude";
 import type { ChatControls, ChatInfo } from "./features/chat/Chat";
 import { getTheme, setTheme } from "./ui/theme";
+import { BlackHole } from "./ui/BlackHole";
 import { Logo } from "./ui/Logo";
 import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
@@ -150,6 +151,11 @@ export default function App() {
       </header>
       <Rail active={demo ? null : tab} onSelect={goTo} />
       <div className="shell__center">
+        <div className="app__eclipse" aria-hidden="true">
+          <div className="app__eclipse-disc">
+            <BlackHole quality={0.5} maxFps={30} speed={0.35} />
+          </div>
+        </div>
         <main className="app__main shell__views">
           {/* Chat stays mounted behind other tabs so the session keeps running. */}
           <div className="shell__view" hidden={demo || tab !== "chat"}>

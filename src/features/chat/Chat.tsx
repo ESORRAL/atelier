@@ -19,7 +19,6 @@ import {
   type PermissionMode,
   type Settings,
 } from "../../ipc/claude";
-import { BlackHole } from "../../ui/BlackHole";
 import { PermissionHost } from "../../ui/PermissionDialog";
 import { MessageView } from "./MessageView";
 import { canSend, matchModel } from "./logic";
@@ -264,21 +263,8 @@ export default function Chat({ slot, onInfo, onEvent, onSessionReset, controlsRe
       {slot ? createPortal(head, slot) : head}
 
       {!key ? (
-        <div
-          className="welcome"
-          onPointerMove={(e) => {
-            // Pointer position in [-0.5, 0.5], read by CSS for the hero tilt and halo parallax.
-            const el = e.currentTarget;
-            const r = el.getBoundingClientRect();
-            el.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
-            el.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
-          }}
-        >
+        <div className="welcome">
           <div className="welcome__panel">
-            <div className="welcome__hero" aria-hidden="true">
-              <BlackHole className="welcome__eclipse" />
-              <span className="welcome__letter">A</span>
-            </div>
             <h1 className="welcome__title">Sur quel projet <span className="welcome__nowrap">travailles-tu&nbsp;?</span></h1>
             <p className="welcome__lede">Choisis un dossier, Claude ouvrira une session dedans.</p>
             <form

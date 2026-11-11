@@ -28,7 +28,7 @@ Spécification de design de référence. Chaque section `##` se lit seule. Valeu
 
 Refusé : charte et typo d'Anthropic ou look Claude Desktop (crème + serif + terracotta `#D97757`), template de chat IA (dégradés violets, verre dépoli), kit de cartes SaaS identiques (une seule ombre grise partout), labels en capitales espacées, emoji-icônes.
 
-**Logo « A »** (`src/ui/Logo.tsx`, `design/logo.svg`, icône `design/logo-1024.png`) : un A majuscule ambre (`--color-accent`, police d'interface en graisse display), sans pictogramme. Sur l'accueil, la grande marque est une éclipse WebGL (`src/ui/BlackHole.tsx`, shader adapté de GradFlow, couleurs lues dans les tokens) avec le A au centre de son disque sombre ; sans WebGL, un halo `--glow-orb` la remplace.
+**Logo « A »** (`src/ui/Logo.tsx`, `design/logo.svg`, icône `design/logo-1024.png`) : un A majuscule ambre (`--color-accent`, police d'interface en graisse display), sans pictogramme. Le fond de la zone principale est une éclipse WebGL (`src/ui/BlackHole.tsx`, shader adapté de GradFlow, couleurs lues dans les tokens), en haut à droite, voilée par la couleur de surface (`--eclipse-veil`) pour garder le texte lisible ; rendue à demi-résolution, 30 i/s, en pause fenêtre inactive ; sans WebGL, le fond plat avec `--glow-lamp`.
 
 Principe directeur : *la lampe éclaire ce qui compte*. Le fond reste dans la pénombre ; la lumière (ambre) va à l'action et au focus, le jaune vif aux attentes (permission).
 
@@ -404,8 +404,7 @@ Le poste principal est en AZERTY français. Lettres liées par `event.key` (mné
 - Mouvements autonomes, **un seul visible à la fois** : pulse du voyant running/waiting, rotation `CircleNotch`, et les deux boucles « lampe » ci-dessous. Aucun autre fond animé.
 - **3D « Veilleuse »** (CSS seul, pas de WebGL ; voir `design/RESEARCH.md`) :
   - *Le A tourne* : le logo de la barre du haut pivote autour de son axe vertical (`rotateY ±6× --sway-angle`, `--dur-sway`, `--ease-sway`, perspective `--depth-near`), seulement pendant que Claude écrit ; immobile pendant une demande de permission.
-  - *L'éclipse* (accueil) : le shader `BlackHole` tourne en boucle lente derrière le A ; il ne dessine plus quand la fenêtre est cachée ou sans focus (`data-idle`).
-  - *Profondeur au pointeur* (accueil) : l'éclipse et son A s'inclinent ensemble vers le pointeur (≤ 2 × `--tilt-max`, perspective `--depth-far`).
+  - *L'éclipse* (fond) : le shader `BlackHole` tourne en boucle lente derrière la zone principale ; il ne dessine plus quand la fenêtre est cachée ou sans focus (`data-idle`).
   - *Entrée inclinée des messages* : chaque message entre une fois (`rotateX(--tilt-max)` + 12 px + fondu, `--dur-slow`, `--ease-enter`), charnière du côté de l'auteur. Jamais rejoué au streaming.
   - Dans le fil du chat, les voyants des outils ne pulsent plus : le A qui tourne porte l'activité.
   - Les boucles se mettent en pause (`html[data-idle]`) quand la fenêtre est cachée ou sans focus (`visibilitychange`, `blur`).

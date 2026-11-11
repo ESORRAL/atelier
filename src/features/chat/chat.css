@@ -53,32 +53,6 @@
   padding: var(--space-9) var(--space-6) var(--space-8);
   overflow-x: hidden; /* the halo may spill past the panel on narrow windows */
 }
-/* Hero: an eclipse (WebGL shader) with the capital A on its dark disc; it tilts toward the pointer in 3D. */
-.welcome__hero {
-  position: relative;
-  width: var(--logo-hero);
-  height: var(--logo-hero);
-  transform: perspective(var(--depth-far)) rotateX(calc(var(--py, 0) * var(--tilt-max) * -2)) rotateY(calc(var(--px, 0) * var(--tilt-max) * 2));
-  transition: transform var(--dur-slow) var(--ease-standard);
-  background: var(--glow-orb); /* shown instead of the shader when WebGL is unavailable */
-  border-radius: var(--radius-full);
-}
-.welcome__eclipse {
-  -webkit-mask-image: radial-gradient(circle closest-side, black 70%, transparent 100%);
-  mask-image: radial-gradient(circle closest-side, black 70%, transparent 100%);
-}
-.welcome__letter {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-family: var(--font-ui);
-  font-weight: var(--weight-display);
-  font-size: calc(var(--logo-hero) * 0.34);
-  line-height: 1;
-  color: var(--color-accent);
-  pointer-events: none;
-}
 .welcome__panel {
   width: min(var(--welcome-w), 100%);
   display: grid;
