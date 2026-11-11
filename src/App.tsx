@@ -113,7 +113,16 @@ export default function App() {
     if (hidden.includes(id)) return;
     setDemo(false);
     setTab(id);
-  };
+  };  // Views ask for a tab change with window.dispatchEvent(new CustomEvent("atelier:goto", { detail: tabId })).
+  useEffect(() => {
+    const onGoto = (e: Event) => {
+      const id = (e as CustomEvent<unknown>).detail;
+      if (typeof id === "string" && isTabId(id)) goTo(id);
+    };
+    window.addEventListener("atelier:goto", onGoto);
+    return () => window.removeEventListener("atelier:goto", onGoto);
+  });
+
 
   const commands: Command[] = [
     ...TABS.filter((t) => !hidden.includes(t.id)).map((t) => ({ id: `tab-${t.id}`, label: t.label, group: "Onglets", shortcut: `Ctrl+${TABS.indexOf(t) + 1}`, run: () => goTo(t.id) })),

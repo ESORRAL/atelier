@@ -1,0 +1,18 @@
+.brain { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); height: 100%; min-height: 0; }
+.brain__side { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border-right: var(--border-w) solid var(--color-border-subtle); min-height: 0; }
+.brain__list { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-1); }
+.brain__item { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; font: inherit; color: var(--color-text-primary); background: none; border: 0; border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); cursor: pointer; }
+.brain__item:hover { background: var(--color-bg-hover); }
+.brain__item[aria-current="true"] { background: var(--color-bg-selected); }
+.brain__meta { font-size: var(--text-sm); color: var(--color-text-secondary); }
+.brain__main { overflow-y: auto; padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.brain__bar { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.brain__links { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.brain__preview { white-space: pre-wrap; font-family: var(--font-mono); font-size: var(--text-sm); background: var(--color-bg-raised); border-radius: var(--radius-sm); padding: var(--space-4); }
+.brain input { font: inherit; width: 100%; color: var(--color-text-primary); background: var(--color-bg-raised); border: var(--border-w) solid var(--color-border-strong); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); }
+.brain__btn { font: inherit; color: var(--color-text-primary); background: var(--color-bg-raised); border: var(--border-w) solid var(--color-border-strong); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-4); cursor: pointer; }
+.brain__btn:hover { background: var(--color-bg-hover); }
+.brain__btn--primary { color: var(--color-text-on-accent); background: var(--color-accent-solid); border-color: var(--color-accent-solid); }
+.brain__btn:disabled { opacity: 0.6; cursor: default; }
+.brain__err { color: var(--color-danger); }
+.brain__empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3); height: 100%; color: var(--color-text-secondary); text-align: center; }

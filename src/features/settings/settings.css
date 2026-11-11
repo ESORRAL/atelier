@@ -42,3 +42,5 @@
 .settings__status { font-size: var(--text-sm); }
 .settings__status--ok { color: var(--color-success); }
 .settings__status--err { color: var(--color-danger); }
+.settings__row { display: flex; gap: var(--space-3); }
+.settings__row input { flex: 1; min-width: 0; }
