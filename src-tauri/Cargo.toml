@@ -19,8 +19,9 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "=2.12.5", features = ["unstable"] }
-# Same version as tauri's own: reparents the Instagram panel webview (windows/panel.rs).
+# Same versions as tauri's own: reparent and mute the in-app panels (windows/panel.rs).
 gtk = "=0.18.2"
+webkit2gtk = { version = "=2.0.2", features = ["v2_30"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["process", "io-util", "rt", "sync", "macros", "time"] }
