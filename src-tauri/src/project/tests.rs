@@ -70,7 +70,7 @@ fn graph_degrees_and_communities() {
 }
 
 // Real runs on the repo and on Graphify's real graph.json (read only); skipped when absent.
-const MAIN_CHECKOUT: &str = "/home/thomas/Documents/Perso/claude_linux";
+const MAIN_CHECKOUT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 
 #[tokio::test]
 async fn real_project_info() {

@@ -113,12 +113,14 @@ fn url_is_encoded() {
     assert!(!u.contains(' '));
 }
 
-/// Read-only trial on the real vault: `cargo test -- --ignored`.
+/// Read-only trial on the real vault: `ATELIER_VAULT=<vault> cargo test -- --ignored`.
 #[test]
 #[ignore]
 fn real_vault_read_only() {
-    let base = Path::new("/home/thomas/Documents/Obsidian Vault");
-    let root = resolve_vault(base).unwrap();
+    let Ok(base) = std::env::var("ATELIER_VAULT") else {
+        return;
+    };
+    let root = resolve_vault(Path::new(&base)).unwrap();
     let notes = recent(&root, 50).unwrap();
     let top = list(&root, None).unwrap();
     println!("{} recent, {} folders", notes.len(), top.folders.len());
