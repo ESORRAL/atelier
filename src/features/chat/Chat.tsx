@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { Folder, Plus, X } from "@phosphor-icons/react";
+import { Plus, X } from "@phosphor-icons/react";
 import { sessionsList, settingsGet, type SessionEntry, type SessionEvent } from "../../ipc/claude";
 import { pickFolder } from "../../ipc/desktop";
 import { Tally } from "../../ui/Tally";
-import { ChatSession, euro } from "./ChatSession";
+import { ChatSession } from "./ChatSession";
+import { Composer } from "./Composer";
+import { Menu } from "./Menu";
+import { Logo } from "../../ui/Logo";
 import {
   closeTab,
   cycleStep,
+  folderName,
   cycleTab,
   noTabs,
   openTab,
@@ -40,7 +44,7 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
   const [error, setError] = useState<string | null>(null);
   const root = useRef<HTMLElement>(null);
   const interruptRef = useRef<(() => void) | null>(null);
-  const cwdInput = useRef<HTMLInputElement>(null);
+  const composerInput = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     settingsGet().then((st) => {
@@ -57,13 +61,13 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
   useEffect(() => {
     if (welcome) onInfo?.(NO_INFO);
   }, [welcome, onInfo]);
-  // Closing the last tab drops the focus: give it to the folder field.
+  // Closing the last tab drops the focus: give it to the composer.
   useEffect(() => {
-    if (welcome && document.activeElement === document.body) cwdInput.current?.focus();
+    if (welcome && document.activeElement === document.body) composerInput.current?.focus();
   }, [welcome]);
 
-  const open = (dir: string, resume: SessionEntry | null = null) => {
-    const next = openTab(tabs, dir, resume);
+  const open = (dir: string, resume: SessionEntry | null = null, first: string | null = null) => {
+    const next = openTab(tabs, dir, resume, first);
     if (!next) return setError(TOO_MANY_TABS);
     setError(null);
     setTabs(next);
@@ -71,7 +75,7 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
   const close = (id: number) => setTabs((t) => closeTab(t, id));
   const onStatus = useCallback((id: number, patch: Parameters<typeof patchTab>[2]) => setTabs((t) => patchTab(t, id, patch)), []);
   const onStartError = useCallback((id: number, message: string) => {
-    // Back to the welcome screen (the folder stays in the field) only if the failing tab is on screen.
+    // Back to the welcome screen (the folder stays selected) only if the failing tab is on screen.
     setTabs((t) => (t.active === id ? selectTab(closeTab(t, id), null) : closeTab(t, id)));
     setError(message);
   }, []);
@@ -139,37 +143,29 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
 
       <div className="welcome" hidden={!welcome}>
         <div className="welcome__panel">
-          <h1 className="welcome__title">Sur quel projet <span className="welcome__nowrap">travailles-tu&nbsp;?</span></h1>
-          <p className="welcome__lede">Choisis un dossier, Claude ouvrira une session dedans.</p>
-          <form
-            className="welcome__form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (cwd.trim()) open(cwd.trim());
-            }}
-          >
-            <label htmlFor="chat-cwd" className="sr-only">Dossier du projet</label>
-            <input ref={cwdInput} id="chat-cwd" value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="/chemin/vers/le/projet" list="chat-recent" />
-            <button type="button" className="btn btn--ghost" onClick={() => pickFolder().then((d) => d && setCwd(d), () => {})}>
-              Parcourir…
-            </button>
-            <datalist id="chat-recent">{recent.map((r) => <option key={r} value={r} />)}</datalist>
-            <button type="submit" className="btn btn--primary" disabled={!cwd.trim()}>
-              Démarrer une session
-            </button>
-          </form>
+          <h1 className="welcome__title"><Logo size="var(--icon-lg)" /> Sur quel projet <span className="welcome__nowrap">travailles-tu&nbsp;?</span></h1>
+          <Composer
+            id="welcome"
+            cwd={cwd}
+            commands={[]}
+            ready={!!cwd}
+            busy={false}
+            onSend={(text) => open(cwd, null, text)}
+            onInterrupt={() => {}}
+            inputRef={composerInput}
+            bar={
+              <Menu
+                label="Projet"
+                text={cwd ? folderName(cwd) : "Choisir un dossier"}
+                title={cwd || "Choisir un dossier"}
+                items={[...new Set([cwd, ...recent].filter(Boolean))].map((r) => ({ value: r, label: folderName(r), title: r }))}
+                value={cwd}
+                onSelect={setCwd}
+                action={{ label: "Parcourir…", run: () => pickFolder().then((d) => d && setCwd(d), () => {}) }}
+              />
+            }
+          />
           {error && <p className="chat__error" role="alert">{error}</p>}
-          {recent.length > 0 && (
-            <ul className="welcome__chips" aria-label="Dossiers récents">
-              {recent.map((r) => (
-                <li key={r}>
-                  <button type="button" className="chip" onClick={() => setCwd(r)}>
-                    <Folder size="var(--icon-sm)" aria-hidden="true" /> {r}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
           <h2 className="welcome__h2">Sessions récentes</h2>
           {sessions.length === 0 ? (
             <p className="welcome__empty">Aucune session pour l'instant. Ta première conversation apparaîtra ici.</p>
@@ -180,7 +176,6 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
                   <button type="button" className="session-row" onClick={() => open(e.cwd, e)}>
                     <span className="session-row__title">{e.title || e.key}</span>
                     <span className="session-row__meta">{e.cwd}</span>
-                    <span className="session-row__cost">{euro(e.costUsd)}</span>
                   </button>
                 </li>
               ))}
@@ -195,6 +190,7 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
           id={t.id}
           cwd={t.cwd}
           resume={t.resume}
+          firstMessage={t.first}
           active={t.id === tabs.active}
           onStatus={onStatus}
           onStartError={onStartError}

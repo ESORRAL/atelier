@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useReducer, useRef, useState, type RefObject } from "react";
-import { Stop, PaperPlaneRight } from "@phosphor-icons/react";
 import {
   permissionRespond,
   sessionClose,
@@ -16,11 +15,12 @@ import {
   type SessionEvent,
   type PermissionMode,
 } from "../../ipc/claude";
-import { projectFiles } from "../../ipc/project";
 import { PermissionHost } from "../../ui/PermissionDialog";
 import { MessageView } from "./MessageView";
-import { canSend, matchModel } from "./logic";
-import { applyMention, filterCommands, findTrigger } from "./mention";
+import { matchModel } from "./logic";
+import { Composer } from "./Composer";
+import { Menu } from "./Menu";
+import { folderName } from "./sessions";
 import { initialState, reduce } from "./reduce";
 import { pendingCount, type SessionTab } from "./sessions";
 import type { ChatInfo } from "./Chat";
@@ -34,17 +34,17 @@ const STATE_LABEL: Record<string, string> = {
   crashed: "Session interrompue",
 };
 const MODES: [PermissionMode, string][] = [
-  ["default", "Demander à chaque fois"],
-  ["acceptEdits", "Accepter les modifications"],
-  ["plan", "Plan seulement"],
+  ["default", "Manuel"],
+  ["acceptEdits", "Accepter les modifs"],
+  ["plan", "Plan"],
 ];
 export const errText = (e: unknown) => (typeof e === "string" ? e : "Une erreur est survenue.");
-export const euro = (usd: number) => `${usd.toFixed(4)} $`;
 
 type Props = {
   id: number;
   cwd: string;
   resume: SessionEntry | null;
+  firstMessage: string | null; // typed on the welcome screen: sent as soon as the session is ready
   active: boolean; // shown: owns the top-bar slot, the right panel and the permission dialog
   onStatus: (id: number, patch: Partial<Pick<SessionTab, "key" | "title" | "state" | "pending">>) => void;
   onStartError: (id: number, message: string) => void;
@@ -54,18 +54,13 @@ type Props = {
 };
 
 /** One Claude session: its own reducer, channel and permission queue. Stays mounted while hidden. */
-export function ChatSession({ id, cwd, resume, active, onStatus, onStartError, onInfo, onEvent, interruptRef }: Props) {
+export function ChatSession({ id, cwd, resume, firstMessage, active, onStatus, onStartError, onInfo, onEvent, interruptRef }: Props) {
   const [s, dispatch] = useReducer(reduce, initialState);
   const [key, setKey] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [chosenModel, setChosenModel] = useState<string | null>(null); // local choice wins over s.model
   const costBase = resume?.costUsd ?? 0; // index cost at resume; the SDK total restarts at 0
   const [mode, setMode] = useState<PermissionMode>("default");
-  const [draft, setDraft] = useState("");
-  const [caret, setCaret] = useState(0);
-  const [files, setFiles] = useState<string[]>([]);
-  const [pick, setPick] = useState(0);
-  const [dismissed, setDismissed] = useState<string | null>(null); // draft text for which Échap closed the list
   const [localError, setLocalError] = useState<string | null>(null);
   const keyRef = useRef<string | null>(null);
   const early = useRef<SessionEvent[]>([]); // events received before the key is known
@@ -158,44 +153,21 @@ export function ChatSession({ id, cwd, resume, active, onStatus, onStartError, o
     onStatus(id, { key, state: s.sessionState, pending, ...(title ? { title } : {}) });
   }, [onStatus, id, key, s.sessionState, pending, title]);
 
-  const trigger = findTrigger(draft, caret);
-  const fileQuery = trigger?.kind === "file" ? trigger.query : null;
-  // Files of the project, queried 150 ms after the last keystroke following "@".
-  useEffect(() => {
-    if (fileQuery === null) return setFiles([]);
-    let stale = false;
-    const h = setTimeout(() => {
-      projectFiles(cwd, fileQuery, 8).then((f) => !stale && setFiles(f), () => !stale && setFiles([]));
-    }, 150);
-    return () => {
-      stale = true;
-      clearTimeout(h);
-    };
-  }, [fileQuery, cwd]);
-  const items = trigger ? (trigger.kind === "command" ? filterCommands(s.commands, trigger.query) : files) : [];
-  const noCommands = trigger?.kind === "command" && s.commands.length === 0;
-  const listOpen = !!trigger && dismissed !== draft && (items.length > 0 || noCommands);
-  const optionId = (i: number) => `mention-${id}-${i}`;
-  const choose = (value: string) => {
-    if (!trigger) return;
-    const r = applyMention(draft, trigger, value);
-    setDraft(r.text);
-    setCaret(r.caret);
-    setPick(0);
-    requestAnimationFrame(() => {
-      input.current?.focus();
-      input.current?.setSelectionRange(r.caret, r.caret);
-    });
-  };
-
-  const send = () => {
-    const text = draft.trim();
-    if (!key || !canSend(s.sessionState, text)) return;
+  const sendText = (text: string) => {
+    if (!key) return;
     setLocalError(null);
-    setDraft("");
     follow.current = true;
     sessionSend(key, text).catch((e) => setLocalError(errText(e)));
   };
+  const pendingFirst = useRef(firstMessage);
+  // The message typed on the welcome screen goes out once, when the bridge first reports idle.
+  useEffect(() => {
+    if (pendingFirst.current && key && s.sessionState === "idle") {
+      const text = pendingFirst.current;
+      pendingFirst.current = null;
+      sendText(text);
+    }
+  }, [key, s.sessionState]);
   const interrupt = () => key && sessionInterrupt(key).catch((e) => setLocalError(errText(e)));
   if (active) interruptRef.current = interrupt;
 
@@ -220,55 +192,45 @@ export function ChatSession({ id, cwd, resume, active, onStatus, onStartError, o
   const modelValue = chosenModel ?? matchModel(s.model, models) ?? s.model ?? "";
   const error = localError ?? s.error;
 
-  const toolbar = (
-    <div className="session">
-      <span className="session__state">{s.sessionState ? STATE_LABEL[s.sessionState] : STATE_LABEL.starting}</span>
-      {key && (
-        <select
-          className="session__model"
-          aria-label="Modèle"
-          value={modelValue}
-          disabled={!models.length}
-          onChange={(e) => {
-            const v = e.target.value;
-            const prev = chosenModel;
-            setChosenModel(v);
-            sessionSetModel(key, v).catch((x) => {
-              setChosenModel(prev);
-              setLocalError(errText(x));
-            });
-          }}
-        >
-          {modelValue && !models.some((m) => m.value === modelValue) && <option value={modelValue}>{modelValue}</option>}
-          {models.map((m) => (
-            <option key={m.value} value={m.value}>{m.displayName}</option>
-          ))}
-        </select>
-      )}
-      {key && (
-        <select
-          className="session__model"
-          aria-label="Mode de permission"
-          value={mode}
-          onChange={(e) => {
-            const prev = mode;
-            const v = e.target.value as PermissionMode;
-            setMode(v);
-            sessionSetPermissionMode(key, v).catch((x) => {
-              setMode(prev);
-              setLocalError(errText(x));
-            });
-          }}
-        >
-          {MODES.map(([v, l]) => (
-            <option key={v} value={v}>{l}</option>
-          ))}
-        </select>
-      )}
-      <span className="session__cost" aria-label="Coût de la session">
-        {euro(costBase + s.costUsd)}
+  const bar = (
+    <>
+      <span className="tmenu__static" title={cwd}>{folderName(cwd)}</span>
+      <span className="tmenu__group">
+        {key && (
+          <Menu
+            label="Modèle"
+            text={models.find((m) => m.value === modelValue)?.displayName ?? (modelValue || "Modèle")}
+            items={models.map((m) => ({ value: m.value, label: m.displayName }))}
+            value={modelValue}
+            disabled={!models.length}
+            onSelect={(v) => {
+              const prev = chosenModel;
+              setChosenModel(v);
+              sessionSetModel(key, v).catch((x) => {
+                setChosenModel(prev);
+                setLocalError(errText(x));
+              });
+            }}
+          />
+        )}
+        {key && (
+          <Menu
+            label="Mode de permission"
+            text={MODES.find(([v]) => v === mode)?.[1] ?? ""}
+            items={MODES.map(([value, label]) => ({ value, label }))}
+            value={mode}
+            onSelect={(v) => {
+              const prev = mode;
+              setMode(v as PermissionMode);
+              sessionSetPermissionMode(key, v as PermissionMode).catch((x) => {
+                setMode(prev);
+                setLocalError(errText(x));
+              });
+            }}
+          />
+        )}
       </span>
-    </div>
+    </>
   );
 
   return (
@@ -293,71 +255,17 @@ export function ChatSession({ id, cwd, resume, active, onStatus, onStartError, o
         </div>
       </div>
       <div className="chat__composer">
-        <div className="composer">
-          {listOpen && (
-            noCommands ? (
-              <p className="mention mention--hint" role="status">Les commandes apparaîtront après le premier message</p>
-            ) : (
-              <ul className="mention" id={`mention-list-${id}`} role="listbox" aria-label={trigger?.kind === "command" ? "Commandes" : "Fichiers du projet"}>
-                {items.map((it, i) => (
-                  <li
-                    key={it}
-                    id={optionId(i)}
-                    role="option"
-                    aria-selected={i === pick % items.length}
-                    className="mention__item"
-                    onMouseDown={(e) => { e.preventDefault(); choose(it); }}
-                  >
-                    {trigger?.kind === "command" ? "/" : "@"}{it}
-                  </li>
-                ))}
-              </ul>
-            )
-          )}
-          <textarea
-            ref={input}
-            aria-label="Message à Claude"
-            placeholder="Écris ton message…"
-            value={draft}
-            rows={1}
-            role="combobox"
-            aria-expanded={listOpen}
-            aria-controls={`mention-list-${id}`}
-            aria-autocomplete="list"
-            aria-activedescendant={listOpen && items.length ? optionId(pick) : undefined}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              setCaret(e.target.selectionStart);
-              setPick(0);
-            }}
-            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
-            onKeyDown={(e) => {
-              if (listOpen && !e.nativeEvent.isComposing) {
-                const n = items.length;
-                if (e.key === "ArrowDown" && n) { e.preventDefault(); setPick((pick + 1) % n); return; }
-                if (e.key === "ArrowUp" && n) { e.preventDefault(); setPick((pick - 1 + n) % n); return; }
-                if ((e.key === "Enter" || e.key === "Tab") && n) { e.preventDefault(); choose(items[pick % n]); return; }
-                if (e.key === "Enter") { e.preventDefault(); return; } // never send while the list is open
-                if (e.key === "Escape") { e.preventDefault(); setDismissed(draft); return; }
-              }
-              if (e.key === "Escape" && busy) interrupt();
-              else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                send();
-              }
-            }}
-          />
-          {busy && (
-            <button type="button" className="btn btn--ghost" onClick={interrupt}>
-              <Stop size="var(--icon-sm)" aria-hidden="true" /> Arrêter (Échap)
-            </button>
-          )}
-          <button type="button" className="composer__send" onClick={send} disabled={!canSend(s.sessionState, draft)} aria-label="Envoyer" title="Envoyer (Entrée)">
-            <PaperPlaneRight size="var(--icon-md)" weight="fill" aria-hidden="true" />
-          </button>
-        </div>
-        {toolbar}
-        <p className="composer__hint">Entrée pour envoyer, Maj+Entrée pour aller à la ligne</p>
+        <Composer
+          id={String(id)}
+          cwd={cwd}
+          commands={s.commands}
+          ready={!!key && s.sessionState === "idle"}
+          busy={busy}
+          onSend={sendText}
+          onInterrupt={interrupt}
+          inputRef={input}
+          bar={bar}
+        />
       </div>
 
       {error && <p className="chat__error" role="alert">{error}</p>}
