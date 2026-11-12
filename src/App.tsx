@@ -185,7 +185,7 @@ export default function App() {
   const View = hidden.includes(tab) ? undefined : TABS.find((t) => t.id === tab)?.view;
 
   return (
-    <div className={`shell${showPanel ? " shell--panel" : ""}`}>
+    <div className={`shell${showPanel ? " shell--panel" : ""}${pause ? " shell--push-pause" : musicShown ? " shell--push-music" : ""}`}>
       <header className="topbar shell__topbar">
         <span className="topbar__brand">
           <Logo size="var(--icon-lg)" working={info.working} />
