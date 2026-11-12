@@ -144,7 +144,13 @@ mod tests {
             if path.extension().is_some_and(|e| e == "json") {
                 let text = std::fs::read_to_string(&path).unwrap();
                 assert!(!text.contains(LABEL), "{path:?} cites {LABEL}");
-                assert!(!text.contains("shorts"), "{path:?} cites the Shorts panel");
+                for site in panel::SITES {
+                    assert!(
+                        !text.contains(site.label()),
+                        "{path:?} cites {}",
+                        site.label()
+                    );
+                }
                 assert!(!text.contains("remote"), "{path:?} has a remote entry");
                 // A window target would also cover the panel webview living in `main` (§15).
                 let cap: serde_json::Value = serde_json::from_str(&text).unwrap();

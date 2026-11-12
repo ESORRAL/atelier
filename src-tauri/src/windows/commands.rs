@@ -39,16 +39,44 @@ pub fn pause_window_close(app: AppHandle) -> Result<(), String> {
     }
 }
 
-/// contracts/ipc.md §15: returns `"panel"`, or `"browser"` when the panel could not be installed.
+/// contracts/ipc.md §15 ter: returns `"panel"`, or the fallback used when the panel could not be
+/// installed (`"browser"` for Shorts, `"window"` for Instagram).
 #[tauri::command]
-pub async fn pause_panel_toggle(app: AppHandle, open: bool) -> Result<String, String> {
-    super::panel::toggle(app, open).await.map(Into::into)
+pub async fn pause_panel_toggle(
+    app: AppHandle,
+    site: String,
+    open: bool,
+) -> Result<String, String> {
+    let site = super::panel::Site::parse(&site).ok_or("Panneau inconnu.")?;
+    super::panel::toggle(app, site, open).await.map(Into::into)
 }
 
-/// contracts/ipc.md §16: fixed address, the panel's own address is never read.
-pub(crate) const BROWSER_URL: &str = "https://www.youtube.com/shorts";
+/// contracts/ipc.md §16: fixed addresses, a panel's own address is never read.
+fn browser_url(site: &str) -> Option<&'static str> {
+    match site {
+        "shorts" => Some("https://www.youtube.com/shorts"),
+        "instagram" => Some("https://www.instagram.com/"),
+        _ => None,
+    }
+}
 
 #[tauri::command]
-pub fn pause_open_browser() -> Result<(), String> {
-    crate::desktop::open_detached(BROWSER_URL)
+pub fn pause_open_browser(site: String) -> Result<(), String> {
+    crate::desktop::open_detached(browser_url(&site).ok_or("Panneau inconnu.")?)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn browser_urls_are_fixed() {
+        assert_eq!(
+            super::browser_url("shorts"),
+            Some("https://www.youtube.com/shorts")
+        );
+        assert_eq!(
+            super::browser_url("instagram"),
+            Some("https://www.instagram.com/")
+        );
+        assert_eq!(super::browser_url("https://example.com"), None);
+    }
 }
