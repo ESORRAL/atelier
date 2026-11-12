@@ -97,14 +97,6 @@ export default function Settings() {
         </select>
       </label>
 
-      <label className="settings__field">
-        Instagram
-        <select value={cfg.instagramMode} onChange={(e) => patch({ instagramMode: e.target.value as Cfg["instagramMode"] })}>
-          <option value="panel">Panneau dans l'app</option>
-          <option value="window">Fenêtre séparée</option>
-        </select>
-      </label>
-
       <div className="settings__field">
         <label htmlFor={`${id}-vault`}>Vault Obsidian</label>
         <div className="settings__row">

@@ -43,7 +43,6 @@ export type Settings = {
   recentCwds: string[];
   vaultPath: string | null;
   vaultProject: string;
-  instagramMode: "panel" | "window"; // contracts/ipc.md §15
 };
 
 export const sessionStart = (

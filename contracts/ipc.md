@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 2.5 (phase 5). 2.5 : le panneau §15 affiche YouTube Shorts ; Instagram garde la fenêtre §13 ; `instagramMode` retiré.
 Version 2.4 (phase 5). 2.4 : `pause_open_browser` (§16).
 Version 2.3 (phase 5). 2.3 : le second cerveau couvre tout le vault (§10, chemins relatifs à `vaultPath`) ; `graph_data` (§11).
 Version 2.2 (phase 5). 2.2 : panneau Instagram intégré (§15).
@@ -77,7 +78,6 @@ type Settings = {
   recentCwds: string[];            // 10 au plus, le plus récent en tête
   vaultPath: string | null;        // dossier du vault Obsidian ; défaut : $ATELIER_VAULT s'il est défini, sinon null
   vaultProject: string;            // dossier du projet dans le vault, relatif ; défaut "01 - Projets/Atelier"
-  instagramMode: "panel" | "window"; // défaut "panel" (§15)
 };
 ```
 
@@ -369,3 +369,16 @@ Plafonds : 3 000 nœuds (les plus connectés) et 8 000 liens (entre nœuds gard�
 
 Raison : WebKitGTK n'affiche les Reels qu'à ~10 images/s (`spikes/instagram-perf`, `spikes/instagram-cef`).
 L'adresse est fixe : l'app ne lit jamais l'adresse ni le contenu du panneau.
+
+## 15 bis. Le panneau devient YouTube Shorts (v2.5 — remplace §15 et §16 là où ils diffèrent)
+
+WebKitGTK lit les Reels d'Instagram à ~10 images/s, les Shorts de YouTube de façon fluide.
+- `pause_panel_toggle(open)` → `"panel" | "browser"` : panneau `shorts-panel` (même montage GTK, même
+  isolation), départ `https://www.youtube.com/shorts`, données `shorts-panel`. S'il ne peut pas être installé,
+  les Shorts s'ouvrent dans le navigateur du système (`"browser"`).
+- Navigation du panneau : liste blanche propre (youtube.com, youtu.be, youtube-nocookie.com, ytimg.com,
+  googlevideo.com, ggpht.com, google.com, gstatic.com). Hors liste : bloqué **sans** ouverture du navigateur
+  (les cadres publicitaires de YouTube ouvriraient des onglets). Pages et popups refusées.
+- `pause_open_browser` ouvre `https://www.youtube.com/shorts`.
+- Instagram : uniquement la fenêtre séparée du §13 (`pause_window_open`), pour les messages ; sa liste blanche
+  ne contient pas YouTube. Le réglage `instagramMode` est retiré (ignoré s'il reste dans un ancien fichier).

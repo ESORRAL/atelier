@@ -1,4 +1,5 @@
-//! Instagram panel inside the main window (contracts/ipc.md §15, spikes/instagram-panneau/FINDINGS.md).
+//! YouTube Shorts panel inside the main window (contracts/ipc.md §15, spikes/instagram-panneau/FINDINGS.md).
+//! WebKitGTK plays Instagram Reels at ~10 fps (spikes/instagram-perf, instagram-cef); Shorts play smoothly.
 //! A child webview of `main`, taken out of Tauri's GtkBox and put in a GtkOverlay + GtkRevealer that
 //! slides in from the left, next to the rail. Same isolation as the window: no capability, no script.
 //! Fragile by design: relies on tauri-runtime-wry packing child webviews in `default_vbox` (Tauri pinned).
@@ -14,20 +15,20 @@ use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, Url, Webview, WebviewUrl, Window, Wry,
 };
 
-use super::{START_URL, filter};
-use crate::store::InstagramMode;
+use super::{SHORTS_DOMAINS, allowed_in};
 
-pub(crate) const PANEL_LABEL: &str = "instagram-panel";
+pub(crate) const PANEL_LABEL: &str = "shorts-panel";
+const START_URL: &str = "https://www.youtube.com/shorts";
 const RAIL: i32 = 56;
 const TOP_BAR: i32 = 56;
 const PANEL_WIDTH: i32 = 420;
 const SLIDE_MS: u32 = 200;
-/// A hidden Instagram page keeps its WebAudio graphs and media pipelines running (about 25 % CPU,
+/// A hidden video page keeps its WebAudio graphs and media pipelines running (about 25 % CPU,
 /// 700 MB, spikes/instagram-perf/FINDINGS.md): past this delay closed, it is swapped for about:blank.
 const UNLOAD_AFTER: Duration = Duration::from_secs(120);
 const BLANK: &str = "about:blank";
 
-/// Set once the panel could not be installed: every later open uses the window.
+/// Set once the panel could not be installed: every later open uses the system browser.
 static FAILED: AtomicBool = AtomicBool::new(false);
 /// Serialises the first install, so two quick clicks cannot build the webview twice.
 static INSTALL: Mutex<()> = Mutex::new(());
@@ -39,20 +40,6 @@ static UNLOADED: Mutex<Option<Url>> = Mutex::new(None);
 thread_local! {
     // GTK objects live on the main thread only.
     static REVEALER: RefCell<Option<gtk::Revealer>> = const { RefCell::new(None) };
-}
-
-#[derive(Debug, PartialEq)]
-pub(crate) enum Target {
-    Panel,
-    Window,
-}
-
-/// Panel or separate window, from the setting and whether an install already failed.
-pub(crate) fn target(mode: InstagramMode, failed: bool) -> Target {
-    match mode {
-        InstagramMode::Panel if !failed => Target::Panel,
-        _ => Target::Window,
-    }
 }
 
 /// The reparenting only works if Tauri packed both webviews directly in the window's box.
@@ -80,15 +67,14 @@ fn install(app: &AppHandle) -> Result<(), String> {
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?
-        .join("instagram-panel");
+        .join("shorts-panel");
     let url = START_URL.parse().map_err(|_| "URL de départ invalide.")?;
+    // Off-list loads are dropped silently, not handed to the browser: wry reports iframes too, and
+    // YouTube's ad and tracking frames would otherwise open tabs. The top bar's button opens the browser.
     let builder = WebviewBuilder::new(PANEL_LABEL, WebviewUrl::External(url))
         .data_directory(data_dir)
-        .on_navigation(filter)
-        .on_new_window(|url, _| {
-            filter(&url);
-            NewWindowResponse::Deny
-        });
+        .on_navigation(|url| allowed_in(url, SHORTS_DOMAINS))
+        .on_new_window(|_, _| NewWindowResponse::Deny);
     // Bounds are irrelevant: the GtkOverlay lays the panel out.
     let panel = window
         .add_child(
@@ -220,13 +206,9 @@ fn resume(app: &AppHandle) {
     }
 }
 
-/// Opens or closes Instagram; returns where it went. See contracts/ipc.md §15.
-pub(crate) async fn toggle(
-    app: AppHandle,
-    mode: InstagramMode,
-    open: bool,
-) -> Result<&'static str, String> {
-    if target(mode, FAILED.load(Ordering::Relaxed)) == Target::Panel {
+/// Opens or closes the Shorts panel; returns where it went. See contracts/ipc.md §15.
+pub(crate) async fn toggle(app: AppHandle, open: bool) -> Result<&'static str, String> {
+    if !FAILED.load(Ordering::Relaxed) {
         if open {
             resume(&app);
         }
@@ -238,15 +220,15 @@ pub(crate) async fn toggle(
                 return Ok("panel");
             }
             Err(e) => {
-                eprintln!("[windows] panneau Instagram indisponible, repli sur la fenêtre : {e}");
+                eprintln!("[windows] panneau Shorts indisponible, repli sur le navigateur : {e}");
                 FAILED.store(true, Ordering::Relaxed);
             }
         }
     }
     if open {
-        super::commands::pause_window_open(app).await?;
+        super::commands::pause_open_browser()?;
     }
-    Ok("window")
+    Ok("browser")
 }
 
 #[cfg(test)]
@@ -254,17 +236,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn panel_or_window() {
-        assert_eq!(target(InstagramMode::Panel, false), Target::Panel);
-        assert_eq!(target(InstagramMode::Panel, true), Target::Window);
-        assert_eq!(target(InstagramMode::Window, false), Target::Window);
-        assert_eq!(target(InstagramMode::Window, true), Target::Window);
-    }
-
-    #[test]
     fn resume_only_a_blank_panel() {
         let blank: Url = BLANK.parse().unwrap();
-        let reel: Url = "https://www.instagram.com/reels/x/".parse().unwrap();
+        let reel: Url = "https://www.youtube.com/shorts/x".parse().unwrap();
         assert_eq!(resume_url(&blank, Some(reel.clone())), Some(reel.clone()));
         assert_eq!(resume_url(&blank, None), Some(START_URL.parse().unwrap()));
         // The user navigated since: keep the page.
