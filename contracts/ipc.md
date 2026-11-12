@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 2.3 (phase 5). 2.3 : le second cerveau couvre tout le vault (§10, chemins relatifs à `vaultPath`) ; `graph_data` (§11).
 Version 2.2 (phase 5). 2.2 : panneau Instagram intégré (§15).
 Version 2.1 (phase 5). 2.1 : `project_files` (§14) pour les mentions `@`.
 Version 2.0 (phase 5). 2.0 : second cerveau, graphe, projets, fenêtre Instagram (§10 à §13) ; `Settings` gagne `vaultPath` et `vaultProject`.
@@ -323,3 +324,38 @@ selon `spikes/instagram-panneau/FINDINGS.md`. Mêmes règles d'isolation que §1
 script, données à part, liste blanche de navigation partagée). **Les capabilities ciblent `webviews:
 ["main"]`, jamais la fenêtre.** Le réglage `instagramMode: "panel" | "window"` (défaut `"panel"`) choisit le
 mode ; `"window"` garde le comportement §13.
+
+## 10 bis. Second cerveau sur tout le vault (v2.3 — remplace les points de §10 qui diffèrent)
+
+Racine de lecture = **`vaultPath`** (tout le vault), plus `vaultPath/vaultProject`. Tous les `path` sont
+**relatifs à `vaultPath`**. Mêmes validations qu'au §10 (relatif, pas de `..`, résolu sous la racine, liens
+symboliques sortants refusés, dossiers cachés ignorés).
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `vault_list` | `folder: string \| null` (relatif ; `null` = racine du vault) | `VaultFolder` |
+| `vault_recent` | `limit: number` (1 à 50) | `VaultNote[]` (notes les plus récemment modifiées de tout le vault) |
+| `vault_read` | `path` | `string` (inchangé, 1 Mio au plus) |
+| `vault_search` | `query` | `VaultHit[]` (tout le vault, 2 000 fichiers parcourus au plus, 50 résultats) |
+| `vault_open` | `path` | `null` (inchangé) |
+| `vault_append_journal` | `markdown` | `null` (inchangé : toujours `vaultPath/vaultProject/Journal.md`) |
+
+```ts
+type VaultFolder = { path: string; folders: string[]; notes: VaultNote[] }; // un seul niveau ; folders = noms
+```
+`VaultNote.path` et `VaultHit.path` deviennent relatifs à `vaultPath`. `vaultProject` sert de raccourci dans l'UI.
+
+## 11 bis. Données du graphe à dessiner (v2.3)
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `graph_data` | `dir: string` | `GraphData \| null` (`null` : pas de `graphify-out/graph.json`) |
+
+```ts
+type GraphData = {
+  nodes: { id: string; label: string; community: number; communityName: string | null; file: string | null; degree: number }[];
+  links: { source: string; target: string }[];
+  truncated: boolean;   // vrai si plafonné
+};
+```
+Plafonds : 3 000 nœuds (les plus connectés) et 8 000 liens (entre nœuds gardés). Lecture seule de `graph.json`.
