@@ -247,7 +247,6 @@ export default function App() {
               <dt>Dossier</dt><dd>{info.cwd}</dd>
               <dt>Clé</dt><dd>{info.key}</dd>
               <dt>Modèle</dt><dd>{info.model ?? "—"}</dd>
-              <dt>Coût</dt><dd>{info.costUsd.toFixed(4)} $</dd>
               <dt>État</dt><dd>{info.state ?? "—"}</dd>
             </dl>
           ) : (

@@ -9,6 +9,7 @@ export type SessionTab = {
   id: number;
   cwd: string;
   resume: SessionEntry | null;
+  first: string | null; // first message typed on the welcome screen
   key: string | null;
   title: string;
   state: SessionState | null;
@@ -22,11 +23,11 @@ export const folderName = (cwd: string) => cwd.replace(/\/+$/, "").split("/").po
 const keyOf = (t: SessionTab) => t.key ?? t.resume?.key ?? null;
 
 /** Opens and selects a tab; resuming a session already open selects its tab. `null` when the bar is full. */
-export function openTab(t: SessionTabs, cwd: string, resume: SessionEntry | null = null): SessionTabs | null {
+export function openTab(t: SessionTabs, cwd: string, resume: SessionEntry | null = null, first: string | null = null): SessionTabs | null {
   const open = resume && t.list.find((x) => keyOf(x) === resume.key);
   if (open) return { ...t, active: open.id };
   if (t.list.length >= MAX_TABS) return null;
-  const tab: SessionTab = { id: t.next, cwd, resume, key: null, title: resume?.title || folderName(cwd), state: null, pending: 0 };
+  const tab: SessionTab = { id: t.next, cwd, resume, first, key: null, title: resume?.title || folderName(cwd), state: null, pending: 0 };
   return { list: [...t.list, tab], active: tab.id, next: t.next + 1 };
 }
 

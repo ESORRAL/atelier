@@ -115,3 +115,8 @@ test("folderName", () => {
   expect(folderName("/a/b")).toBe("b");
   expect(folderName("/")).toBe("/");
 });
+
+test("openTab keeps the welcome message for the new tab", () => {
+  expect(openTab(noTabs, "/p/demo", null, "Bonjour")?.list[0].first).toBe("Bonjour");
+  expect(openTab(noTabs, "/p/demo")?.list[0].first).toBeNull();
+});
