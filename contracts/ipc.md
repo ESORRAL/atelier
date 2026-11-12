@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 2.4 (phase 5). 2.4 : `pause_open_browser` (§16).
 Version 2.3 (phase 5). 2.3 : le second cerveau couvre tout le vault (§10, chemins relatifs à `vaultPath`) ; `graph_data` (§11).
 Version 2.2 (phase 5). 2.2 : panneau Instagram intégré (§15).
 Version 2.1 (phase 5). 2.1 : `project_files` (§14) pour les mentions `@`.
@@ -359,3 +360,12 @@ type GraphData = {
 };
 ```
 Plafonds : 3 000 nœuds (les plus connectés) et 8 000 liens (entre nœuds gardés). Lecture seule de `graph.json`.
+
+## 16. Instagram dans le navigateur du système (module `windows`, v2.4)
+
+| Commande | Arguments | Retour | Effet |
+|---|---|---|---|
+| `pause_open_browser` | — | `null` | ouvre `https://www.instagram.com/reels/` (adresse fixe) dans le navigateur par défaut, via `desktop::open_detached` |
+
+Raison : WebKitGTK n'affiche les Reels qu'à ~10 images/s (`spikes/instagram-perf`, `spikes/instagram-cef`).
+L'adresse est fixe : l'app ne lit jamais l'adresse ni le contenu du panneau.
