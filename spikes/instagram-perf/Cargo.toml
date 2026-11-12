@@ -1,0 +1,17 @@
+[package]
+name = "spike-instagram-perf"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Standalone: not part of any parent workspace.
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+tauri = { version = "2.12", features = ["unstable"] }
+# Same versions as the ones tauri already pulls.
+gtk = "=0.18.2"
+webkit2gtk = { version = "=2.0.2", features = ["v2_40"] }
