@@ -137,7 +137,7 @@
 .composer:has(textarea:focus-visible) { outline: var(--focus-ring-w) solid var(--color-focus-ring); outline-offset: var(--focus-ring-offset); }
 .chat .composer textarea {
   width: 100%;
-  min-height: calc(var(--send-size) * 1.5);
+  min-height: var(--lh-read);
   max-height: var(--composer-max-h);
   padding: 0;
   resize: none;
@@ -334,3 +334,8 @@
 }
 .mention__item:hover { background: var(--color-bg-hover); }
 .mention__item[aria-selected="true"] { background: var(--color-bg-selected); color: var(--color-text-primary); }
+
+/* Session tab close button: hidden until the tab is hovered or focused (still reachable by keyboard). */
+.chat-tabs__close { opacity: 0; transition: opacity var(--dur-fast) var(--ease-standard); }
+.chat-tabs__item:hover .chat-tabs__close,
+.chat-tabs__item:focus-within .chat-tabs__close { opacity: 1; }

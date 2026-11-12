@@ -93,7 +93,7 @@ export function Composer({ id, cwd, commands, ready, busy, onSend, onInterrupt, 
           aria-label="Message à Claude"
           placeholder="Comment puis-je t'aider ?"
           value={draft}
-          rows={2}
+          rows={1}
           role="combobox"
           aria-expanded={listOpen}
           aria-controls={`mention-list-${id}`}
