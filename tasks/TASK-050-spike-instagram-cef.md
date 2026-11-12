@@ -48,6 +48,11 @@ Seuls tes propres processus sont lancés et tués, avec `timeout`. `CARGO_TARGET
 fichier, mets son contenu dans ton rapport.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Vérification (sortie résumée) :
-- À remonter à l'architecte :
+- Fait : prototype CEF 156 (`spikes/instagram-cef/`), liste blanche testée, mesures sur page locale.
+  FINDINGS.md refusé par l'outil : contenu dans le rapport final.
+- Vérification (sortie résumée) : `cargo test` 1/1, clippy propre. Sandbox : FATAL (SUID absent,
+  userns bloqué par AppArmor). Local : pas de H.264 ; VP9 VA-API, 89,5 images/s, CPU 54 % (WebKit 45, ~24 %).
+  Fermeture propre en X11, bloquée en Wayland (SIGTERM ne laisse aucun reste).
+- À remonter à l'architecte : arrêt avant Instagram réel, car il faut une étape root (SUID
+  `chrome-sandbox` ou profil AppArmor). Lancer sans sandbox a été refusé. `download-cef` 3.0.0 plante sur
+  l'index du CDN ; contourné par `fetch-cef.sh`. 1,9 Go dans le cache.
