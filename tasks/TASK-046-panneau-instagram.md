@@ -57,8 +57,8 @@ npm run build:bridge && cd src-tauri && cargo fmt --check && cargo clippy -- -D 
 Aucun script dans la page, aucune lecture du contenu d'Instagram, aucune connexion.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : `pause_panel_toggle` (webview `instagram-panel` créée à la 1re ouverture, montage GTK du spike, repli fenêtre définitif si le `GtkBox` ne contient pas les deux webviews), `instagramMode` (défaut `panel`), capability `webviews: ["main"]` et test étendu ; rail/palette/Échap/Focus, exclusion Musique, réglage.
+- Fichiers touchés : `src-tauri/src/windows/{panel,commands,mod}.rs`, `lib.rs`, `store/mod.rs`, `Cargo.toml/.lock`, `capabilities/main.json`, `src/App.tsx`, `src/shell/Rail.tsx`, `src/ipc/{desktop,claude}.ts`, `src/features/settings/{index.tsx,validate.test.ts}`.
+- Vérification : lint, 108 Vitest, build, fmt, clippy, 60 tests Rust verts. Essai réel (Wayland, pilote temporaire non commité) : panneau à 56,56, 420×544, masqué hors écran, 14 bascules sans plantage.
+- Raccourcis pris : aucun.
+- À remonter : une fois le panneau créé, `main` n'est plus une « webview window » : `notify/mod.rs` (`get_webview_window("main")`) voit toujours « non focalisé » → passer à `get_window("main")`. Clics souris non testés.
