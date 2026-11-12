@@ -1,6 +1,7 @@
 //! Isolated Instagram "pause" window (ADR-0003, contracts/ipc.md §13).
 //! No capability, no `remote` entry, no injected script: the page cannot reach the app.
 pub mod commands;
+mod panel;
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -112,6 +113,10 @@ mod tests {
                 let text = std::fs::read_to_string(&path).unwrap();
                 assert!(!text.contains(LABEL), "{path:?} cites {LABEL}");
                 assert!(!text.contains("remote"), "{path:?} has a remote entry");
+                // A window target would also cover the panel webview living in `main` (§15).
+                let cap: serde_json::Value = serde_json::from_str(&text).unwrap();
+                assert!(cap.get("windows").is_none(), "{path:?} targets a window");
+                assert_eq!(cap["webviews"], serde_json::json!(["main"]), "{path:?}");
                 seen += 1;
             }
         }

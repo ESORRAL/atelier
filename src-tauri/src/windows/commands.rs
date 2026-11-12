@@ -38,3 +38,13 @@ pub fn pause_window_close(app: AppHandle) -> Result<(), String> {
         None => Ok(()),
     }
 }
+
+/// contracts/ipc.md §15: returns `"panel"` or `"window"`.
+#[tauri::command]
+pub async fn pause_panel_toggle(app: AppHandle, open: bool) -> Result<String, String> {
+    let mode = app
+        .state::<crate::claude::Claude>()
+        .settings_get()?
+        .instagram_mode;
+    super::panel::toggle(app, mode, open).await.map(Into::into)
+}

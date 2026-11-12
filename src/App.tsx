@@ -13,7 +13,7 @@ import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
 import { isTabId, TABS, type TabId } from "./shell/tabs";
 import { shortcutAction } from "./shell/shortcuts";
-import { pauseWindowOpen } from "./ipc/desktop";
+import { pausePanelToggle } from "./ipc/desktop";
 import type { Command } from "./shell/palette";
 import { FocusTimer } from "./features/focus/FocusTimer";
 import { useFocus } from "./features/focus/useFocus";
@@ -55,6 +55,7 @@ export default function App() {
   const [drawer, setDrawer] = usePersisted("atelier.drawer", "closed", isOpenClosed);
   const [palette, setPalette] = useState(false);
   const [music, setMusic] = useState(false);
+  const [instagram, setInstagram] = useState(false); // native panel open (contracts/ipc.md §15)
   const [notice, setNotice] = useState<string | null>(null);
   const [info, setInfo] = useState<ChatInfo>(EMPTY_INFO);
   const controls = useRef<ChatControls | null>(null);
@@ -100,13 +101,24 @@ export default function App() {
     setMusic(false);
     document.getElementById("rail-music")?.focus();
   };
-  const openInstagram = () => {
+  // The native panel sits above the page, so Music and Instagram are never open together.
+  const showInstagram = (open: boolean) => {
     setNotice(null);
-    pauseWindowOpen().catch(() => setNotice("Impossible d'ouvrir la fenêtre Instagram."));
+    if (open) setMusic(false);
+    pausePanelToggle(open).then(
+      (where) => setInstagram(open && where === "panel"),
+      () => setNotice(open ? "Impossible d'ouvrir Instagram." : "Impossible de fermer Instagram."),
+    );
+  };
+  const toggleInstagram = () => showInstagram(!instagram);
+  const openMusic = () => {
+    if (instagram) showInstagram(false);
+    setMusic(true);
   };
   const toggleDrawer = () => setDrawer(flip);
   const toggleFocus = () => {
     if (!inFocus) {
+      if (instagram) showInstagram(false); // Focus hides media
       focus.enter();
     } else if (window.confirm("Quitter le Focus avant la fin ?")) focus.leave();
   };
@@ -130,8 +142,8 @@ export default function App() {
     { id: "new", label: "Nouvelle session", group: "Actions", run: () => { goTo("chat"); controls.current?.newSession(); } },
     { id: "interrupt", label: "Interrompre", group: "Actions", run: () => controls.current?.interrupt() },
     { id: "focus", label: inFocus ? "Quitter le mode Focus" : "Activer le mode Focus", group: "Actions", shortcut: "Ctrl+Maj+F", run: toggleFocus },
-    ...(inFocus ? [] : [{ id: "instagram", label: "Ouvrir Instagram", group: "Actions", run: openInstagram }]),
-    ...(inFocus ? [] : [{ id: "music", label: musicShown ? "Fermer le panneau Musique" : "Ouvrir le panneau Musique", group: "Actions", run: () => (musicShown ? closeMusic() : setMusic(true)) }]),
+    ...(inFocus ? [] : [{ id: "instagram", label: instagram ? "Fermer Instagram" : "Ouvrir Instagram", group: "Actions", run: toggleInstagram }]),
+    ...(inFocus ? [] : [{ id: "music", label: musicShown ? "Fermer le panneau Musique" : "Ouvrir le panneau Musique", group: "Actions", run: () => (musicShown ? closeMusic() : openMusic()) }]),
     { id: "theme", label: "Basculer le thème", group: "Actions", run: toggleTheme },
     { id: "panel", label: "Replier ou ouvrir le panneau droit", group: "Actions", run: togglePanel },
     { id: "drawer", label: "Replier ou ouvrir le journal", group: "Actions", shortcut: "Ctrl+²", run: toggleDrawer },
@@ -140,6 +152,11 @@ export default function App() {
   // Always-fresh handler for the single window listener.
   const onKey = useRef<(e: KeyboardEvent) => void>(() => {});
   onKey.current = (e) => {
+    if (e.key === "Escape" && instagram && !palette) {
+      e.preventDefault();
+      showInstagram(false);
+      return;
+    }
     const a = shortcutAction(e);
     if (!a) return;
     e.preventDefault();
@@ -189,7 +206,7 @@ export default function App() {
           <Terminal size="var(--icon-sm)" aria-hidden="true" /> Journal
         </button>
       </header>
-      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} musicOpen={musicShown} mediaHidden={inFocus} onMusic={() => (musicShown ? closeMusic() : setMusic(true))} onInstagram={openInstagram} />
+      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} musicOpen={musicShown} mediaHidden={inFocus} onMusic={() => (musicShown ? closeMusic() : openMusic())} instagramOpen={instagram} onInstagram={toggleInstagram} />
       <div className="shell__center">
         {notice && (
           <p className="shell__notice" role="alert">

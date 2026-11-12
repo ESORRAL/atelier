@@ -182,6 +182,7 @@ dependencies = [
 name = "atelier"
 version = "0.1.0"
 dependencies = [
+ "gtk",
  "libc",
  "mpris",
  "serde",
