@@ -18,7 +18,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "~2.12", features = [] }
+tauri = { version = "=2.12.5", features = ["unstable"] }
+# Same version as tauri's own: reparents the Instagram panel webview (windows/panel.rs).
+gtk = "=0.18.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["process", "io-util", "rt", "sync", "macros", "time"] }

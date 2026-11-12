@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { InstagramLogo, MusicNotes } from "@phosphor-icons/react";
 import { TABS, type TabId } from "./tabs";
 
-export function Rail({ active, onSelect, hidden = [], musicOpen = false, onMusic, onInstagram, mediaHidden = false }: { active: TabId | null; onSelect: (id: TabId) => void; hidden?: TabId[]; musicOpen?: boolean; onMusic: () => void; onInstagram: () => void; mediaHidden?: boolean }) {
+export function Rail({ active, onSelect, hidden = [], musicOpen = false, onMusic, instagramOpen = false, onInstagram, mediaHidden = false }: { active: TabId | null; onSelect: (id: TabId) => void; hidden?: TabId[]; musicOpen?: boolean; onMusic: () => void; instagramOpen?: boolean; onInstagram: () => void; mediaHidden?: boolean }) {
   // Up/Down move focus between rail items (roving tabindex).
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     const d = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
@@ -34,8 +34,16 @@ export function Rail({ active, onSelect, hidden = [], musicOpen = false, onMusic
             </button>
           )}
           {t.id === "settings" && !mediaHidden && (
-            <button type="button" className="rail__item" aria-label="Instagram" title="Instagram (fenêtre séparée)" tabIndex={-1} onClick={onInstagram}>
-              <InstagramLogo size="var(--icon-md)" aria-hidden="true" />
+            <button
+              type="button"
+              className={`rail__item${instagramOpen ? " rail__item--active" : ""}`}
+              aria-label="Instagram"
+              aria-pressed={instagramOpen}
+              title="Instagram"
+              tabIndex={-1}
+              onClick={onInstagram}
+            >
+              <InstagramLogo size="var(--icon-md)" weight={instagramOpen ? "fill" : "regular"} aria-hidden="true" />
             </button>
           )}
           <button

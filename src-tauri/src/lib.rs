@@ -57,6 +57,7 @@ pub fn run() {
             desktop::music_open,
             windows::commands::pause_window_open,
             windows::commands::pause_window_close,
+            windows::commands::pause_panel_toggle,
             vault::commands::vault_list,
             vault::commands::vault_read,
             vault::commands::vault_search,

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Minimal permissions for the main window",
-  "windows": ["main"],
+  "description": "Minimal permissions for the main webview only (never the window: it also holds the Instagram panel)",
+  "webviews": ["main"],
   "permissions": []
 }

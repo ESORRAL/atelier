@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Settings } from "../../ipc/claude";
 import { normalize, validateSettings } from "./validate";
 
-const ok: Settings = { claudePath: null, defaultModel: null, defaultPermissionMode: "default", recentCwds: [], vaultPath: null, vaultProject: "01 - Projets/Atelier" };
+const ok: Settings = { claudePath: null, defaultModel: null, defaultPermissionMode: "default", recentCwds: [], vaultPath: null, vaultProject: "01 - Projets/Atelier", instagramMode: "panel" };
 
 describe("validateSettings", () => {
   it("accepts empty and absolute paths", () => {
