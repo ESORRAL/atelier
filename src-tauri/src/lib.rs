@@ -28,6 +28,8 @@ pub fn run() {
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
                 let claude = window.state::<claude::Claude>();
                 tauri::async_runtime::block_on(claude.close_all());
+                // Otherwise Atelier keeps running with only Instagram left.
+                let _ = windows::commands::pause_window_close(window.app_handle().clone());
             }
         })
         .invoke_handler(tauri::generate_handler![

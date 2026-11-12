@@ -2,6 +2,9 @@
 //! No capability, no `remote` entry, no injected script: the page cannot reach the app.
 pub mod commands;
 
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
 use tauri::Url;
 
 pub(crate) const LABEL: &str = "instagram";
@@ -34,13 +37,32 @@ pub fn allowed(url: &Url) -> bool {
             .any(|d| host == *d || host.ends_with(&format!(".{d}")))
 }
 
-/// Blocks a refused navigation and hands `https` links to the system browser.
+const HANDOFF_GAP: Duration = Duration::from_secs(2);
+static LAST_HANDOFF: Mutex<Option<Instant>> = Mutex::new(None);
+
+/// Whether a handoff at `now` is allowed after the one at `last`; records it if so.
+fn take_slot(last: &mut Option<Instant>, now: Instant) -> bool {
+    if last.is_some_and(|t| now.duration_since(t) < HANDOFF_GAP) {
+        return false;
+    }
+    *last = Some(now);
+    true
+}
+
+/// Blocks a refused navigation and hands `https` links to the system browser,
+/// at most once every 2 s: wry also calls this for iframes, server redirects and
+/// scripted `location=` and does not say which, so a page could otherwise flood tabs.
 pub(crate) fn filter(url: &Url) -> bool {
     if allowed(url) {
         return true;
     }
     if url.scheme() == "https" {
-        let _ = crate::desktop::open_detached(url.as_str());
+        let ok = LAST_HANDOFF
+            .lock()
+            .is_ok_and(|mut last| take_slot(&mut last, Instant::now()));
+        if ok {
+            let _ = crate::desktop::open_detached(url.as_str());
+        }
     }
     false
 }
@@ -68,6 +90,16 @@ mod tests {
             "https://l.facebook.com/l.php?u=https%3A%2F%2Fexample.com"
         ));
         assert!(!ok("file:///etc/passwd"));
+    }
+
+    #[test]
+    fn handoff_rate_limit() {
+        let t0 = Instant::now();
+        let mut last = None;
+        assert!(take_slot(&mut last, t0));
+        assert!(!take_slot(&mut last, t0 + Duration::from_millis(1999)));
+        assert!(take_slot(&mut last, t0 + HANDOFF_GAP));
+        assert!(!take_slot(&mut last, t0 + HANDOFF_GAP));
     }
 
     #[test]
