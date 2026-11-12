@@ -1,0 +1,37 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>main</title>
+<body style="margin:0;height:100vh;background:#111;color:#ddd;font:14px sans-serif">
+<canvas id="c" style="position:fixed;inset:0;width:100%;height:100%"></canvas>
+<p style="position:relative;padding:80px 0 0 500px">main webview (simulated Atelier UI)</p>
+<script>
+  // ?anim=1: Beams-like blurred canvas at 30 fps, like src/components/ui/beams-background.tsx.
+  // ?anim=2: same plus the component's CSS blur(15px) on the canvas and its full-window backdrop-filter
+  // blur(50px) layer whose opacity loops forever (framer-motion, never paused while the panel is closed).
+  const anim = new URLSearchParams(location.search).get('anim');
+  if (anim === '2') {
+    document.getElementById('c').style.filter = 'blur(15px)';
+    const veil = document.createElement('div');
+    veil.style.cssText = 'position:fixed;inset:0;backdrop-filter:blur(50px);background:rgba(10,10,10,.05)';
+    veil.animate([{ opacity: 0.05 }, { opacity: 0.15 }, { opacity: 0.05 }], { duration: 10000, iterations: Infinity });
+    document.body.appendChild(veil);
+  }
+  if (anim === '1' || anim === '2') {
+    const c = document.getElementById('c'), ctx = c.getContext('2d');
+    const fit = () => { c.width = innerWidth * devicePixelRatio; c.height = innerHeight * devicePixelRatio; };
+    fit(); addEventListener('resize', fit);
+    let last = 0, t = 0;
+    (function loop(now = 0) {
+      requestAnimationFrame(loop);
+      if (now - last < 33) return;
+      last = now; t += 0.02;
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.filter = 'blur(35px)';
+      for (let i = 0; i < 12; i++) {
+        ctx.fillStyle = `hsla(${190 + i * 6}, 85%, 65%, 0.4)`;
+        ctx.fillRect((i / 12) * c.width + Math.sin(t + i) * 80, ((t * 60 + i * 90) % c.height), 120, c.height / 2);
+      }
+    })();
+  }
+</script>
+</body>

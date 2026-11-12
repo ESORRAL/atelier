@@ -1,11 +1,11 @@
 "use client";
 
 // Verbatim from 21st.dev "beams-background", pasted by the user. Changes: the demo title is replaced by
-// `children`; for performance (lag with the Instagram panel) the loop is capped at 30 fps, skips frames
-// while the window is inactive (data-idle on <html>), and stops entirely when `paused`.
+// `children`; for performance (spikes/instagram-perf/FINDINGS.md) the full-window animated backdrop-filter
+// layer is removed (most of the ~35 % CPU at rest), the loop is capped at 30 fps, draws nothing while the
+// window is inactive (data-idle on <html>), and stops entirely when `paused`.
 
 import { useEffect, useRef } from "react";
-import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface AnimatedGradientBackgroundProps {
@@ -190,22 +190,6 @@ export function BeamsBackground({
                 style={{ filter: "blur(15px)" }}
             />
 
-            {!paused && (
-                <motion.div
-                    className="absolute inset-0 bg-neutral-950/5"
-                    animate={{
-                        opacity: [0.05, 0.15, 0.05],
-                    }}
-                    transition={{
-                        duration: 10,
-                        ease: "easeInOut",
-                        repeat: Number.POSITIVE_INFINITY,
-                    }}
-                    style={{
-                        backdropFilter: "blur(50px)",
-                    }}
-                />
-            )}
 
             {children && <div className="relative z-10 h-full w-full">{children}</div>}
         </div>

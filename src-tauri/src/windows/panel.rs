@@ -4,12 +4,15 @@
 //! Fragile by design: relies on tauri-runtime-wry packing child webviews in `default_vbox` (Tauri pinned).
 use std::cell::RefCell;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
+use std::time::Duration;
 
 use gtk::prelude::*;
 use tauri::webview::{NewWindowResponse, WebviewBuilder};
-use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, Webview, WebviewUrl, Window, Wry};
+use tauri::{
+    AppHandle, LogicalPosition, LogicalSize, Manager, Url, Webview, WebviewUrl, Window, Wry,
+};
 
 use super::{START_URL, filter};
 use crate::store::InstagramMode;
@@ -19,11 +22,19 @@ const RAIL: i32 = 56;
 const TOP_BAR: i32 = 56;
 const PANEL_WIDTH: i32 = 420;
 const SLIDE_MS: u32 = 200;
+/// A hidden Instagram page keeps its WebAudio graphs and media pipelines running (about 25 % CPU,
+/// 700 MB, spikes/instagram-perf/FINDINGS.md): past this delay closed, it is swapped for about:blank.
+const UNLOAD_AFTER: Duration = Duration::from_secs(120);
+const BLANK: &str = "about:blank";
 
 /// Set once the panel could not be installed: every later open uses the window.
 static FAILED: AtomicBool = AtomicBool::new(false);
 /// Serialises the first install, so two quick clicks cannot build the webview twice.
 static INSTALL: Mutex<()> = Mutex::new(());
+/// Bumped on every open or close: a pending unload only runs if nothing happened since.
+static GENERATION: AtomicU64 = AtomicU64::new(0);
+/// Page shown before the unload, restored on the next open.
+static UNLOADED: Mutex<Option<Url>> = Mutex::new(None);
 
 thread_local! {
     // GTK objects live on the main thread only.
@@ -166,6 +177,49 @@ fn show(app: &AppHandle, open: bool) -> Result<(), String> {
     Ok(())
 }
 
+/// Where to go on open: the page saved by the unload (else the start page), if the panel is blank.
+fn resume_url(current: &Url, saved: Option<Url>) -> Option<Url> {
+    if current.as_str() != BLANK {
+        return None;
+    }
+    saved.or_else(|| START_URL.parse().ok())
+}
+
+/// After a close: unload the page once the panel stayed closed for `UNLOAD_AFTER`.
+fn schedule_unload(app: AppHandle) {
+    let generation = GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(UNLOAD_AFTER).await;
+        if GENERATION.load(Ordering::Relaxed) != generation {
+            return;
+        }
+        let Some(w) = app.get_webview(PANEL_LABEL) else {
+            return;
+        };
+        let (Ok(url), Ok(blank)) = (w.url(), BLANK.parse()) else {
+            return;
+        };
+        if url.as_str() != BLANK
+            && w.navigate(blank).is_ok()
+            && let Ok(mut saved) = UNLOADED.lock()
+        {
+            *saved = Some(url);
+        }
+    });
+}
+
+/// Before an open: cancel a pending unload and reload the page if it was unloaded.
+fn resume(app: &AppHandle) {
+    GENERATION.fetch_add(1, Ordering::Relaxed);
+    let Some(w) = app.get_webview(PANEL_LABEL) else {
+        return;
+    };
+    let saved = UNLOADED.lock().ok().and_then(|mut s| s.take());
+    if let Some(url) = w.url().ok().and_then(|u| resume_url(&u, saved)) {
+        let _ = w.navigate(url);
+    }
+}
+
 /// Opens or closes Instagram; returns where it went. See contracts/ipc.md §15.
 pub(crate) async fn toggle(
     app: AppHandle,
@@ -173,8 +227,16 @@ pub(crate) async fn toggle(
     open: bool,
 ) -> Result<&'static str, String> {
     if target(mode, FAILED.load(Ordering::Relaxed)) == Target::Panel {
+        if open {
+            resume(&app);
+        }
         match show(&app, open) {
-            Ok(()) => return Ok("panel"),
+            Ok(()) => {
+                if !open {
+                    schedule_unload(app);
+                }
+                return Ok("panel");
+            }
             Err(e) => {
                 eprintln!("[windows] panneau Instagram indisponible, repli sur la fenêtre : {e}");
                 FAILED.store(true, Ordering::Relaxed);
@@ -197,6 +259,16 @@ mod tests {
         assert_eq!(target(InstagramMode::Panel, true), Target::Window);
         assert_eq!(target(InstagramMode::Window, false), Target::Window);
         assert_eq!(target(InstagramMode::Window, true), Target::Window);
+    }
+
+    #[test]
+    fn resume_only_a_blank_panel() {
+        let blank: Url = BLANK.parse().unwrap();
+        let reel: Url = "https://www.instagram.com/reels/x/".parse().unwrap();
+        assert_eq!(resume_url(&blank, Some(reel.clone())), Some(reel.clone()));
+        assert_eq!(resume_url(&blank, None), Some(START_URL.parse().unwrap()));
+        // The user navigated since: keep the page.
+        assert_eq!(resume_url(&reel, Some(reel.clone())), None);
     }
 
     #[test]
