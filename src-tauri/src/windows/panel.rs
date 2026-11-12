@@ -1,7 +1,8 @@
-//! YouTube Shorts panel inside the main window (contracts/ipc.md §15, spikes/instagram-panneau/FINDINGS.md).
-//! WebKitGTK plays Instagram Reels at ~10 fps (spikes/instagram-perf, instagram-cef); Shorts play smoothly.
-//! A child webview of `main`, taken out of Tauri's GtkBox and put in a GtkOverlay + GtkRevealer that
-//! slides in from the left, next to the rail. Same isolation as the window: no capability, no script.
+//! "Pause" panels inside the main window: YouTube Shorts and Instagram (contracts/ipc.md §15 ter,
+//! spikes/instagram-panneau/FINDINGS.md). Each one is a child webview of `main`, taken out of Tauri's
+//! GtkBox and put in a GtkRevealer over the main webview (one shared GtkOverlay); it slides in from the
+//! left, next to the rail. Only one is shown at a time. Same isolation as the window: no capability,
+//! no script, own data directory, own navigation allowlist.
 //! Fragile by design: relies on tauri-runtime-wry packing child webviews in `default_vbox` (Tauri pinned).
 use std::cell::RefCell;
 use std::sync::Mutex;
@@ -15,10 +16,8 @@ use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, Url, Webview, WebviewUrl, Window, Wry,
 };
 
-use super::{SHORTS_DOMAINS, allowed_in};
+use super::{SHORTS_DOMAINS, allowed_in, filter};
 
-pub(crate) const PANEL_LABEL: &str = "shorts-panel";
-const START_URL: &str = "https://www.youtube.com/shorts";
 const RAIL: i32 = 56;
 const TOP_BAR: i32 = 56;
 const PANEL_WIDTH: i32 = 420;
@@ -28,23 +27,80 @@ const SLIDE_MS: u32 = 200;
 const UNLOAD_AFTER: Duration = Duration::from_secs(120);
 const BLANK: &str = "about:blank";
 
-/// Set once the panel could not be installed: every later open uses the system browser.
-static FAILED: AtomicBool = AtomicBool::new(false);
-/// Serialises the first install, so two quick clicks cannot build the webview twice.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Site {
+    Shorts,
+    Instagram,
+}
+
+pub(crate) const SITES: [Site; 2] = [Site::Shorts, Site::Instagram];
+
+impl Site {
+    pub(crate) fn parse(s: &str) -> Option<Site> {
+        match s {
+            "shorts" => Some(Site::Shorts),
+            "instagram" => Some(Site::Instagram),
+            _ => None,
+        }
+    }
+    fn index(self) -> usize {
+        self as usize
+    }
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Site::Shorts => "shorts-panel",
+            // Same name as the former single panel: its data directory keeps the Instagram sign-in.
+            Site::Instagram => "instagram-panel",
+        }
+    }
+    fn start(self) -> &'static str {
+        match self {
+            Site::Shorts => "https://www.youtube.com/shorts",
+            Site::Instagram => super::START_URL,
+        }
+    }
+    /// Whether the panel may load `url`.
+    fn navigate(self, url: &Url) -> bool {
+        match self {
+            // Off-list loads are dropped silently, not handed to the browser: wry reports iframes too,
+            // and YouTube's ad and tracking frames would otherwise open tabs.
+            Site::Shorts => allowed_in(url, SHORTS_DOMAINS),
+            // Instagram links to other sites go to the system browser (rate-limited), as in the window.
+            Site::Instagram => filter(url),
+        }
+    }
+}
+
+/// Per-site state, indexed by `Site::index`.
+struct State {
+    /// Set once the panel could not be installed: every later open uses the fallback.
+    failed: AtomicBool,
+    /// Bumped on every open or close: a pending unload only runs if nothing happened since.
+    generation: AtomicU64,
+    /// Page shown before the unload, restored on the next open.
+    unloaded: Mutex<Option<Url>>,
+}
+
+static STATE: [State; 2] = [const {
+    State {
+        failed: AtomicBool::new(false),
+        generation: AtomicU64::new(0),
+        unloaded: Mutex::new(None),
+    }
+}; 2];
+/// Serialises installs, so two quick clicks cannot build a webview twice.
 static INSTALL: Mutex<()> = Mutex::new(());
-/// Bumped on every open or close: a pending unload only runs if nothing happened since.
-static GENERATION: AtomicU64 = AtomicU64::new(0);
-/// Page shown before the unload, restored on the next open.
-static UNLOADED: Mutex<Option<Url>> = Mutex::new(None);
 
 thread_local! {
     // GTK objects live on the main thread only.
-    static REVEALER: RefCell<Option<gtk::Revealer>> = const { RefCell::new(None) };
+    static OVERLAY: RefCell<Option<gtk::Overlay>> = const { RefCell::new(None) };
+    static REVEALERS: RefCell<[Option<gtk::Revealer>; 2]> = const { RefCell::new([None, None]) };
 }
 
-/// The reparenting only works if Tauri packed both webviews directly in the window's box.
-fn mountable<T: PartialEq>(children: &[T], main: &T, panel: &T) -> bool {
-    children.contains(main) && children.contains(panel)
+/// The reparenting needs the panel webview packed directly in the window's box, and, the first time,
+/// the main webview too (later it already sits in the overlay).
+fn mountable<T: PartialEq>(children: &[T], main: Option<&T>, panel: &T) -> bool {
+    children.contains(panel) && main.is_none_or(|m| children.contains(m))
 }
 
 /// The WebKit widget behind a Tauri webview. Main thread only (with_webview is then synchronous).
@@ -59,22 +115,39 @@ fn gtk_widget(webview: &Webview) -> Option<gtk::Widget> {
     SLOT.with(|s| s.borrow_mut().take())
 }
 
-/// Builds the panel webview and reparents it. Main thread only. Nothing is moved unless both
-/// webviews are found in the box, so a failure leaves `main` where Tauri put it.
-fn install(app: &AppHandle) -> Result<(), String> {
+/// Builds the panel webview and reparents it. Main thread only. Nothing is moved unless the check
+/// passes, so a failure leaves `main` where it was.
+fn install(app: &AppHandle, site: Site) -> Result<(), String> {
     let window: Window<Wry> = app.get_window("main").ok_or("fenêtre principale absente")?;
     let data_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?
-        .join("shorts-panel");
-    let url = START_URL.parse().map_err(|_| "URL de départ invalide.")?;
-    // Off-list loads are dropped silently, not handed to the browser: wry reports iframes too, and
-    // YouTube's ad and tracking frames would otherwise open tabs. The top bar's button opens the browser.
-    let builder = WebviewBuilder::new(PANEL_LABEL, WebviewUrl::External(url))
+        .join(site.label());
+    let url = site
+        .start()
+        .parse()
+        .map_err(|_| "URL de départ invalide.")?;
+    let builder = WebviewBuilder::new(site.label(), WebviewUrl::External(url))
         .data_directory(data_dir)
-        .on_navigation(|url| allowed_in(url, SHORTS_DOMAINS))
-        .on_new_window(|_, _| NewWindowResponse::Deny);
+        .on_navigation(move |url| {
+            let ok = site.navigate(url);
+            if !ok && cfg!(debug_assertions) {
+                // Host only, never the path: helps find a domain a sign-in needs.
+                eprintln!(
+                    "[panel {}] bloqué : {}",
+                    site.label(),
+                    url.host_str().unwrap_or(url.scheme())
+                );
+            }
+            ok
+        })
+        .on_new_window(move |url, _| {
+            if site == Site::Instagram {
+                filter(&url);
+            }
+            NewWindowResponse::Deny
+        });
     // Bounds are irrelevant: the GtkOverlay lays the panel out.
     let panel = window
         .add_child(
@@ -83,28 +156,42 @@ fn install(app: &AppHandle) -> Result<(), String> {
             LogicalSize::new(PANEL_WIDTH as f64, 1.0),
         )
         .map_err(|e| e.to_string())?;
-    let res = reparent(&window, &panel);
+    let res = reparent(&window, &panel, site);
     if res.is_err() {
         let _ = panel.close();
     }
     res
 }
 
-fn reparent(window: &Window<Wry>, panel: &Webview) -> Result<(), String> {
+fn reparent(window: &Window<Wry>, panel: &Webview, site: Site) -> Result<(), String> {
     let vbox = window.default_vbox().map_err(|e| e.to_string())?;
-    let main_view = window
-        .get_webview("main")
-        .and_then(|w| gtk_widget(&w))
-        .ok_or("webview principale introuvable")?;
     let child = gtk_widget(panel).ok_or("webview du panneau introuvable")?;
-    if !mountable(&vbox.children(), &main_view, &child) {
-        return Err("le GtkBox de la fenêtre ne contient pas les deux webviews".into());
-    }
-    vbox.remove(&main_view);
-    vbox.remove(&child);
+    let overlay = match OVERLAY.with(|o| o.borrow().clone()) {
+        Some(overlay) => {
+            if !mountable(&vbox.children(), None, &child) {
+                return Err("le GtkBox de la fenêtre ne contient pas la webview du panneau".into());
+            }
+            vbox.remove(&child);
+            overlay
+        }
+        None => {
+            let main_view = window
+                .get_webview("main")
+                .and_then(|w| gtk_widget(&w))
+                .ok_or("webview principale introuvable")?;
+            if !mountable(&vbox.children(), Some(&main_view), &child) {
+                return Err("le GtkBox de la fenêtre ne contient pas les deux webviews".into());
+            }
+            vbox.remove(&main_view);
+            vbox.remove(&child);
+            let overlay = gtk::Overlay::new();
+            overlay.add(&main_view);
+            vbox.pack_start(&overlay, true, true, 0);
+            OVERLAY.with(|o| *o.borrow_mut() = Some(overlay.clone()));
+            overlay
+        }
+    };
 
-    let overlay = gtk::Overlay::new();
-    overlay.add(&main_view);
     let revealer = gtk::Revealer::builder()
         .transition_type(gtk::RevealerTransitionType::SlideRight)
         .transition_duration(SLIDE_MS)
@@ -116,39 +203,42 @@ fn reparent(window: &Window<Wry>, panel: &Webview) -> Result<(), String> {
     child.set_size_request(PANEL_WIDTH, -1);
     revealer.add(&child);
     overlay.add_overlay(&revealer);
-    vbox.pack_start(&overlay, true, true, 0);
     overlay.show_all();
 
+    let main_view = overlay.child();
     revealer.connect_reveal_child_notify(move |r| {
         let main_view = main_view.clone();
         r.add_tick_callback(move |r, _| {
             let done = r.is_child_revealed() == r.reveals_child();
-            if done {
+            if done && let Some(m) = &main_view {
                 // Without it, a strip of the closed panel stays unpainted on X11.
-                main_view.queue_draw();
+                m.queue_draw();
             }
             gtk::glib::ControlFlow::from(!done)
         });
     });
-    REVEALER.with(|s| *s.borrow_mut() = Some(revealer));
+    REVEALERS.with(|r| r.borrow_mut()[site.index()] = Some(revealer));
     Ok(())
 }
 
-/// Slides the panel in or out, installing it on the first open. Err: the panel cannot be used.
-fn show(app: &AppHandle, open: bool) -> Result<(), String> {
+/// Slides `site` in or out (any other panel out), installing it on its first open.
+/// Err: the panel cannot be used.
+fn show(app: &AppHandle, site: Site, open: bool) -> Result<(), String> {
     let _guard = INSTALL.lock().map_err(|e| e.to_string())?;
     let (tx, rx) = mpsc::channel();
     let handle = app.clone();
     app.run_on_main_thread(move || {
-        let installed = REVEALER.with(|s| s.borrow().is_some());
+        let installed = REVEALERS.with(|r| r.borrow()[site.index()].is_some());
         let res = if installed || !open {
             Ok(())
         } else {
-            install(&handle)
+            install(&handle, site)
         };
-        REVEALER.with(|s| {
-            if let Some(r) = s.borrow().as_ref() {
-                r.set_reveal_child(open);
+        REVEALERS.with(|r| {
+            for (i, rev) in r.borrow().iter().enumerate() {
+                if let Some(rev) = rev {
+                    rev.set_reveal_child(open && i == site.index());
+                }
             }
         });
         let _ = tx.send(res);
@@ -156,7 +246,7 @@ fn show(app: &AppHandle, open: bool) -> Result<(), String> {
     .map_err(|e| e.to_string())?;
     rx.recv().map_err(|e| e.to_string())??;
     // Keyboard follows what the user sees.
-    let label = if open { PANEL_LABEL } else { "main" };
+    let label = if open { site.label() } else { "main" };
     if let Some(w) = app.get_webview(label) {
         let _ = w.set_focus();
     }
@@ -164,22 +254,23 @@ fn show(app: &AppHandle, open: bool) -> Result<(), String> {
 }
 
 /// Where to go on open: the page saved by the unload (else the start page), if the panel is blank.
-fn resume_url(current: &Url, saved: Option<Url>) -> Option<Url> {
+fn resume_url(current: &Url, saved: Option<Url>, start: &str) -> Option<Url> {
     if current.as_str() != BLANK {
         return None;
     }
-    saved.or_else(|| START_URL.parse().ok())
+    saved.or_else(|| start.parse().ok())
 }
 
 /// After a close: unload the page once the panel stayed closed for `UNLOAD_AFTER`.
-fn schedule_unload(app: AppHandle) {
-    let generation = GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
+fn schedule_unload(app: AppHandle, site: Site) {
+    let state = &STATE[site.index()];
+    let generation = state.generation.fetch_add(1, Ordering::Relaxed) + 1;
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(UNLOAD_AFTER).await;
-        if GENERATION.load(Ordering::Relaxed) != generation {
+        if state.generation.load(Ordering::Relaxed) != generation {
             return;
         }
-        let Some(w) = app.get_webview(PANEL_LABEL) else {
+        let Some(w) = app.get_webview(site.label()) else {
             return;
         };
         let (Ok(url), Ok(blank)) = (w.url(), BLANK.parse()) else {
@@ -187,7 +278,7 @@ fn schedule_unload(app: AppHandle) {
         };
         if url.as_str() != BLANK
             && w.navigate(blank).is_ok()
-            && let Ok(mut saved) = UNLOADED.lock()
+            && let Ok(mut saved) = state.unloaded.lock()
         {
             *saved = Some(url);
         }
@@ -195,40 +286,63 @@ fn schedule_unload(app: AppHandle) {
 }
 
 /// Before an open: cancel a pending unload and reload the page if it was unloaded.
-fn resume(app: &AppHandle) {
-    GENERATION.fetch_add(1, Ordering::Relaxed);
-    let Some(w) = app.get_webview(PANEL_LABEL) else {
+fn resume(app: &AppHandle, site: Site) {
+    let state = &STATE[site.index()];
+    state.generation.fetch_add(1, Ordering::Relaxed);
+    let Some(w) = app.get_webview(site.label()) else {
         return;
     };
-    let saved = UNLOADED.lock().ok().and_then(|mut s| s.take());
-    if let Some(url) = w.url().ok().and_then(|u| resume_url(&u, saved)) {
+    let saved = state.unloaded.lock().ok().and_then(|mut s| s.take());
+    if let Some(url) = w
+        .url()
+        .ok()
+        .and_then(|u| resume_url(&u, saved, site.start()))
+    {
         let _ = w.navigate(url);
     }
 }
 
-/// Opens or closes the Shorts panel; returns where it went. See contracts/ipc.md §15.
-pub(crate) async fn toggle(app: AppHandle, open: bool) -> Result<&'static str, String> {
-    if !FAILED.load(Ordering::Relaxed) {
+/// Opens or closes a panel; returns where it went. See contracts/ipc.md §15 ter.
+pub(crate) async fn toggle(app: AppHandle, site: Site, open: bool) -> Result<&'static str, String> {
+    let state = &STATE[site.index()];
+    if !state.failed.load(Ordering::Relaxed) {
         if open {
-            resume(&app);
+            resume(&app, site);
         }
-        match show(&app, open) {
+        match show(&app, site, open) {
             Ok(()) => {
-                if !open {
-                    schedule_unload(app);
+                if open {
+                    // The other panel slid out: let it unload too.
+                    for other in SITES.into_iter().filter(|s| *s != site) {
+                        schedule_unload(app.clone(), other);
+                    }
+                } else {
+                    schedule_unload(app, site);
                 }
                 return Ok("panel");
             }
             Err(e) => {
-                eprintln!("[windows] panneau Shorts indisponible, repli sur le navigateur : {e}");
-                FAILED.store(true, Ordering::Relaxed);
+                eprintln!(
+                    "[windows] panneau {} indisponible, repli : {e}",
+                    site.label()
+                );
+                state.failed.store(true, Ordering::Relaxed);
             }
         }
     }
-    if open {
-        super::commands::pause_open_browser()?;
+    if !open {
+        return Ok("panel");
     }
-    Ok("browser")
+    match site {
+        Site::Shorts => {
+            super::commands::pause_open_browser("shorts".into())?;
+            Ok("browser")
+        }
+        Site::Instagram => {
+            super::commands::pause_window_open(app).await?;
+            Ok("window")
+        }
+    }
 }
 
 #[cfg(test)]
@@ -236,21 +350,50 @@ mod tests {
     use super::*;
 
     #[test]
-    fn resume_only_a_blank_panel() {
-        let blank: Url = BLANK.parse().unwrap();
-        let reel: Url = "https://www.youtube.com/shorts/x".parse().unwrap();
-        assert_eq!(resume_url(&blank, Some(reel.clone())), Some(reel.clone()));
-        assert_eq!(resume_url(&blank, None), Some(START_URL.parse().unwrap()));
-        // The user navigated since: keep the page.
-        assert_eq!(resume_url(&reel, Some(reel.clone())), None);
+    fn sites() {
+        assert_eq!(Site::parse("shorts"), Some(Site::Shorts));
+        assert_eq!(Site::parse("instagram"), Some(Site::Instagram));
+        assert_eq!(Site::parse("main"), None);
+        assert_ne!(Site::Shorts.label(), Site::Instagram.label());
+        assert!(
+            SITES
+                .iter()
+                .all(|s| s.label() != "main" && s.label() != super::super::LABEL)
+        );
+        // Each panel keeps to its own sites.
+        let yt: Url = "https://www.youtube.com/shorts".parse().unwrap();
+        assert!(Site::Shorts.navigate(&yt));
+        let ig: Url = "https://www.instagram.com/direct/inbox/".parse().unwrap();
+        assert!(Site::Instagram.navigate(&ig));
+        assert!(!Site::Shorts.navigate(&ig));
     }
 
     #[test]
-    fn mount_needs_both_webviews_in_the_box() {
-        assert!(mountable(&[1, 2], &1, &2));
-        assert!(mountable(&[3, 2, 1], &1, &2));
-        assert!(!mountable(&[1], &1, &2));
-        assert!(!mountable(&[2], &1, &2));
-        assert!(!mountable::<i32>(&[], &1, &2));
+    fn resume_only_a_blank_panel() {
+        let blank: Url = BLANK.parse().unwrap();
+        let reel: Url = "https://www.youtube.com/shorts/x".parse().unwrap();
+        let start = "https://www.youtube.com/shorts";
+        assert_eq!(
+            resume_url(&blank, Some(reel.clone()), start),
+            Some(reel.clone())
+        );
+        assert_eq!(
+            resume_url(&blank, None, start),
+            Some(start.parse().unwrap())
+        );
+        // The user navigated since: keep the page.
+        assert_eq!(resume_url(&reel, Some(reel.clone()), start), None);
+    }
+
+    #[test]
+    fn mount_checks() {
+        // First panel: both webviews must be in the box.
+        assert!(mountable(&[1, 2], Some(&1), &2));
+        assert!(mountable(&[3, 2, 1], Some(&1), &2));
+        assert!(!mountable(&[1], Some(&1), &2));
+        assert!(!mountable(&[2], Some(&1), &2));
+        // Later panels: main already sits in the overlay.
+        assert!(mountable(&[2], None, &2));
+        assert!(!mountable::<i32>(&[], None, &2));
     }
 }

@@ -7,8 +7,11 @@ export const pickFolder = () => invoke<string | null>("pick_folder");
 export const pauseWindowOpen = () => invoke<null>("pause_window_open");
 export const pauseWindowClose = () => invoke<null>("pause_window_close");
 
-/** Opens or closes the YouTube Shorts panel; "browser" when it could not be installed and the system browser was used (contracts/ipc.md §15). */
-export const pausePanelToggle = (open: boolean) => invoke<"panel" | "browser">("pause_panel_toggle", { open });
+export type PauseSite = "shorts" | "instagram";
 
-/** Opens YouTube Shorts in the system browser (contracts/ipc.md §16). */
-export const pauseOpenBrowser = () => invoke<null>("pause_open_browser");
+/** Opens or closes an in-app panel; the fallback used when it could not be installed otherwise (contracts/ipc.md §15 ter). */
+export const pausePanelToggle = (site: PauseSite, open: boolean) =>
+  invoke<"panel" | "browser" | "window">("pause_panel_toggle", { site, open });
+
+/** Opens the site at a fixed address in the system browser (contracts/ipc.md §15 ter). */
+export const pauseOpenBrowser = (site: PauseSite) => invoke<null>("pause_open_browser", { site });

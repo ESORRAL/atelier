@@ -13,7 +13,7 @@ import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
 import { isTabId, TABS, type TabId } from "./shell/tabs";
 import { shortcutAction } from "./shell/shortcuts";
-import { pauseOpenBrowser, pausePanelToggle, pauseWindowOpen } from "./ipc/desktop";
+import { pauseOpenBrowser, pausePanelToggle, type PauseSite } from "./ipc/desktop";
 import type { Command } from "./shell/palette";
 import { FocusTimer } from "./features/focus/FocusTimer";
 import { useFocus } from "./features/focus/useFocus";
@@ -55,7 +55,7 @@ export default function App() {
   const [drawer, setDrawer] = usePersisted("atelier.drawer", "closed", isOpenClosed);
   const [palette, setPalette] = useState(false);
   const [music, setMusic] = useState(false);
-  const [shorts, setShorts] = useState(false); // native YouTube Shorts panel open (contracts/ipc.md §15)
+  const [pause, setPause] = useState<PauseSite | null>(null); // open native panel (contracts/ipc.md §15 ter)
   const [notice, setNotice] = useState<string | null>(null);
   const [info, setInfo] = useState<ChatInfo>(EMPTY_INFO);
   const controls = useRef<ChatControls | null>(null);
@@ -101,34 +101,33 @@ export default function App() {
     setMusic(false);
     document.getElementById("rail-music")?.focus();
   };
-  // The native panel sits above the page, so Music and Shorts are never open together.
-  const showShorts = (open: boolean) => {
+  // Native panels sit above the page: one at a time, and never with Music.
+  const PAUSE_NAMES: Record<PauseSite, string> = { shorts: "YouTube Shorts", instagram: "Instagram" };
+  const showPause = (site: PauseSite, open: boolean) => {
     setNotice(null);
     if (open) setMusic(false);
-    pausePanelToggle(open).then(
-      (where) => setShorts(open && where === "panel"),
-      () => setNotice(open ? "Impossible d'ouvrir YouTube Shorts." : "Impossible de fermer YouTube Shorts."),
+    pausePanelToggle(site, open).then(
+      (where) => setPause(open && where === "panel" ? site : null),
+      () => setNotice(`Impossible ${open ? "d'ouvrir" : "de fermer"} ${PAUSE_NAMES[site]}.`),
     );
   };
-  const openShortsInBrowser = () => {
-    pauseOpenBrowser().then(
-      () => showShorts(false),
+  const closePause = () => pause && showPause(pause, false);
+  const togglePause = (site: PauseSite) => showPause(site, pause !== site);
+  const openPauseInBrowser = () => {
+    if (!pause) return;
+    pauseOpenBrowser(pause).then(
+      () => closePause(),
       () => setNotice("Impossible d'ouvrir le navigateur."),
     );
   };
-  const toggleShorts = () => showShorts(!shorts);
-  // Instagram keeps its separate window, for messages (contracts/ipc.md §13).
-  const openInstagram = () => {
-    pauseWindowOpen().catch(() => setNotice("Impossible d'ouvrir Instagram."));
-  };
   const openMusic = () => {
-    if (shorts) showShorts(false);
+    closePause();
     setMusic(true);
   };
   const toggleDrawer = () => setDrawer(flip);
   const toggleFocus = () => {
     if (!inFocus) {
-      if (shorts) showShorts(false); // Focus hides media
+      closePause(); // Focus hides media
       focus.enter();
     } else if (window.confirm("Quitter le Focus avant la fin ?")) focus.leave();
   };
@@ -152,9 +151,8 @@ export default function App() {
     { id: "new", label: "Nouvelle session", group: "Actions", run: () => { goTo("chat"); controls.current?.newSession(); } },
     { id: "interrupt", label: "Interrompre", group: "Actions", run: () => controls.current?.interrupt() },
     { id: "focus", label: inFocus ? "Quitter le mode Focus" : "Activer le mode Focus", group: "Actions", shortcut: "Ctrl+Maj+F", run: toggleFocus },
-    ...(inFocus ? [] : [{ id: "shorts", label: shorts ? "Fermer YouTube Shorts" : "Ouvrir YouTube Shorts", group: "Actions", run: toggleShorts }]),
-    ...(inFocus || !shorts ? [] : [{ id: "shorts-browser", label: "Ouvrir YouTube Shorts dans le navigateur", group: "Actions", run: openShortsInBrowser }]),
-    ...(inFocus ? [] : [{ id: "instagram", label: "Ouvrir Instagram (fenêtre)", group: "Actions", run: openInstagram }]),
+    ...(inFocus ? [] : (["shorts", "instagram"] as const).map((s) => ({ id: s, label: `${pause === s ? "Fermer" : "Ouvrir"} ${PAUSE_NAMES[s]}`, group: "Actions", run: () => togglePause(s) }))),
+    ...(inFocus || !pause ? [] : [{ id: "pause-browser", label: `Ouvrir ${PAUSE_NAMES[pause]} dans le navigateur`, group: "Actions", run: openPauseInBrowser }]),
     ...(inFocus ? [] : [{ id: "music", label: musicShown ? "Fermer le panneau Musique" : "Ouvrir le panneau Musique", group: "Actions", run: () => (musicShown ? closeMusic() : openMusic()) }]),
     { id: "theme", label: "Basculer le thème", group: "Actions", run: toggleTheme },
     { id: "panel", label: "Replier ou ouvrir le panneau droit", group: "Actions", run: togglePanel },
@@ -164,9 +162,9 @@ export default function App() {
   // Always-fresh handler for the single window listener.
   const onKey = useRef<(e: KeyboardEvent) => void>(() => {});
   onKey.current = (e) => {
-    if (e.key === "Escape" && shorts && !palette) {
+    if (e.key === "Escape" && pause && !palette) {
       e.preventDefault();
-      showShorts(false);
+      closePause();
       return;
     }
     const a = shortcutAction(e);
@@ -206,8 +204,8 @@ export default function App() {
             {demo ? "Retour au chat" : "Démo des composants"}
           </button>
         )}
-        {shorts && (
-          <button type="button" className="btn btn--ghost" onClick={openShortsInBrowser} aria-label="Ouvrir YouTube Shorts dans le navigateur" title="Ouvrir dans le navigateur">
+        {pause && (
+          <button type="button" className="btn btn--ghost" onClick={openPauseInBrowser} aria-label={`Ouvrir ${PAUSE_NAMES[pause]} dans le navigateur`} title="Ouvrir dans le navigateur">
             <ArrowSquareOut size="var(--icon-sm)" aria-hidden="true" /> Navigateur
           </button>
         )}
@@ -223,7 +221,7 @@ export default function App() {
           <Terminal size="var(--icon-sm)" aria-hidden="true" /> Journal
         </button>
       </header>
-      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} musicOpen={musicShown} mediaHidden={inFocus} onMusic={() => (musicShown ? closeMusic() : openMusic())} shortsOpen={shorts} onShorts={toggleShorts} onInstagram={openInstagram} />
+      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} musicOpen={musicShown} mediaHidden={inFocus} onMusic={() => (musicShown ? closeMusic() : openMusic())} pauseOpen={pause} onPause={togglePause} />
       <div className="shell__center">
         {notice && (
           <p className="shell__notice" role="alert">
@@ -232,7 +230,7 @@ export default function App() {
         )}
         <div className="app__eclipse" aria-hidden="true">
           <div className="app__eclipse-disc">
-            <BeamsBackground intensity="subtle" paused={shorts} className="h-full min-h-0" />
+            <BeamsBackground intensity="subtle" paused={pause !== null} className="h-full min-h-0" />
           </div>
         </div>
         <main className="app__main shell__views">

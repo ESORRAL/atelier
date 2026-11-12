@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 2.6 (phase 5). 2.6 : deux panneaux intégrés, YouTube Shorts et Instagram (§15 ter).
 Version 2.5 (phase 5). 2.5 : le panneau §15 affiche YouTube Shorts ; Instagram garde la fenêtre §13 ; `instagramMode` retiré.
 Version 2.4 (phase 5). 2.4 : `pause_open_browser` (§16).
 Version 2.3 (phase 5). 2.3 : le second cerveau couvre tout le vault (§10, chemins relatifs à `vaultPath`) ; `graph_data` (§11).
@@ -382,3 +383,17 @@ WebKitGTK lit les Reels d'Instagram à ~10 images/s, les Shorts de YouTube de fa
 - `pause_open_browser` ouvre `https://www.youtube.com/shorts`.
 - Instagram : uniquement la fenêtre séparée du §13 (`pause_window_open`), pour les messages ; sa liste blanche
   ne contient pas YouTube. Le réglage `instagramMode` est retiré (ignoré s'il reste dans un ancien fichier).
+
+## 15 ter. Deux panneaux intégrés : YouTube Shorts et Instagram (v2.6 — remplace §15 bis là où il diffère)
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `pause_panel_toggle` | `site: "shorts" \| "instagram"`, `open: boolean` | `"panel" \| "browser" \| "window"` |
+| `pause_open_browser` | `site: "shorts" \| "instagram"` | `null` (adresses fixes : `youtube.com/shorts`, `instagram.com/`) |
+
+- Deux webviews enfants de `main` (`shorts-panel`, `instagram-panel`), chacune dans son `GtkRevealer` au-dessus
+  du même `GtkOverlay`. Ouvrir l'une ferme l'autre. Données séparées (`shorts-panel`, `instagram-panel`).
+- Navigation : Shorts = liste du §15 bis, hors-liste bloqué en silence ; Instagram = liste du §13, liens
+  externes vers le navigateur (limités à 1 / 2 s), comme la fenêtre.
+- Repli si le panneau ne s'installe pas : Shorts → navigateur (`"browser"`), Instagram → fenêtre §13 (`"window"`).
+- Chaque panneau fermé se décharge après 2 min.

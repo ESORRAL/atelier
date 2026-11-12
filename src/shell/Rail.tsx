@@ -1,8 +1,9 @@
 import { Fragment } from "react";
 import { InstagramLogo, MusicNotes, YoutubeLogo } from "@phosphor-icons/react";
 import { TABS, type TabId } from "./tabs";
+import type { PauseSite } from "../ipc/desktop";
 
-export function Rail({ active, onSelect, hidden = [], musicOpen = false, onMusic, shortsOpen = false, onShorts, onInstagram, mediaHidden = false }: { active: TabId | null; onSelect: (id: TabId) => void; hidden?: TabId[]; musicOpen?: boolean; onMusic: () => void; shortsOpen?: boolean; onShorts: () => void; onInstagram: () => void; mediaHidden?: boolean }) {
+export function Rail({ active, onSelect, hidden = [], musicOpen = false, onMusic, pauseOpen = null, onPause, mediaHidden = false }: { active: TabId | null; onSelect: (id: TabId) => void; hidden?: TabId[]; musicOpen?: boolean; onMusic: () => void; pauseOpen?: PauseSite | null; onPause: (site: PauseSite) => void; mediaHidden?: boolean }) {
   // Up/Down move focus between rail items (roving tabindex).
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     const d = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
@@ -36,26 +37,27 @@ export function Rail({ active, onSelect, hidden = [], musicOpen = false, onMusic
           {t.id === "settings" && !mediaHidden && (
             <button
               type="button"
-              className={`rail__item${shortsOpen ? " rail__item--active" : ""}`}
+              className={`rail__item${pauseOpen === "shorts" ? " rail__item--active" : ""}`}
               aria-label="YouTube Shorts"
-              aria-pressed={shortsOpen}
+              aria-pressed={pauseOpen === "shorts"}
               title="YouTube Shorts"
               tabIndex={-1}
-              onClick={onShorts}
+              onClick={() => onPause("shorts")}
             >
-              <YoutubeLogo size="var(--icon-md)" weight={shortsOpen ? "fill" : "regular"} aria-hidden="true" />
+              <YoutubeLogo size="var(--icon-md)" weight={pauseOpen === "shorts" ? "fill" : "regular"} aria-hidden="true" />
             </button>
           )}
           {t.id === "settings" && !mediaHidden && (
             <button
               type="button"
-              className="rail__item"
-              aria-label="Instagram (fenêtre séparée)"
-              title="Instagram (fenêtre séparée)"
+              className={`rail__item${pauseOpen === "instagram" ? " rail__item--active" : ""}`}
+              aria-label="Instagram"
+              aria-pressed={pauseOpen === "instagram"}
+              title="Instagram"
               tabIndex={-1}
-              onClick={onInstagram}
+              onClick={() => onPause("instagram")}
             >
-              <InstagramLogo size="var(--icon-md)" aria-hidden="true" />
+              <InstagramLogo size="var(--icon-md)" weight={pauseOpen === "instagram" ? "fill" : "regular"} aria-hidden="true" />
             </button>
           )}
           <button
