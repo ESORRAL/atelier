@@ -27,3 +27,14 @@ pub async fn project_files(
 ) -> Result<Vec<String>, String> {
     files(&dir, &query, limit).await
 }
+
+#[tauri::command]
+pub async fn graph_data(dir: String) -> Result<Option<GraphData>, String> {
+    let dir = validate_cwd(&dir)?;
+    let Ok(json) = std::fs::read_to_string(Path::new(&dir).join("graphify-out/graph.json")) else {
+        return Ok(None);
+    };
+    parse_graph_data(&json)
+        .map(Some)
+        .ok_or_else(|| "graph.json illisible".to_string())
+}

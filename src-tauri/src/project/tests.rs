@@ -158,3 +158,30 @@ async fn files_real_repo_and_walk() {
             .any(|p| p.starts_with(".git/") || p.contains("node_modules/"))
     );
 }
+
+#[test]
+fn graph_data_degree_and_caps() {
+    let json = r#"{"nodes":[{"id":"a","label":"A","community":1,"community_name":"Chat","source_file":"a.ts"},
+      {"id":"b","label":"B","community":1},{"id":"c"}],
+      "links":[{"source":"a","target":"b"},{"source":"a","target":"c"}]}"#;
+    let g = parse_graph_data(json).unwrap();
+    assert_eq!((g.nodes.len(), g.links.len(), g.truncated), (3, 2, false));
+    assert_eq!((g.nodes[0].id.as_str(), g.nodes[0].degree), ("a", 2));
+    assert_eq!(g.nodes[0].community_name.as_deref(), Some("Chat"));
+    assert_eq!(g.nodes[2].label, "c");
+    assert!(parse_graph_data("nope").is_none());
+    let nodes: Vec<String> = (0..3001).map(|i| format!(r#"{{"id":"n{i}"}}"#)).collect();
+    let big = format!(r#"{{"nodes":[{}],"links":[]}}"#, nodes.join(","));
+    let g = parse_graph_data(&big).unwrap();
+    assert_eq!((g.nodes.len(), g.truncated), (3000, true));
+}
+
+#[test]
+fn real_graph_data() {
+    let p = Path::new(MAIN_CHECKOUT).join("graphify-out/graph.json");
+    let Ok(json) = std::fs::read_to_string(p) else {
+        return;
+    };
+    let g = parse_graph_data(&json).unwrap();
+    assert!(!g.nodes.is_empty() && g.nodes.len() <= 3000 && g.links.len() <= 8000);
+}

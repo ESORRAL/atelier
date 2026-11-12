@@ -39,8 +39,8 @@ npm run build:bridge && cd src-tauri && cargo fmt --check && cargo clippy -- -D 
 Pas d'UI.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : racine de lecture = vaultPath ; `vault_list(folder)` (un niveau), `vault_recent`, `vault_read/search/open` relatifs au vault (2000 fichiers parcourus) ; journal inchangé ; `graph_data` (plafonds 3000/8000, `truncated`). Dossiers cachés refusés dans les chemins.
+- Fichiers touchés : src-tauri/src/vault/{mod,commands,tests}.rs, project/{mod,commands,tests}.rs, lib.rs
+- Vérification : fmt, clippy, cargo test verts (63+8+4) ; essai réel vault (50 récentes, 7 dossiers, lecture seule) et graph.json du repo OK.
+- Raccourcis pris : aucun
+- À remonter à l'architecte : aucun changement de contrat.

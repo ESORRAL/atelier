@@ -59,6 +59,7 @@ pub fn run() {
             windows::commands::pause_window_close,
             windows::commands::pause_panel_toggle,
             vault::commands::vault_list,
+            vault::commands::vault_recent,
             vault::commands::vault_read,
             vault::commands::vault_search,
             vault::commands::vault_open,
@@ -66,6 +67,7 @@ pub fn run() {
             project::commands::project_info,
             project::commands::graph_summary,
             project::commands::graph_update,
+            project::commands::graph_data,
             project::commands::project_files,
         ])
         .run(tauri::generate_context!())
