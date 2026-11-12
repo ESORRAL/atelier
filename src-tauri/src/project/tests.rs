@@ -120,3 +120,41 @@ async fn real_graph_update() {
     let g = commands::graph_update(root.into()).await.unwrap();
     assert!(g.nodes > 0);
 }
+
+#[test]
+fn files_rank_prefix_then_substring_folded() {
+    let p: Vec<String> = [
+        "docs/Résumé.md",
+        "src/a/resume_long.ts",
+        "x/my-resume.md",
+        "resume.md",
+        "other.md",
+    ]
+    .map(String::from)
+    .to_vec();
+    assert_eq!(
+        rank_files(&p, "RESUME", 10),
+        [
+            "resume.md",
+            "docs/Résumé.md",
+            "src/a/resume_long.ts",
+            "x/my-resume.md"
+        ]
+    );
+    assert_eq!(rank_files(&p, "resume", 2).len(), 2);
+    assert!(rank_files(&p, "zzz", 5).is_empty());
+}
+
+#[tokio::test]
+async fn files_real_repo_and_walk() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
+    let r = files(root, "lib.rs", 3).await.unwrap();
+    assert_eq!(r[0], "src-tauri/src/lib.rs");
+    assert_eq!(files(root, "", 5).await.unwrap().len(), 5);
+    let w = walk_files(Path::new(root));
+    assert!(w.iter().any(|p| p == "src-tauri/src/lib.rs"));
+    assert!(
+        !w.iter()
+            .any(|p| p.starts_with(".git/") || p.contains("node_modules/"))
+    );
+}

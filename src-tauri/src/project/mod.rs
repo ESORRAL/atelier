@@ -344,6 +344,110 @@ pub async fn info(dir: &str) -> Result<ProjectInfo, String> {
     })
 }
 
+// ---- project files for @ mentions ----
+
+const WALK_MAX: usize = 5000;
+
+/// Lowercase and strip common Latin accents. shortcut: Latin-1/Latin Extended-A subset only, use a
+/// normalization crate if other scripts matter.
+fn fold(s: &str) -> String {
+    s.chars()
+        .flat_map(char::to_lowercase)
+        .map(|c| match c {
+            'à'..='å' | 'ā' | 'ă' | 'ą' => 'a',
+            'ç' | 'ć' | 'č' => 'c',
+            'è'..='ë' | 'ē' | 'ę' | 'ě' => 'e',
+            'ì'..='ï' | 'ī' => 'i',
+            'ñ' | 'ń' | 'ň' => 'n',
+            'ò'..='ö' | 'ø' | 'ō' => 'o',
+            'ù'..='ü' | 'ū' | 'ů' => 'u',
+            'ý' | 'ÿ' => 'y',
+            'ś' | 'š' => 's',
+            'ź' | 'ż' | 'ž' => 'z',
+            c => c,
+        })
+        .collect()
+}
+
+/// Filename starting with `query` first, then path containing it; ties: shortest path, then alpha.
+pub fn rank_files(paths: &[String], query: &str, limit: usize) -> Vec<String> {
+    let q = fold(query);
+    let mut hits: Vec<(u8, &String)> = paths
+        .iter()
+        .filter_map(|p| {
+            let f = fold(p);
+            let name = f.rsplit('/').next().unwrap_or(&f);
+            if name.starts_with(&q) {
+                Some((0, p))
+            } else {
+                f.contains(&q).then_some((1, p))
+            }
+        })
+        .collect();
+    hits.sort_by(|a, b| (a.0, a.1.len(), a.1).cmp(&(b.0, b.1.len(), b.1)));
+    hits.into_iter().take(limit).map(|h| h.1.clone()).collect()
+}
+
+/// Bounded walk: hidden dirs, `node_modules` and `target` skipped, symlinks not followed.
+fn walk_files(root: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let Ok(t) = e.file_type() else { continue };
+            let name = e.file_name().to_string_lossy().into_owned();
+            if t.is_dir() {
+                if !name.starts_with('.') && name != "node_modules" && name != "target" {
+                    stack.push(e.path());
+                }
+            } else if t.is_file() {
+                if let Ok(rel) = e.path().strip_prefix(root) {
+                    out.push(rel.to_string_lossy().into_owned());
+                }
+                if out.len() >= WALK_MAX {
+                    return out;
+                }
+            }
+        }
+    }
+    out
+}
+
+pub async fn files(dir: &str, query: &str, limit: usize) -> Result<Vec<String>, String> {
+    if query.chars().count() > 200 || !(1..=50).contains(&limit) {
+        return Err("Paramètres invalides (query ≤ 200, limit 1 à 50)".into());
+    }
+    let dir = validate_cwd(dir)?;
+    let listed = git(
+        &dir,
+        &["ls-files", "--cached", "--others", "--exclude-standard"],
+    )
+    .await;
+    let mut paths: Vec<String> = match listed {
+        Ok(out) => out.lines().map(String::from).collect(),
+        Err(_) => walk_files(Path::new(&dir)),
+    };
+    if query.is_empty() {
+        let mtime = |p: &String| {
+            Path::new(&dir)
+                .join(p)
+                .metadata()
+                .and_then(|m| m.modified())
+        };
+        let mut dated: Vec<_> = paths
+            .iter()
+            .filter_map(|p| Some((mtime(p).ok()?, p.clone())))
+            .collect();
+        dated.sort_by_key(|d| std::cmp::Reverse(d.0));
+        paths = dated.into_iter().take(limit).map(|d| d.1).collect();
+        return Ok(paths);
+    }
+    Ok(rank_files(&paths, query, limit))
+}
+
 pub mod commands;
 
 #[cfg(test)]
