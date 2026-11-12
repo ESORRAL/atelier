@@ -1,7 +1,8 @@
 "use client";
 
-// Verbatim from 21st.dev "beams-background", pasted by the user. Only change: the demo title
-// ("Beams Background / For your pleasure") is replaced by `children`, so the app can use it as a background.
+// Verbatim from 21st.dev "beams-background", pasted by the user. Changes: the demo title is replaced by
+// `children`; for performance (lag with the Instagram panel) the loop is capped at 30 fps, skips frames
+// while the window is inactive (data-idle on <html>), and stops entirely when `paused`.
 
 import { useEffect, useRef } from "react";
 import { motion } from "motion/react";
@@ -11,6 +12,8 @@ interface AnimatedGradientBackgroundProps {
     className?: string;
     children?: React.ReactNode;
     intensity?: "subtle" | "medium" | "strong";
+    /** Stops the animation loop (e.g. while the Instagram panel covers the area). */
+    paused?: boolean;
 }
 
 interface Beam {
@@ -46,6 +49,7 @@ export function BeamsBackground({
     className,
     children,
     intensity = "strong",
+    paused = false,
 }: AnimatedGradientBackgroundProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const beamsRef = useRef<Beam[]>([]);
@@ -138,8 +142,13 @@ export function BeamsBackground({
             ctx.restore();
         }
 
-        function animate() {
+        let lastFrame = 0;
+        function animate(now = 0) {
             if (!canvas || !ctx) return;
+            animationFrameRef.current = requestAnimationFrame(animate);
+            // 30 fps cap, and nothing drawn while the window is hidden or unfocused.
+            if (now - lastFrame < 33 || document.documentElement.hasAttribute("data-idle")) return;
+            lastFrame = now;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.filter = "blur(35px)";
@@ -156,11 +165,9 @@ export function BeamsBackground({
 
                 drawBeam(ctx, beam);
             });
-
-            animationFrameRef.current = requestAnimationFrame(animate);
         }
 
-        animate();
+        if (!paused) animate();
 
         return () => {
             window.removeEventListener("resize", updateCanvasSize);
@@ -168,7 +175,7 @@ export function BeamsBackground({
                 cancelAnimationFrame(animationFrameRef.current);
             }
         };
-    }, [intensity]);
+    }, [intensity, paused]);
 
     return (
         <div
@@ -183,20 +190,22 @@ export function BeamsBackground({
                 style={{ filter: "blur(15px)" }}
             />
 
-            <motion.div
-                className="absolute inset-0 bg-neutral-950/5"
-                animate={{
-                    opacity: [0.05, 0.15, 0.05],
-                }}
-                transition={{
-                    duration: 10,
-                    ease: "easeInOut",
-                    repeat: Number.POSITIVE_INFINITY,
-                }}
-                style={{
-                    backdropFilter: "blur(50px)",
-                }}
-            />
+            {!paused && (
+                <motion.div
+                    className="absolute inset-0 bg-neutral-950/5"
+                    animate={{
+                        opacity: [0.05, 0.15, 0.05],
+                    }}
+                    transition={{
+                        duration: 10,
+                        ease: "easeInOut",
+                        repeat: Number.POSITIVE_INFINITY,
+                    }}
+                    style={{
+                        backdropFilter: "blur(50px)",
+                    }}
+                />
+            )}
 
             {children && <div className="relative z-10 h-full w-full">{children}</div>}
         </div>
