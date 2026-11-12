@@ -65,6 +65,7 @@ pub fn run() {
             project::commands::project_info,
             project::commands::graph_summary,
             project::commands::graph_update,
+            project::commands::project_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Atelier");

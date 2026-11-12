@@ -18,3 +18,12 @@ pub async fn graph_update(dir: String) -> Result<GraphSummary, String> {
         .await?
         .ok_or_else(|| "graphify n'a produit aucun graph.json".to_string())
 }
+
+#[tauri::command]
+pub async fn project_files(
+    dir: String,
+    query: String,
+    limit: usize,
+) -> Result<Vec<String>, String> {
+    files(&dir, &query, limit).await
+}
