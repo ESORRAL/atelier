@@ -215,7 +215,7 @@ export default function App() {
         )}
         <div className="app__eclipse" aria-hidden="true">
           <div className="app__eclipse-disc">
-            <BeamsBackground intensity="subtle" className="h-full min-h-0" />
+            <BeamsBackground intensity="subtle" paused={instagram} className="h-full min-h-0" />
           </div>
         </div>
         <main className="app__main shell__views">
