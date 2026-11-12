@@ -167,6 +167,10 @@
   --color-chart-4: #C9A8F0;
   --color-chart-5: #CBB59E;
   --color-chart-grid: #362A21;
+  /* graph communities: 8 categorical hues in fixed order, checked with the dataviz palette validator on each
+     surface; light slots 2-5 sit below 3:1, relieved by the legend, hover names and the community list */
+  --color-graph-1: #3987E5; --color-graph-2: #D95926; --color-graph-3: #199E70; --color-graph-4: #C98500;
+  --color-graph-5: #D55181; --color-graph-6: #008300; --color-graph-7: #9085E9; --color-graph-8: #E66767;
 
   /* Elevation — dark: lightness + warm top highlight; real shadow only on overlays */
   --shadow-none: none;
@@ -228,6 +232,8 @@
     --color-chart-4: #6346B8;
     --color-chart-5: #5A4433;
     --color-chart-grid: #DDCDB8;
+    --color-graph-1: #2A78D6; --color-graph-2: #EB6834; --color-graph-3: #1BAF7A; --color-graph-4: #EDA100;
+    --color-graph-5: #E87BA4; --color-graph-6: #008300; --color-graph-7: #6250D6; --color-graph-8: #E34948;
     --shadow-overlay: 0 16px 40px rgba(43, 30, 20, 0.18);
     --scrim: rgba(43, 30, 20, 0.35);
   }
@@ -285,6 +291,8 @@
   --color-chart-4: #6346B8;
   --color-chart-5: #5A4433;
   --color-chart-grid: #DDCDB8;
+  --color-graph-1: #2A78D6; --color-graph-2: #EB6834; --color-graph-3: #1BAF7A; --color-graph-4: #EDA100;
+  --color-graph-5: #E87BA4; --color-graph-6: #008300; --color-graph-7: #6250D6; --color-graph-8: #E34948;
   --shadow-overlay: 0 16px 40px rgba(43, 30, 20, 0.18);
   --scrim: rgba(43, 30, 20, 0.35);
 }

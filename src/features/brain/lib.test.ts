@@ -1,6 +1,31 @@
 import { describe, expect, it } from "vitest";
 import type { SessionEntry } from "../../ipc/claude";
-import { buildRecap, extractWikilinks, relativeDate, resolveLink } from "./lib";
+import { ancestors, buildRecap, extractWikilinks, joinPath, linkCandidates, relativeDate, resolveLink, treeRows } from "./lib";
+
+describe("vault tree", () => {
+  const n = (path: string, title: string) => ({ path, title, modified: 0 });
+  const loaded = new Map([
+    ["", { folders: ["Zeta", "Alpha"], notes: [n("b.md", "B"), n("a.md", "A")] }],
+    ["Alpha", { folders: ["Sub"], notes: [n("Alpha/x.md", "X")] }],
+  ]);
+  it("lists folders first, sorted, and unfolds only open ones", () => {
+    expect(treeRows("", loaded, new Set()).map((r) => r.path)).toEqual(["Alpha", "Zeta", "a.md", "b.md"]);
+    const rows = treeRows("", loaded, new Set(["Alpha", "Alpha/Sub"]));
+    expect(rows.map((r) => `${r.depth}:${r.path}`)).toEqual(["0:Alpha", "1:Alpha/Sub", "1:Alpha/x.md", "0:Zeta", "0:a.md", "0:b.md"]);
+    expect(rows[1]).toMatchObject({ open: true, loading: true });
+  });
+  it("finds ancestors and joins paths", () => {
+    expect(ancestors("a/b/c.md")).toEqual(["a", "a/b"]);
+    expect(ancestors("c.md")).toEqual([]);
+    expect(joinPath("", "x")).toBe("x");
+    expect(joinPath("a", "x")).toBe("a/x");
+  });
+  it("proposes link candidates next to the note, then at the root", () => {
+    expect(linkCandidates("Idée", "Projets/Atelier/Note.md")).toEqual(["Projets/Atelier/Idée.md", "Idée.md"]);
+    expect(linkCandidates("Dossier/Note#Titre", "x.md")).toEqual(["Dossier/Note.md"]);
+    expect(linkCandidates("../secret", "a/b.md")).toEqual([]);
+  });
+});
 
 describe("extractWikilinks", () => {
   it("handles plain, aliased and path links", () => {

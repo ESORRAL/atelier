@@ -59,8 +59,8 @@ npm ci && npm run lint && npm test && npm run build
 Pas de Rust, pas d'édition de notes.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : Second cerveau sur tout le vault (Récents / Projet / Tout, arbre chargé à la demande, lecture 72ch, liens `[[…]]` résolus sans index, récap dans un menu « … ») ; Graphe en canvas + `d3-force` (couleur par communauté, taille par degré, zoom/glisser/clavier, fiche, pause si fenêtre inactive, une ligne d'état, communautés en liste accessible) ; Projets épuré (en-tête, colonnes ouvertes, terminées/worktrees/commits repliés).
+- Fichiers touchés : `src/features/{brain,graph,projects}/**`, `src/ipc/{vault,project}.ts`, `design/tokens.css` (`--color-graph-1..8`), `package.json`, `package-lock.json`.
+- Vérification (sortie résumée) : lint OK, 115 tests verts, build OK.
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : `d3-force` sans types ; déclaration locale `graph/d3-force.d.ts` (pas `@types/d3-force`). Il tire `d3-dispatch/quadtree/timer` (ISC). Palette validée au script dataviz ; en clair, 4 teintes < 3:1 (légende et liste en relais). Non testé contre le Rust de TASK-047 ni en vrai (pas de `tauri dev`).
