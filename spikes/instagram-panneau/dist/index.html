@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>main</title>
+<body style="margin:0;height:100vh;font:14px sans-serif;display:grid;grid-template:56px 1fr / 56px 1fr">
+  <div style="grid-column:1/3;background:#222;color:#fff;padding:8px">TOP BAR 56 px (webview <b>main</b>)</div>
+  <div style="background:#444;color:#fff">RAIL</div>
+  <div style="background:#2b4a6f;color:#fff;padding:12px 12px 12px 460px">
+    <p id="out">calling probe…</p>
+    <input placeholder="type here to test keyboard focus">
+    <p>The panel (green) should slide over the left part of this zone, next to the rail.</p>
+  </div>
+</body>
+<script>
+  const { invoke } = window.__TAURI__.core;
+  const report = (msg) => invoke('report', { msg });
+  // Control: this webview holds the capability, so the call must reach Rust.
+  invoke('probe')
+    .then(r => { document.getElementById('out').textContent = r; })
+    .catch(e => { document.getElementById('out').textContent = 'probe failed: ' + e; });
+  const state = () => report(`size=${innerWidth}x${innerHeight} vis=${document.visibilityState} focus=${document.hasFocus()}`);
+  addEventListener('resize', state);
+  addEventListener('focus', () => report('focus-in'));
+  addEventListener('blur', () => report('focus-out'));
+  addEventListener('keydown', (e) => report('key=' + e.key));
+  addEventListener('mousedown', (e) => report(`mousedown=${e.clientX},${e.clientY}`));
+  setInterval(state, 1000);
+</script>

@@ -53,8 +53,13 @@ cd spikes/instagram-panneau && cargo build 2>&1 | tail -3
 Pas de modification de l'app (`src-tauri/`, `src/`).
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : prototype `GtkOverlay` + `GtkRevealer` (widget WebKit retiré du `GtkBox`). Position, taille,
+  redimensionnement, glissement, 20 cycles, focus, isolation : PASS sous Wayland et X11. Instagram réel
+  affiché, sans connexion. Données du spike nettoyées.
+- Fichiers touchés : `spikes/instagram-panneau/**`.
+- Vérification (sortie résumée) : `cargo build`, fmt, clippy, test OK ; `run-test.sh` PASS (Wayland 14/14,
+  X11 16/16) ; contrôle négatif `EXTRA_CAP=window` → FAIL attendu.
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : l'outil a refusé de créer `FINDINGS.md`, contenu fourni dans le rapport
+  final. Clics souris non vérifiables automatiquement : contrôle manuel requis. Dépend de
+  `default_vbox` (interne à tauri-runtime-wry). Recommandation : intégrable derrière un drapeau.
