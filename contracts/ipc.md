@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 2.1 (phase 5). 2.1 : `project_files` (§14) pour les mentions `@`.
 Version 2.0 (phase 5). 2.0 : second cerveau, graphe, projets, fenêtre Instagram (§10 à §13) ; `Settings` gagne `vaultPath` et `vaultProject`.
 Version 1.6 (phase 4). 1.6 : §9 retiré à la demande de l'utilisateur (seuls des aperçus de 30 s étaient jouables).
 Version 1.5 (phase 4). 1.5 : recherche dans le catalogue Apple (§9).
@@ -294,3 +295,16 @@ user-agent par défaut. Navigation : `https` uniquement, hôtes `instagram.com`,
 `facebook.com`, `fbsbx.com`, `google.com`, `gstatic.com`, `recaptcha.net` (et leurs sous-domaines), plus
 `about:blank` ; tout autre lien (dont le redirecteur `l.facebook.com`) est bloqué dans la fenêtre et ouvert
 dans le navigateur système s'il est `https`.
+
+## 14. Fichiers du projet pour les mentions `@` (module `project`)
+
+| Commande | Arguments | Retour |
+|---|---|---|
+| `project_files` | `dir: string`, `query: string` (0 à 200), `limit: number` (1 à 50) | `string[]` |
+
+Chemins **relatifs** à `dir`, triés par pertinence (le nom de fichier qui commence par `query` d'abord,
+puis le chemin qui contient `query`, sans casse ni accents ; `query` vide → fichiers récemment modifiés).
+Source : `git ls-files --cached --others --exclude-standard` (lancé par le superviseur, 5 s) dans un dépôt
+git ; sinon parcours du dossier (5 000 fichiers au plus, dossiers cachés, `node_modules` et `target`
+ignorés). `dir` validé comme le `cwd` des sessions. Les commandes `/` viennent de `system/init.slash_commands`
+(aucune commande cœur).
