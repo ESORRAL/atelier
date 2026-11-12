@@ -84,7 +84,87 @@ pub struct GraphSummary {
     pub report_markdown: Option<String>,
 }
 
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphNode {
+    pub id: String,
+    pub label: String,
+    pub community: i64,
+    pub community_name: Option<String>,
+    pub file: Option<String>,
+    pub degree: usize,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct GraphLink {
+    pub source: String,
+    pub target: String,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct GraphData {
+    pub nodes: Vec<GraphNode>,
+    pub links: Vec<GraphLink>,
+    pub truncated: bool,
+}
+
+const MAX_GRAPH_NODES: usize = 3000;
+const MAX_GRAPH_LINKS: usize = 8000;
+
 // ---- pure parsers ----
+
+/// `graph.json` to drawable data: the 3 000 most connected nodes and up to 8 000 links between them.
+pub fn parse_graph_data(json: &str) -> Option<GraphData> {
+    let v: Value = serde_json::from_str(json).ok()?;
+    let raw = v.get("nodes")?.as_array()?;
+    let raw_links = v
+        .get("links")
+        .and_then(Value::as_array)
+        .map_or(&[][..], |l| l);
+    let ends = |l: &Value| {
+        let s = |k| l.get(k).and_then(Value::as_str).map(String::from);
+        Some((s("source")?, s("target")?))
+    };
+    let mut degree: HashMap<String, usize> = HashMap::new();
+    for (a, b) in raw_links.iter().filter_map(ends) {
+        *degree.entry(a).or_default() += 1;
+        *degree.entry(b).or_default() += 1;
+    }
+    let mut nodes: Vec<GraphNode> = raw
+        .iter()
+        .filter_map(|n| {
+            let s = |k| n.get(k).and_then(Value::as_str).map(String::from);
+            let id = s("id")?;
+            Some(GraphNode {
+                label: s("label").unwrap_or_else(|| id.clone()),
+                community: n.get("community").and_then(Value::as_i64).unwrap_or(-1),
+                community_name: s("community_name"),
+                file: s("source_file"),
+                degree: degree.get(&id).copied().unwrap_or(0),
+                id,
+            })
+        })
+        .collect();
+    let mut truncated = nodes.len() > MAX_GRAPH_NODES;
+    nodes.sort_by_key(|n| std::cmp::Reverse(n.degree));
+    nodes.truncate(MAX_GRAPH_NODES);
+    let kept: std::collections::HashSet<&str> = nodes.iter().map(|n| n.id.as_str()).collect();
+    let mut links: Vec<GraphLink> = raw_links
+        .iter()
+        .filter_map(ends)
+        .filter(|(a, b)| kept.contains(a.as_str()) && kept.contains(b.as_str()))
+        .map(|(source, target)| GraphLink { source, target })
+        .collect();
+    if links.len() > MAX_GRAPH_LINKS {
+        links.truncate(MAX_GRAPH_LINKS);
+        truncated = true;
+    }
+    Some(GraphData {
+        nodes,
+        links,
+        truncated,
+    })
+}
 
 /// `git status --porcelain`: one line per dirty path.
 pub fn parse_status_count(out: &str) -> usize {

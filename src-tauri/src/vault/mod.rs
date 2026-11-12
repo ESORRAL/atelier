@@ -8,7 +8,7 @@ use std::path::{Component, Path, PathBuf};
 
 pub const NOT_CONFIGURED: &str = "Vault Obsidian non configuré";
 const MAX_FILE: u64 = 1024 * 1024;
-const MAX_FILES: usize = 500;
+const MAX_FILES: usize = 2000;
 const MAX_HITS: usize = 50;
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
@@ -26,6 +26,18 @@ pub struct VaultHit {
     pub excerpt: String,
 }
 
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct VaultFolder {
+    pub path: String,
+    pub folders: Vec<String>,
+    pub notes: Vec<VaultNote>,
+}
+
+/// Canonical vault root (`vaultPath`); errors when unset or missing.
+pub fn resolve_vault(base: &Path) -> Result<PathBuf, String> {
+    fs::canonicalize(base).map_err(|_| NOT_CONFIGURED.to_string())
+}
+
 /// Canonical project root `base/project`; errors when unset or missing.
 pub fn resolve_root(base: &Path, project: &str) -> Result<PathBuf, String> {
     if project.split('/').any(|c| c == "..") || project.starts_with('/') {
@@ -39,6 +51,12 @@ pub fn resolve_root(base: &Path, project: &str) -> Result<PathBuf, String> {
     Ok(root)
 }
 
+/// Relative path made of normal, non-hidden components only.
+fn is_plain(p: &Path) -> bool {
+    p.components()
+        .all(|c| matches!(c, Component::Normal(n) if !n.to_string_lossy().starts_with('.')))
+}
+
 /// Validates a note path: relative, `.md`, no `..`, and once resolved (symlinks followed) still
 /// under the canonical `root`. Returns the canonical path.
 pub fn resolve(root: &Path, rel: &str) -> Result<PathBuf, String> {
@@ -47,7 +65,7 @@ pub fn resolve(root: &Path, rel: &str) -> Result<PathBuf, String> {
     if p.is_absolute() || p.extension().is_none_or(|e| e != "md") {
         return Err(bad());
     }
-    if !p.components().all(|c| matches!(c, Component::Normal(_))) {
+    if !is_plain(p) {
         return Err(bad());
     }
     let full = fs::canonicalize(root.join(p)).map_err(|_| "Note introuvable.".to_string())?;
@@ -73,7 +91,14 @@ pub fn read(root: &Path, rel: &str) -> Result<String, String> {
     read_capped(&resolve(root, rel)?)
 }
 
-/// `.md` files under `root` as (relative path, modified ms), most recent first, 500 at most.
+fn mtime_ms(md: &fs::Metadata) -> u64 {
+    md.modified()
+        .ok()
+        .and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0, |d| d.as_millis() as u64)
+}
+
+/// `.md` files under `root` as (relative path, modified ms), most recent first, 2000 at most.
 /// Symlinks are not followed.
 fn walk(root: &Path) -> Vec<(String, u64)> {
     let mut out = Vec::new();
@@ -90,11 +115,7 @@ fn walk(root: &Path) -> Vec<(String, u64)> {
                 stack.push(p);
             } else if ft.is_file() && p.extension().is_some_and(|x| x == "md") {
                 let Ok(md) = e.metadata() else { continue };
-                let ms = md
-                    .modified()
-                    .ok()
-                    .and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok())
-                    .map_or(0, |d| d.as_millis() as u64);
+                let ms = mtime_ms(&md);
                 if let Ok(r) = p.strip_prefix(root) {
                     out.push((r.to_string_lossy().into_owned(), ms));
                 }
@@ -119,18 +140,69 @@ fn title_of(rel: &str, text: &str) -> String {
         })
 }
 
-pub fn list(root: &Path) -> Result<Vec<VaultNote>, String> {
+fn note_of(root: &Path, path: String, modified: u64) -> VaultNote {
+    let text = read_capped(&root.join(&path)).unwrap_or_default();
+    VaultNote {
+        title: title_of(&path, &text),
+        path,
+        modified,
+    }
+}
+
+/// The `limit` (1 to 50) most recently modified notes of the whole vault.
+pub fn recent(root: &Path, limit: usize) -> Result<Vec<VaultNote>, String> {
+    if !(1..=50).contains(&limit) {
+        return Err("La limite doit être comprise entre 1 et 50.".into());
+    }
     Ok(walk(root)
         .into_iter()
-        .map(|(path, modified)| {
-            let text = read_capped(&root.join(&path)).unwrap_or_default();
-            VaultNote {
-                title: title_of(&path, &text),
-                path,
-                modified,
-            }
-        })
+        .take(limit)
+        .map(|(p, m)| note_of(root, p, m))
         .collect())
+}
+
+/// One level of `folder` (relative to the vault root; `None` = root): sub-folder names and notes.
+pub fn list(root: &Path, folder: Option<&str>) -> Result<VaultFolder, String> {
+    let rel = folder.unwrap_or("").trim_matches('/');
+    let bad = || "Dossier invalide.".to_string();
+    if !is_plain(Path::new(rel)) {
+        return Err(bad());
+    }
+    let dir = fs::canonicalize(root.join(rel)).map_err(|_| "Dossier introuvable.".to_string())?;
+    if !dir.starts_with(root) || !dir.is_dir() {
+        return Err(bad());
+    }
+    let (mut folders, mut notes) = (Vec::new(), Vec::new());
+    for e in fs::read_dir(&dir)
+        .map_err(|_| "Lecture impossible.".to_string())?
+        .flatten()
+    {
+        let (Ok(ft), name) = (e.file_type(), e.file_name().to_string_lossy().into_owned()) else {
+            continue;
+        };
+        if name.starts_with('.') {
+            continue;
+        }
+        if ft.is_dir() {
+            folders.push(name);
+        } else if ft.is_file() && name.ends_with(".md") {
+            let Ok(md) = e.metadata() else { continue };
+            let path = if rel.is_empty() {
+                name
+            } else {
+                format!("{rel}/{name}")
+            };
+            notes.push(note_of(root, path, mtime_ms(&md)));
+        }
+    }
+    folders.sort_by_key(|f| f.to_lowercase());
+    notes.sort_by_key(|n| std::cmp::Reverse(n.modified));
+    notes.truncate(500);
+    Ok(VaultFolder {
+        path: rel.to_string(),
+        folders,
+        notes,
+    })
 }
 
 /// Lowercase and strip common Latin accents; one output char per input char (keeps offsets).
