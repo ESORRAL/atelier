@@ -115,6 +115,9 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
                 <button
                   type="button"
                   className="chat-tabs__select"
+                  onAuxClick={(e) => {
+                    if (e.button === 1) close(t.id); // middle click closes, like browser tabs
+                  }}
                   aria-current={t.id === tabs.active ? "page" : undefined}
                   title={t.cwd}
                   onClick={() => setTabs((x) => selectTab(x, t.id))}

@@ -20,7 +20,6 @@ import { MessageView } from "./MessageView";
 import { matchModel } from "./logic";
 import { Composer } from "./Composer";
 import { Menu } from "./Menu";
-import { folderName } from "./sessions";
 import { initialState, reduce } from "./reduce";
 import { pendingCount, type SessionTab } from "./sessions";
 import type { ChatInfo } from "./Chat";
@@ -194,7 +193,6 @@ export function ChatSession({ id, cwd, resume, firstMessage, active, onStatus, o
 
   const bar = (
     <>
-      <span className="tmenu__static" title={cwd}>{folderName(cwd)}</span>
       <span className="tmenu__group">
         {key && (
           <Menu
