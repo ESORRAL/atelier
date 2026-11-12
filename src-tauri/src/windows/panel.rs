@@ -15,6 +15,7 @@ use tauri::webview::{NewWindowResponse, WebviewBuilder};
 use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, Url, Webview, WebviewUrl, Window, Wry,
 };
+use webkit2gtk::WebViewExt;
 
 use super::{SHORTS_DOMAINS, allowed_in, filter};
 
@@ -237,7 +238,16 @@ fn show(app: &AppHandle, site: Site, open: bool) -> Result<(), String> {
         REVEALERS.with(|r| {
             for (i, rev) in r.borrow().iter().enumerate() {
                 if let Some(rev) = rev {
-                    rev.set_reveal_child(open && i == site.index());
+                    let shown = open && i == site.index();
+                    rev.set_reveal_child(shown);
+                    // A hidden page keeps playing (WebKitGTK does not pause it): silence it natively,
+                    // no script in the page. The unload below stops it for good after UNLOAD_AFTER.
+                    if let Some(view) = rev
+                        .child()
+                        .and_then(|c| c.downcast::<webkit2gtk::WebView>().ok())
+                    {
+                        view.set_is_muted(!shown);
+                    }
                 }
             }
         });
