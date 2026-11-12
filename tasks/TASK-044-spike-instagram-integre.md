@@ -49,8 +49,8 @@ cd spikes/instagram-integre && cargo build 2>&1 | tail -3
 Pas de modification de l'app (`src-tauri/`, `src/`) ; aucune connexion à un compte.
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : prototype multiwebview (`Window::add_child`), test layout + isolation sous Wayland et X11. #10420 ouvert et reproduit (webviews empilées verticalement 50/50, bounds ignorés : `GtkBox` dans tauri-runtime-wry) ; #11376 non reproduit. Hide/show et redimensionnement fiables ; focus OK sous X11. Isolation PASS (clé d'invocation volée, 9 vecteurs).
+- Fichiers touchés : `spikes/instagram-integre/**`.
+- Vérification (sortie résumée) : `cargo build` OK, clippy/fmt/test OK, `run-test.sh` PASS (Wayland, X11) ; `EXTRA_CAP=window` → FAIL attendu.
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : recommandation « ne pas intégrer » en l'état ; option : spike avec la crate `gtk` (re-parentage `GtkFixed`). Capabilities à cibler par `webviews` si intégration. L'outil a refusé de créer `FINDINGS.md` : contenu dans le rapport final.
