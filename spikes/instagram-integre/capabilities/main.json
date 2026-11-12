@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-webview-only",
+  "description": "Targets the `main` webview, not its window: the `instagram` child webview shares that window. No remote.urls.",
+  "webviews": ["main"],
+  "permissions": ["allow-probe", "allow-report", "core:event:default"]
+}

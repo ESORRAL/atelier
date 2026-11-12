@@ -1,0 +1,68 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>child test page</title>
+<body style="margin:0;background:#2a8;color:#fff;font:14px sans-serif;height:100vh">
+<p>CHILD (green): webview <b>instagram</b></p>
+<pre id="log"></pre>
+</body>
+<script>
+  // Hostile page standing in for Instagram: reports its layout, then tries every IPC route it can find.
+  // Outcomes go to the test server; the verdict comes from Rust (PROBE_CALLS, EMIT_REACHED, WEBVIEWS).
+  const report = (vector, outcome) => {
+    document.getElementById('log').textContent += vector + ': ' + outcome + '\n';
+    return fetch('/report?vector=' + encodeURIComponent(vector) + '&outcome=' + encodeURIComponent(outcome));
+  };
+  const state = () => report('state', `size=${innerWidth}x${innerHeight} vis=${document.visibilityState} focus=${document.hasFocus()}`);
+  addEventListener('resize', state);
+  addEventListener('focus', () => report('focus', 'in'));
+  addEventListener('blur', () => report('focus', 'out'));
+  addEventListener('keydown', (e) => report('key', e.key));
+  document.addEventListener('visibilitychange', state);
+  setInterval(state, 1000);
+
+  const attempt = async (vector, fn) => {
+    try {
+      const r = await Promise.race([fn(), new Promise((_, rej) => setTimeout(() => rej('timeout'), 1500))]);
+      await report(vector, 'resolved:' + JSON.stringify(r));
+    } catch (e) {
+      await report(vector, 'rejected:' + String(e && e.message || e));
+    }
+  };
+
+  // Steal the invoke key: Tauri hides it in a closure but sends it as a header through window.fetch.
+  let key = null;
+  const realFetch = window.fetch;
+  window.fetch = (url, init) => {
+    const h = init && init.headers;
+    if (h && h.get && h.get('Tauri-Invoke-Key')) key = h.get('Tauri-Invoke-Key');
+    return realFetch(url, init);
+  };
+  const internals = window.__TAURI_INTERNALS__;
+  const inv = (cmd, args) => internals.invoke(cmd, args);
+
+  (async () => {
+    await report('globals', '__TAURI__=' + typeof window.__TAURI__ +
+      ' __TAURI_INTERNALS__=' + typeof internals + ' ipc=' + typeof window.ipc);
+    await attempt('__TAURI__.core.invoke probe', () => window.__TAURI__.core.invoke('probe'));
+    await attempt('__TAURI_INTERNALS__.invoke probe', () => inv('probe'));
+    await attempt('plugin:event|emit', () => inv('plugin:event|emit', { event: 'spike-leak', payload: 'from-child' }));
+    await attempt('plugin:webview|create_webview_window', () => inv('plugin:webview|create_webview_window', {
+      options: { label: 'evil', url: 'https://example.com/' } }));
+    await attempt('plugin:webview|set_webview_size', () => inv('plugin:webview|set_webview_size', {
+      label: 'main', value: { Logical: { width: 10, height: 10 } } }));
+    await report('stolen-key', key ? 'yes' : 'no');
+    const headers = { 'Content-Type': 'application/json', 'Tauri-Callback': '1', 'Tauri-Error': '2', 'Tauri-Invoke-Key': key || '' };
+    await attempt('fetch ipc://localhost/probe +key', () => realFetch('ipc://localhost/probe', {
+      method: 'POST', body: '{}', headers }).then(async r => r.status + ' ' + r.headers.get('Tauri-Response') + ' ' + await r.text()));
+    await attempt('fetch http://ipc.localhost/probe +key', () => realFetch('http://ipc.localhost/probe', {
+      method: 'POST', body: '{}', headers }).then(async r => r.status + ' ' + r.headers.get('Tauri-Response') + ' ' + await r.text()));
+    const msg = JSON.stringify({ cmd: 'probe', callback: 1, error: 2, payload: {}, options: {}, __TAURI_INVOKE_KEY__: key });
+    await attempt('ipc.postMessage +key', async () => { window.ipc.postMessage(msg); return 'posted'; });
+    await attempt('webkit.messageHandlers.ipc +key', async () => { window.webkit.messageHandlers.ipc.postMessage(msg); return 'posted'; });
+    document.cookie = 'spike=' + new URLSearchParams(location.search).get('run') + '; max-age=3600; path=/';
+    await report('cookie-set', document.cookie);
+    await report('done', 'attempts finished');
+    // Off-allowlist navigation: localhost is not the CHILD_URL host (127.0.0.1); the page must stay.
+    location.href = location.href.replace('127.0.0.1', 'localhost').replace(/child\.html.*/, 'forbidden.html');
+  })();
+</script>
