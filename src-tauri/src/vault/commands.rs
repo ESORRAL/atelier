@@ -2,26 +2,40 @@ use super::*;
 use crate::claude::Claude;
 use tauri::State;
 
-/// Resolves the vault project root from the settings, or fails with the "not configured" error.
+/// Journal root `vaultPath/vaultProject` (the only place written to).
 fn root(claude: &Claude) -> Result<PathBuf, String> {
     let s = claude.settings_get()?;
     let base = s.vault_path.ok_or(NOT_CONFIGURED)?;
     resolve_root(Path::new(&base), &s.vault_project)
 }
 
+/// Read root: the whole vault (`vaultPath`).
+fn vault_root(claude: &Claude) -> Result<PathBuf, String> {
+    let base = claude.settings_get()?.vault_path.ok_or(NOT_CONFIGURED)?;
+    resolve_vault(Path::new(&base))
+}
+
 #[tauri::command]
-pub fn vault_list(claude: State<'_, Claude>) -> Result<Vec<VaultNote>, String> {
-    list(&root(&claude)?)
+pub fn vault_list(
+    claude: State<'_, Claude>,
+    folder: Option<String>,
+) -> Result<VaultFolder, String> {
+    list(&vault_root(&claude)?, folder.as_deref())
+}
+
+#[tauri::command]
+pub fn vault_recent(claude: State<'_, Claude>, limit: usize) -> Result<Vec<VaultNote>, String> {
+    recent(&vault_root(&claude)?, limit)
 }
 
 #[tauri::command]
 pub fn vault_read(claude: State<'_, Claude>, path: String) -> Result<String, String> {
-    read(&root(&claude)?, &path)
+    read(&vault_root(&claude)?, &path)
 }
 
 #[tauri::command]
 pub fn vault_search(claude: State<'_, Claude>, query: String) -> Result<Vec<VaultHit>, String> {
-    search(&root(&claude)?, &query)
+    search(&vault_root(&claude)?, &query)
 }
 
 #[tauri::command]
@@ -32,15 +46,8 @@ pub fn vault_open(claude: State<'_, Claude>, path: String) -> Result<(), String>
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .ok_or("Chemin du vault invalide.")?;
-    resolve(&resolve_root(Path::new(&base), &s.vault_project)?, &path)?;
-    // The file part of the URL is relative to the vault, not to the project root.
-    let project = s.vault_project.trim_matches('/');
-    let file = if project.is_empty() {
-        path
-    } else {
-        format!("{project}/{path}")
-    };
-    crate::desktop::open_detached(&obsidian_url(&name, &file))
+    resolve(&resolve_vault(Path::new(&base))?, &path)?;
+    crate::desktop::open_detached(&obsidian_url(&name, &path))
 }
 
 #[tauri::command]

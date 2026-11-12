@@ -97,7 +97,8 @@ fn hidden_dirs_skipped_and_empty_project_url() {
     fs::create_dir_all(root.join(".obsidian")).unwrap();
     fs::write(root.join(".obsidian/x.md"), "needle").unwrap();
     fs::write(root.join("a.md"), "needle").unwrap();
-    assert_eq!(list(&root).unwrap().len(), 1);
+    assert_eq!(recent(&root, 10).unwrap().len(), 1);
+    assert!(list(&root, Some(".obsidian")).is_err());
     assert_eq!(search(&root, "needle").unwrap().len(), 1);
     assert_eq!(
         obsidian_url("V", "a.md"),
@@ -117,10 +118,38 @@ fn url_is_encoded() {
 #[ignore]
 fn real_vault_read_only() {
     let base = Path::new("/home/thomas/Documents/Obsidian Vault");
-    let root = resolve_root(base, "01 - Projets/Atelier").unwrap();
-    let notes = list(&root).unwrap();
-    println!("{} notes", notes.len());
+    let root = resolve_vault(base).unwrap();
+    let notes = recent(&root, 50).unwrap();
+    let top = list(&root, None).unwrap();
+    println!("{} recent, {} folders", notes.len(), top.folders.len());
     if let Some(n) = notes.first() {
         read(&root, &n.path).unwrap();
+    }
+}
+
+#[test]
+fn list_folder_levels_and_escapes() {
+    let root = tmp("folder");
+    fs::create_dir_all(root.join("A/B")).unwrap();
+    fs::write(root.join("top.md"), "# Top").unwrap();
+    fs::write(root.join("A/n.md"), "x").unwrap();
+    fs::write(root.join("A/B/deep.md"), "x").unwrap();
+    let outside = tmp("folder-out");
+    symlink(&outside, root.join("out")).unwrap();
+    let r = list(&root, None).unwrap();
+    assert_eq!(
+        (r.folders.as_slice(), r.notes.len()),
+        (&["A".to_string()][..], 1)
+    );
+    let a = list(&root, Some("A")).unwrap();
+    assert_eq!(
+        (a.path.as_str(), a.folders.as_slice()),
+        ("A", &["B".to_string()][..])
+    );
+    assert_eq!(a.notes[0].path, "A/n.md");
+    assert_eq!(recent(&root, 2).unwrap().len(), 2);
+    assert!(recent(&root, 0).is_err() && recent(&root, 51).is_err());
+    for bad in ["..", "A/../..", "/etc", "out", "top.md"] {
+        assert!(list(&root, Some(bad)).is_err(), "{bad}");
     }
 }
