@@ -23,3 +23,8 @@ export const graphSummary = (dir: string) => invoke<GraphSummary | null>("graph_
 export const graphUpdate = (dir: string) => invoke<GraphSummary>("graph_update", { dir });
 export const projectInfo = (dir: string) => invoke<ProjectInfo>("project_info", { dir });
 export const projectFiles = (dir: string, query: string, limit: number) => invoke<string[]>("project_files", { dir, query, limit });
+
+// contracts/ipc.md §11 bis: at most 3 000 nodes and 8 000 links.
+export type GraphNode = { id: string; label: string; community: number; communityName: string | null; file: string | null; degree: number };
+export type GraphData = { nodes: GraphNode[]; links: { source: string; target: string }[]; truncated: boolean };
+export const graphData = (dir: string) => invoke<GraphData | null>("graph_data", { dir });

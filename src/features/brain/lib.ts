@@ -53,3 +53,43 @@ export function buildRecap(sessions: SessionEntry[], usage: UsageSummary, now = 
   if (models.length) lines.push(`Modèles : ${models.join(", ")}`);
   return lines.join("\n");
 }
+
+/** Joins a vault-relative folder ("" = root) and a child name. */
+export const joinPath = (folder: string, name: string) => (folder ? `${folder}/${name}` : name);
+
+/** Folders to unfold so that `path` becomes visible, root excluded: "a/b/c.md" -> ["a", "a/b"]. */
+export function ancestors(path: string): string[] {
+  const parts = path.split("/").slice(0, -1);
+  return parts.map((_, i) => parts.slice(0, i + 1).join("/"));
+}
+
+export type TreeRow =
+  | { kind: "folder"; path: string; name: string; depth: number; open: boolean; loading: boolean }
+  | { kind: "note"; path: string; name: string; depth: number; note: VaultNote };
+
+type Folder = { folders: string[]; notes: VaultNote[] };
+
+/** Flattens the loaded part of the vault tree under `root`, folders first, both sorted by name. */
+export function treeRows(root: string, loaded: ReadonlyMap<string, Folder>, open: ReadonlySet<string>, depth = 0): TreeRow[] {
+  const f = loaded.get(root);
+  if (!f) return [];
+  const rows: TreeRow[] = [];
+  for (const name of [...f.folders].sort((a, b) => a.localeCompare(b, "fr"))) {
+    const path = joinPath(root, name);
+    const isOpen = open.has(path);
+    rows.push({ kind: "folder", path, name, depth, open: isOpen, loading: isOpen && !loaded.has(path) });
+    if (isOpen) rows.push(...treeRows(path, loaded, open, depth + 1));
+  }
+  for (const note of [...f.notes].sort((a, b) => a.title.localeCompare(b.title, "fr")))
+    rows.push({ kind: "note", path: note.path, name: note.title, depth, note });
+  return rows;
+}
+
+/** Vault-relative paths a wikilink may point to without a full index: next to the current note, then from the root. */
+export function linkCandidates(target: string, current: string): string[] {
+  const t = target.split("#")[0].trim().replace(/^\/+/, "");
+  if (!t || t.split("/").includes("..")) return [];
+  const file = /\.md$/i.test(t) ? t : `${t}.md`;
+  const dir = current.split("/").slice(0, -1).join("/");
+  return [...new Set([joinPath(dir, file), file])];
+}
