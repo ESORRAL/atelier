@@ -22,3 +22,4 @@ export type ProjectInfo = {
 export const graphSummary = (dir: string) => invoke<GraphSummary | null>("graph_summary", { dir });
 export const graphUpdate = (dir: string) => invoke<GraphSummary>("graph_update", { dir });
 export const projectInfo = (dir: string) => invoke<ProjectInfo>("project_info", { dir });
+export const projectFiles = (dir: string, query: string, limit: number) => invoke<string[]>("project_files", { dir, query, limit });

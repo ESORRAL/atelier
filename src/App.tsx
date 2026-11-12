@@ -50,8 +50,6 @@ const EMPTY_INFO: ChatInfo = { key: null, cwd: "", model: null, costUsd: 0, stat
 
 export default function App() {
   const [demo, setDemo] = useState(false);
-  // The Chat portals its session status (state, model, cost) into this slot of the top bar.
-  const [slot, setSlot] = useState<HTMLDivElement | null>(null);
   const [tab, setTab] = usePersisted<TabId>("atelier.tab", "chat", isTabId);
   const [panel, setPanel] = usePersisted("atelier.panel", window.innerWidth >= 1280 ? "open" : "closed", isOpenClosed);
   const [drawer, setDrawer] = usePersisted("atelier.drawer", "closed", isOpenClosed);
@@ -166,7 +164,7 @@ export default function App() {
           <Logo size="var(--icon-lg)" working={info.working} />
           Atelier
         </span>
-        <div className="topbar__slot" ref={setSlot} />
+        <div className="topbar__slot" />
         <MiniPlayer />
         {inFocus && (
           <FocusTimer state={focus.state} now={focus.now} notice={focus.notice} onDismiss={focus.dismiss} onDurations={focus.setDurations} />
@@ -207,7 +205,7 @@ export default function App() {
           {/* Chat stays mounted behind other tabs so the session keeps running. */}
           <div className="shell__view" hidden={demo || tab !== "chat"}>
             <Suspense fallback={null}>
-              <Chat slot={slot} onInfo={setInfo} onEvent={onEvent} controlsRef={controls} />
+              <Chat onInfo={setInfo} onEvent={onEvent} controlsRef={controls} />
             </Suspense>
           </div>
           {demo ? (

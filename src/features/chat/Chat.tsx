@@ -27,13 +27,12 @@ export type ChatControls = { newSession: () => void; interrupt: () => void; open
 const NO_INFO: ChatInfo = { key: null, cwd: "", model: null, costUsd: 0, state: null, working: false };
 
 type ChatProps = {
-  slot?: HTMLElement | null;
   onInfo?: (info: ChatInfo) => void; // the displayed session only
   onEvent?: (key: string, e: SessionEvent) => void; // every raw event of every open session
   controlsRef?: RefObject<ChatControls | null>;
 };
 
-export default function Chat({ slot, onInfo, onEvent, controlsRef }: ChatProps) {
+export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
   const [tabs, setTabs] = useState(noTabs);
   const [cwd, setCwd] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
@@ -197,7 +196,6 @@ export default function Chat({ slot, onInfo, onEvent, controlsRef }: ChatProps) 
           cwd={t.cwd}
           resume={t.resume}
           active={t.id === tabs.active}
-          slot={slot}
           onStatus={onStatus}
           onStartError={onStartError}
           onInfo={onInfo}

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useReducer, useRef, useState, type RefObject } from "react";
-import { createPortal } from "react-dom";
 import { Stop, PaperPlaneRight } from "@phosphor-icons/react";
 import {
   permissionRespond,
@@ -17,9 +16,11 @@ import {
   type SessionEvent,
   type PermissionMode,
 } from "../../ipc/claude";
+import { projectFiles } from "../../ipc/project";
 import { PermissionHost } from "../../ui/PermissionDialog";
 import { MessageView } from "./MessageView";
 import { canSend, matchModel } from "./logic";
+import { applyMention, filterCommands, findTrigger } from "./mention";
 import { initialState, reduce } from "./reduce";
 import { pendingCount, type SessionTab } from "./sessions";
 import type { ChatInfo } from "./Chat";
@@ -45,7 +46,6 @@ type Props = {
   cwd: string;
   resume: SessionEntry | null;
   active: boolean; // shown: owns the top-bar slot, the right panel and the permission dialog
-  slot?: HTMLElement | null;
   onStatus: (id: number, patch: Partial<Pick<SessionTab, "key" | "title" | "state" | "pending">>) => void;
   onStartError: (id: number, message: string) => void;
   onInfo?: (info: ChatInfo) => void;
@@ -54,7 +54,7 @@ type Props = {
 };
 
 /** One Claude session: its own reducer, channel and permission queue. Stays mounted while hidden. */
-export function ChatSession({ id, cwd, resume, active, slot, onStatus, onStartError, onInfo, onEvent, interruptRef }: Props) {
+export function ChatSession({ id, cwd, resume, active, onStatus, onStartError, onInfo, onEvent, interruptRef }: Props) {
   const [s, dispatch] = useReducer(reduce, initialState);
   const [key, setKey] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -62,6 +62,10 @@ export function ChatSession({ id, cwd, resume, active, slot, onStatus, onStartEr
   const costBase = resume?.costUsd ?? 0; // index cost at resume; the SDK total restarts at 0
   const [mode, setMode] = useState<PermissionMode>("default");
   const [draft, setDraft] = useState("");
+  const [caret, setCaret] = useState(0);
+  const [files, setFiles] = useState<string[]>([]);
+  const [pick, setPick] = useState(0);
+  const [dismissed, setDismissed] = useState<string | null>(null); // draft text for which Échap closed the list
   const [localError, setLocalError] = useState<string | null>(null);
   const keyRef = useRef<string | null>(null);
   const early = useRef<SessionEvent[]>([]); // events received before the key is known
@@ -154,6 +158,36 @@ export function ChatSession({ id, cwd, resume, active, slot, onStatus, onStartEr
     onStatus(id, { key, state: s.sessionState, pending, ...(title ? { title } : {}) });
   }, [onStatus, id, key, s.sessionState, pending, title]);
 
+  const trigger = findTrigger(draft, caret);
+  const fileQuery = trigger?.kind === "file" ? trigger.query : null;
+  // Files of the project, queried 150 ms after the last keystroke following "@".
+  useEffect(() => {
+    if (fileQuery === null) return setFiles([]);
+    let stale = false;
+    const h = setTimeout(() => {
+      projectFiles(cwd, fileQuery, 8).then((f) => !stale && setFiles(f), () => !stale && setFiles([]));
+    }, 150);
+    return () => {
+      stale = true;
+      clearTimeout(h);
+    };
+  }, [fileQuery, cwd]);
+  const items = trigger ? (trigger.kind === "command" ? filterCommands(s.commands, trigger.query) : files) : [];
+  const noCommands = trigger?.kind === "command" && s.commands.length === 0;
+  const listOpen = !!trigger && dismissed !== draft && (items.length > 0 || noCommands);
+  const optionId = (i: number) => `mention-${id}-${i}`;
+  const choose = (value: string) => {
+    if (!trigger) return;
+    const r = applyMention(draft, trigger, value);
+    setDraft(r.text);
+    setCaret(r.caret);
+    setPick(0);
+    requestAnimationFrame(() => {
+      input.current?.focus();
+      input.current?.setSelectionRange(r.caret, r.caret);
+    });
+  };
+
   const send = () => {
     const text = draft.trim();
     if (!key || !canSend(s.sessionState, text)) return;
@@ -186,7 +220,7 @@ export function ChatSession({ id, cwd, resume, active, slot, onStatus, onStartEr
   const modelValue = chosenModel ?? matchModel(s.model, models) ?? s.model ?? "";
   const error = localError ?? s.error;
 
-  const head = (
+  const toolbar = (
     <div className="session">
       <span className="session__state">{s.sessionState ? STATE_LABEL[s.sessionState] : STATE_LABEL.starting}</span>
       {key && (
@@ -239,7 +273,6 @@ export function ChatSession({ id, cwd, resume, active, slot, onStatus, onStartEr
 
   return (
     <div className="chat__session" hidden={!active}>
-      {active && slot && createPortal(head, slot)}
       <div
         ref={log}
         className="chat__log"
@@ -261,14 +294,52 @@ export function ChatSession({ id, cwd, resume, active, slot, onStatus, onStartEr
       </div>
       <div className="chat__composer">
         <div className="composer">
+          {listOpen && (
+            noCommands ? (
+              <p className="mention mention--hint" role="status">Les commandes apparaîtront après le premier message</p>
+            ) : (
+              <ul className="mention" id={`mention-list-${id}`} role="listbox" aria-label={trigger?.kind === "command" ? "Commandes" : "Fichiers du projet"}>
+                {items.map((it, i) => (
+                  <li
+                    key={it}
+                    id={optionId(i)}
+                    role="option"
+                    aria-selected={i === pick % items.length}
+                    className="mention__item"
+                    onMouseDown={(e) => { e.preventDefault(); choose(it); }}
+                  >
+                    {trigger?.kind === "command" ? "/" : "@"}{it}
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
           <textarea
             ref={input}
             aria-label="Message à Claude"
             placeholder="Écris ton message…"
             value={draft}
             rows={1}
-            onChange={(e) => setDraft(e.target.value)}
+            role="combobox"
+            aria-expanded={listOpen}
+            aria-controls={`mention-list-${id}`}
+            aria-autocomplete="list"
+            aria-activedescendant={listOpen && items.length ? optionId(pick) : undefined}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setCaret(e.target.selectionStart);
+              setPick(0);
+            }}
+            onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
             onKeyDown={(e) => {
+              if (listOpen && !e.nativeEvent.isComposing) {
+                const n = items.length;
+                if (e.key === "ArrowDown" && n) { e.preventDefault(); setPick((pick + 1) % n); return; }
+                if (e.key === "ArrowUp" && n) { e.preventDefault(); setPick((pick - 1 + n) % n); return; }
+                if ((e.key === "Enter" || e.key === "Tab") && n) { e.preventDefault(); choose(items[pick % n]); return; }
+                if (e.key === "Enter") { e.preventDefault(); return; } // never send while the list is open
+                if (e.key === "Escape") { e.preventDefault(); setDismissed(draft); return; }
+              }
               if (e.key === "Escape" && busy) interrupt();
               else if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
@@ -285,6 +356,7 @@ export function ChatSession({ id, cwd, resume, active, slot, onStatus, onStartEr
             <PaperPlaneRight size="var(--icon-md)" weight="fill" aria-hidden="true" />
           </button>
         </div>
+        {toolbar}
         <p className="composer__hint">Entrée pour envoyer, Maj+Entrée pour aller à la ligne</p>
       </div>
 
