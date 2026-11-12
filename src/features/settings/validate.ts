@@ -9,8 +9,9 @@ export function validateSettings(s: Settings): string | null {
   if (p !== null && p !== "" && !p.startsWith("/")) return "Le chemin du CLI doit être vide ou absolu (commencer par /).";
   if (!MODES.includes(s.defaultPermissionMode)) return "Mode de permission non autorisé.";
   if (s.defaultModel !== null && !(MODELS as readonly string[]).includes(s.defaultModel)) return "Modèle inconnu.";
+  if (s.vaultPath !== null && !s.vaultPath.startsWith("/")) return "Le dossier du vault doit être un chemin absolu.";
   return null;
 }
 
 /** Empty path means "found in PATH": stored as null. */
-export const normalize = (s: Settings): Settings => ({ ...s, claudePath: s.claudePath?.trim() || null });
+export const normalize = (s: Settings): Settings => ({ ...s, claudePath: s.claudePath?.trim() || null, vaultPath: s.vaultPath?.trim() || null });
