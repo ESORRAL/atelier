@@ -1,0 +1,11 @@
+[package]
+name = "spike-instagram-cef"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Standalone: not part of any parent workspace.
+[workspace]
+
+[dependencies]
+cef = "=156.4.0+156.0.26"

@@ -1,0 +1,56 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>cef scroll test</title>
+<style>
+  body { margin: 0; background: #000; }
+  .reel { height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
+  .reel img, .reel video { width: 100%; height: 100%; object-fit: cover; }
+</style>
+<body>
+<script>
+  // Same feed as spikes/instagram-perf/test-page/scroll.html, plus real video frame counts.
+  // ?codec=h264|vp9|av1 &secs=20 &scroll=1. Results go to console.log (read by the probe).
+  const q = new URLSearchParams(location.search);
+  const codec = q.get('codec') || 'h264', ext = codec === 'vp9' ? 'webm' : 'mp4';
+  for (let i = 0; i < 40; i++) {
+    const d = document.createElement('div');
+    d.className = 'reel';
+    d.innerHTML = i % 2 === 0
+      ? `<video src="media/${codec}-${(i / 2) % 3}.${ext}" autoplay muted loop playsinline></video>`
+      : `<img src="media/img${(i - 1) / 2 % 10}.jpg" decoding="async">`;
+    document.body.appendChild(d);
+  }
+  const deltas = [];
+  let last = 0, measuring = false;
+  (function tick(t) { if (measuring && last) deltas.push(t - last); last = t; requestAnimationFrame(tick); })(0);
+  // Presented frames of the video currently on screen (requestVideoFrameCallback).
+  let vframes = 0;
+  for (const v of document.querySelectorAll('video')) {
+    const cb = () => { if (measuring && v.getBoundingClientRect().top >= -innerHeight / 2 && v.getBoundingClientRect().top < innerHeight / 2) vframes++; v.requestVideoFrameCallback(cb); };
+    v.requestVideoFrameCallback(cb);
+    v.addEventListener('error', () => console.log(`video error ${v.error && v.error.code}`));
+  }
+  const secs = Number(q.get('secs') || 20);
+  setTimeout(() => {
+    const v0 = document.querySelector('video');
+    console.log(`start codec=${codec} readyState=${v0.readyState} canPlay=${v0.canPlayType(ext === 'webm' ? 'video/webm; codecs="vp9"' : codec === 'av1' ? 'video/mp4; codecs="av01.0.05M.08"' : 'video/mp4; codecs="avc1.640028"')}`);
+    const q0 = [...document.querySelectorAll('video')].map((v) => v.getVideoPlaybackQuality());
+    measuring = true;
+    // Show a video for 2 s, then move on two screens (video -> image -> video), like swiping reels.
+    const id = q.get('scroll') === '0' ? 0 : setInterval(() => scrollBy({ top: 2 * innerHeight, behavior: 'smooth' }), 2000);
+    setTimeout(() => {
+      clearInterval(id);
+      measuring = false;
+      const q1 = [...document.querySelectorAll('video')].map((v) => v.getVideoPlaybackQuality());
+      const total = q1.reduce((a, x, i) => a + x.totalVideoFrames - q0[i].totalVideoFrames, 0);
+      const dropped = q1.reduce((a, x, i) => a + x.droppedVideoFrames - q0[i].droppedVideoFrames, 0);
+      const s = deltas.slice().sort((a, b) => a - b);
+      const p = (x) => s.length ? s[Math.min(s.length - 1, Math.floor(x * s.length))].toFixed(1) : 'na';
+      const ms = deltas.reduce((a, b) => a + b, 0);
+      console.log([`frames codec=${codec}`, `fps=${(s.length / (ms / 1000 || 1)).toFixed(1)}`, `p50=${p(0.5)}`,
+        `p99=${p(0.99)}`, `long=${deltas.filter((d) => d > 34).length}`, `videofps=${(vframes / secs).toFixed(1)}`,
+        `decoded=${total}`, `dropped=${dropped}`, `size=${innerWidth}x${innerHeight}`].join(' '));
+    }, secs * 1000);
+  }, 3000);
+</script>
+</body>
