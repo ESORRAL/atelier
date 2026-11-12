@@ -13,12 +13,11 @@ import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
 import { isTabId, TABS, type TabId } from "./shell/tabs";
 import { shortcutAction } from "./shell/shortcuts";
+import { pauseWindowOpen } from "./ipc/desktop";
 import type { Command } from "./shell/palette";
 import { FocusTimer } from "./features/focus/FocusTimer";
 import { useFocus } from "./features/focus/useFocus";
 import "./shell/shell.css";
-
-const MEDIA_TABS: TabId[] = ["instagram"];
 
 const Chat = lazy(() => import("./features/chat/Chat"));
 const Agents = lazy(() => import("./features/agents"));
@@ -56,11 +55,12 @@ export default function App() {
   const [drawer, setDrawer] = usePersisted("atelier.drawer", "closed", isOpenClosed);
   const [palette, setPalette] = useState(false);
   const [music, setMusic] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [info, setInfo] = useState<ChatInfo>(EMPTY_INFO);
   const controls = useRef<ChatControls | null>(null);
   const focus = useFocus();
   const inFocus = focus.state.active;
-  const hidden = inFocus ? MEDIA_TABS : [];
+  const hidden: TabId[] = [];
   const musicShown = music && !inFocus; // Focus hides the panel like the media tabs
 
   // Raw events per session key: kept in a ref (tokens arrive fast), rendered at most once per frame while open.
@@ -100,11 +100,14 @@ export default function App() {
     setMusic(false);
     document.getElementById("rail-music")?.focus();
   };
+  const openInstagram = () => {
+    setNotice(null);
+    pauseWindowOpen().catch(() => setNotice("Impossible d'ouvrir la fenêtre Instagram."));
+  };
   const toggleDrawer = () => setDrawer(flip);
   const toggleFocus = () => {
     if (!inFocus) {
       focus.enter();
-      if (MEDIA_TABS.includes(tab)) setTab("chat");
     } else if (window.confirm("Quitter le Focus avant la fin ?")) focus.leave();
   };
   const goTo = (id: TabId) => {
@@ -127,6 +130,7 @@ export default function App() {
     { id: "new", label: "Nouvelle session", group: "Actions", run: () => { goTo("chat"); controls.current?.newSession(); } },
     { id: "interrupt", label: "Interrompre", group: "Actions", run: () => controls.current?.interrupt() },
     { id: "focus", label: inFocus ? "Quitter le mode Focus" : "Activer le mode Focus", group: "Actions", shortcut: "Ctrl+Maj+F", run: toggleFocus },
+    ...(inFocus ? [] : [{ id: "instagram", label: "Ouvrir Instagram", group: "Actions", run: openInstagram }]),
     ...(inFocus ? [] : [{ id: "music", label: musicShown ? "Fermer le panneau Musique" : "Ouvrir le panneau Musique", group: "Actions", run: () => (musicShown ? closeMusic() : setMusic(true)) }]),
     { id: "theme", label: "Basculer le thème", group: "Actions", run: toggleTheme },
     { id: "panel", label: "Replier ou ouvrir le panneau droit", group: "Actions", run: togglePanel },
@@ -185,8 +189,13 @@ export default function App() {
           <Terminal size="var(--icon-sm)" aria-hidden="true" /> Journal
         </button>
       </header>
-      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} musicOpen={musicShown} musicHidden={inFocus} onMusic={() => (musicShown ? closeMusic() : setMusic(true))} />
+      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} musicOpen={musicShown} mediaHidden={inFocus} onMusic={() => (musicShown ? closeMusic() : setMusic(true))} onInstagram={openInstagram} />
       <div className="shell__center">
+        {notice && (
+          <p className="shell__notice" role="alert">
+            {notice} <button type="button" className="btn btn--ghost" onClick={() => setNotice(null)}>Fermer</button>
+          </p>
+        )}
         <div className="app__eclipse" aria-hidden="true">
           <div className="app__eclipse-disc">
             <BeamsBackground intensity="subtle" className="h-full min-h-0" />
