@@ -58,6 +58,7 @@ pub fn run() {
             windows::commands::pause_window_open,
             windows::commands::pause_window_close,
             windows::commands::pause_panel_toggle,
+            windows::commands::pause_open_browser,
             vault::commands::vault_list,
             vault::commands::vault_recent,
             vault::commands::vault_read,
