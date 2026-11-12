@@ -68,7 +68,7 @@ pub fn on_event(
     ev: &SessionEvent,
 ) {
     let focused = app
-        .get_webview_window("main")
+        .get_window("main") // not get_webview_window: with the Instagram panel, "main" holds two webviews
         .and_then(|w| w.is_focused().ok())
         .unwrap_or(false);
     let now = std::time::SystemTime::now()
