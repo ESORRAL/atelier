@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 2.2 (phase 5). 2.2 : panneau Instagram intégré (§15).
 Version 2.1 (phase 5). 2.1 : `project_files` (§14) pour les mentions `@`.
 Version 2.0 (phase 5). 2.0 : second cerveau, graphe, projets, fenêtre Instagram (§10 à §13) ; `Settings` gagne `vaultPath` et `vaultProject`.
 Version 1.6 (phase 4). 1.6 : §9 retiré à la demande de l'utilisateur (seuls des aperçus de 30 s étaient jouables).
@@ -74,6 +75,7 @@ type Settings = {
   recentCwds: string[];            // 10 au plus, le plus récent en tête
   vaultPath: string | null;        // dossier du vault Obsidian ; défaut : $ATELIER_VAULT s'il est défini, sinon null
   vaultProject: string;            // dossier du projet dans le vault, relatif ; défaut "01 - Projets/Atelier"
+  instagramMode: "panel" | "window"; // défaut "panel" (§15)
 };
 ```
 
@@ -308,3 +310,16 @@ Source : `git ls-files --cached --others --exclude-standard` (lancé par le supe
 git ; sinon parcours du dossier (5 000 fichiers au plus, dossiers cachés, `node_modules` et `target`
 ignorés). `dir` validé comme le `cwd` des sessions. Les commandes `/` viennent de `system/init.slash_commands`
 (aucune commande cœur).
+
+## 15. Panneau Instagram intégré (module `windows`, phase 5)
+
+| Commande | Arguments | Retour | Effet |
+|---|---|---|---|
+| `pause_panel_toggle` | `open: boolean` | `"panel" \| "window"` | ouvre ou ferme le panneau Instagram dans la fenêtre principale ; si le panneau ne peut pas être installé, ouvre la fenêtre séparée (§13) et renvoie `"window"` |
+
+Panneau : webview enfant `instagram-panel` de la fenêtre `main`, re-parentée dans un `GtkOverlay` +
+`GtkRevealer` (glissement depuis la gauche, à côté du rail : marge gauche 56 px, haut 56 px, largeur 420 px),
+selon `spikes/instagram-panneau/FINDINGS.md`. Mêmes règles d'isolation que §13 (aucune capability, aucun
+script, données à part, liste blanche de navigation partagée). **Les capabilities ciblent `webviews:
+["main"]`, jamais la fenêtre.** Le réglage `instagramMode: "panel" | "window"` (défaut `"panel"`) choisit le
+mode ; `"window"` garde le comportement §13.
