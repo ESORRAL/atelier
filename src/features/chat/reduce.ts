@@ -22,6 +22,7 @@ export type ChatState = {
   messages: ChatMessage[];
   sessionState: SessionState | null;
   model: string | null;
+  commands: string[]; // slash commands from system/init
   claudeSessionId: string | null;
   costUsd: number;
   permissions: PermissionRequest[];
@@ -35,6 +36,7 @@ export const initialState: ChatState = {
   messages: [],
   sessionState: null,
   model: null,
+  commands: [],
   claudeSessionId: null,
   costUsd: 0,
   permissions: [],
@@ -65,7 +67,9 @@ function reduceSdk(s: ChatState, m: Obj): ChatState {
   if (m.session_id && !s.claudeSessionId) s = { ...s, claudeSessionId: m.session_id };
   switch (m.type) {
     case "system":
-      return m.subtype === "init" && typeof m.model === "string" ? { ...s, model: m.model } : s;
+      return m.subtype === "init" && typeof m.model === "string"
+        ? { ...s, model: m.model, commands: Array.isArray(m.slash_commands) ? m.slash_commands.filter((c: unknown) => typeof c === "string") : s.commands }
+        : s;
     case "stream_event": {
       if (m.parent_tool_use_id) return s; // shortcut: sub-agent output is not shown in the chat
       const e: Obj = m.event ?? {};

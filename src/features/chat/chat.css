@@ -5,11 +5,13 @@
   min-height: 0;
 }
 
-/* ---------- Session status (portalled into the top bar) ---------- */
+/* ---------- Session toolbar (state, model, mode, cost) under the composer ---------- */
 .session {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
   font-size: var(--text-sm);
   line-height: var(--lh-sm);
   color: var(--color-text-secondary);
@@ -193,6 +195,7 @@
 /* ---------- Composer: pill + round send ---------- */
 .chat__composer { display: grid; gap: var(--space-2); justify-items: center; padding: var(--space-3) var(--space-6) var(--space-5); }
 .composer {
+  position: relative;
   width: min(var(--measure-chat), 100%);
   display: flex;
   align-items: flex-end;
@@ -301,3 +304,32 @@
 /* Tab tallies stay still too: the top-bar lamp is the one moving thing. */
 .chat-tabs .tally__lamp,
 .chat-tabs .tally__icon { animation: none; }
+
+/* ---------- Mention list (/ and @) above the composer ---------- */
+.mention {
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc(100% + var(--space-2));
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+  max-height: var(--drawer-min-h);
+  overflow-y: auto;
+  background: var(--color-bg-raised);
+  border: var(--border-w) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.mention--hint { color: var(--color-text-muted); font-size: var(--text-sm); }
+.mention__item {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mention__item:hover { background: var(--color-bg-hover); }
+.mention__item[aria-selected="true"] { background: var(--color-bg-selected); color: var(--color-text-primary); }
