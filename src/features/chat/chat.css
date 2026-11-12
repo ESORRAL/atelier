@@ -5,35 +5,6 @@
   min-height: 0;
 }
 
-/* ---------- Session toolbar (state, model, mode, cost) under the composer ---------- */
-.session {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-3);
-  font-size: var(--text-sm);
-  line-height: var(--lh-sm);
-  color: var(--color-text-secondary);
-}
-.session__model,
-.session__cost {
-  border-radius: var(--radius-full);
-  padding: var(--space-2) var(--space-4);
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-}
-.session__model {
-  color: var(--color-text-primary);
-  background: var(--color-bg-raised);
-  border: var(--border-w) solid var(--color-border-strong);
-}
-.session__cost {
-  color: var(--color-text-primary);
-  background: var(--color-bg-raised);
-  border: var(--border-w) solid var(--color-border-subtle);
-}
-
 /* ---------- Shared fields ---------- */
 .chat input,
 .chat textarea {
@@ -68,53 +39,11 @@
   letter-spacing: var(--tracking-display);
 }
 .welcome__nowrap { white-space: nowrap; }
-.welcome__lede {
-  font-size: var(--text-read);
-  line-height: var(--lh-read);
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-3);
-}
-.welcome__form {
-  display: flex;
-  gap: var(--space-3);
-  padding: var(--space-2);
-  background: var(--color-bg-raised);
-  border: var(--border-w) solid var(--color-border-strong);
-  border-radius: var(--radius-full);
-  box-shadow: var(--shadow-card);
-}
-.welcome__form input {
-  flex: 1;
-  min-width: 0;
-  border-color: transparent;
-  background: transparent;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-}
-.welcome__chips,
 .welcome__sessions {
   list-style: none;
   margin: 0;
   padding: 0;
 }
-.welcome__chips { display: flex; flex-wrap: wrap; gap: var(--space-3); }
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-3);
-  max-width: 100%;
-  padding: var(--space-2) var(--space-4);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  line-height: var(--lh-xs);
-  color: var(--color-text-secondary);
-  background: transparent;
-  border: var(--border-w) solid var(--color-border-strong);
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  overflow-wrap: anywhere;
-}
-.chip:hover { color: var(--color-text-primary); background: var(--color-bg-hover); }
 .welcome__h2 {
   margin-top: var(--space-6);
   font-size: var(--text-lg);
@@ -133,7 +62,7 @@
 .welcome__sessions li + li { border-top: var(--border-w) solid var(--color-border-subtle); }
 .session-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-1) var(--space-5);
   width: 100%;
   padding: var(--space-4) var(--space-5);
@@ -147,8 +76,7 @@
 .session-row:hover { background: var(--color-bg-hover); }
 .session-row:focus-visible { outline-offset: calc(var(--focus-ring-w) * -1); }
 .session-row__title { font-weight: var(--weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.session-row__meta { grid-row: 2; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.session-row__cost { grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
+.session-row__meta { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- Conversation ---------- */
 .chat__log { flex: 1; min-height: 0; overflow: auto; padding: var(--space-7) var(--space-6) var(--space-5); }
@@ -193,14 +121,14 @@
 .cursor { color: var(--color-accent); }
 
 /* ---------- Composer: pill + round send ---------- */
-.chat__composer { display: grid; gap: var(--space-2); justify-items: center; padding: var(--space-3) var(--space-6) var(--space-5); }
+.chat__composer { display: grid; justify-items: center; padding: var(--space-3) var(--space-6) var(--space-5); }
+.composer-wrap { width: min(var(--measure-chat), 100%); display: grid; gap: var(--space-2); }
 .composer {
   position: relative;
-  width: min(var(--measure-chat), 100%);
   display: flex;
-  align-items: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-3) var(--space-5);
   background: var(--color-bg-raised);
   border: var(--border-w) solid var(--color-border-strong);
   border-radius: var(--radius-xl);
@@ -208,18 +136,34 @@
 }
 .composer:has(textarea:focus-visible) { outline: var(--focus-ring-w) solid var(--color-focus-ring); outline-offset: var(--focus-ring-offset); }
 .chat .composer textarea {
-  flex: 1;
-  min-width: 0;
-  min-height: var(--send-size);
+  width: 100%;
+  min-height: var(--lh-read);
   max-height: var(--composer-max-h);
+  padding: 0;
   resize: none;
   field-sizing: content; /* grows with the text where supported; scrolls otherwise */
   background: transparent;
   border: 0;
+  border-radius: 0;
   font-size: var(--text-read);
   line-height: var(--lh-read);
 }
-.chat .composer textarea:focus-visible { outline: none; } /* the whole pill carries the focus ring (:has above) */
+.chat .composer textarea:focus-visible { outline: none; } /* the whole block carries the focus ring (:has above) */
+.composer__row { display: flex; align-items: center; gap: var(--space-3); }
+.composer__spacer { flex: 1; }
+.composer__plus {
+  display: grid;
+  place-items: center;
+  width: var(--send-size);
+  height: var(--send-size);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+.composer__plus:hover:not(:disabled) { color: var(--color-text-primary); background: var(--color-bg-hover); }
+.composer__plus:disabled { opacity: 0.4; cursor: default; }
 .composer__send {
   flex: none;
   display: grid;
@@ -235,7 +179,64 @@
 }
 .composer__send:hover:not(:disabled) { background: var(--color-accent-hover); }
 .composer__send:disabled { opacity: 0.4; cursor: default; }
-.composer__hint { font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--color-text-muted); }
+
+/* Plain-text menus under the block: project on the left, model and mode on the right. */
+.composer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+  line-height: var(--lh-sm);
+  color: var(--color-text-secondary);
+}
+.tmenu__group { display: flex; align-items: center; gap: var(--space-4); }
+.tmenu__static { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tmenu { position: relative; display: inline-flex; }
+.tmenu__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.tmenu__btn:hover:not(:disabled),
+.tmenu__btn[aria-expanded="true"] { color: var(--color-accent); }
+.tmenu__btn:disabled { opacity: 0.6; cursor: default; }
+.tmenu__list {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 1;
+  display: grid;
+  min-width: max-content;
+  padding: var(--space-2);
+  background: var(--color-bg-raised);
+  border: var(--border-w) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.composer-bar > .tmenu .tmenu__list { right: auto; left: 0; }
+.tmenu__item {
+  display: block;
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  text-align: left;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.tmenu__item:hover,
+.tmenu__item:focus-visible { background: var(--color-bg-hover); }
+.tmenu__item[aria-checked="true"] { font-weight: var(--weight-bold); }
 
 .chat__error { margin: 0 auto var(--space-4); max-width: var(--measure-chat); padding: var(--space-3) var(--space-5); background: var(--color-danger-bg); color: var(--color-danger); border-radius: var(--radius-full); }
 
@@ -333,3 +334,8 @@
 }
 .mention__item:hover { background: var(--color-bg-hover); }
 .mention__item[aria-selected="true"] { background: var(--color-bg-selected); color: var(--color-text-primary); }
+
+/* Session tab close button: hidden until the tab is hovered or focused (still reachable by keyboard). */
+.chat-tabs__close { opacity: 0; transition: opacity var(--dur-fast) var(--ease-standard); }
+.chat-tabs__item:hover .chat-tabs__close,
+.chat-tabs__item:focus-within .chat-tabs__close { opacity: 1; }
