@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { Crosshair, MagnifyingGlass, SidebarSimple, Terminal } from "@phosphor-icons/react";
+import { ArrowSquareOut, Crosshair, MagnifyingGlass, SidebarSimple, Terminal } from "@phosphor-icons/react";
 import type { SessionEvent } from "./ipc/claude";
 import type { ChatControls, ChatInfo, SessionEventLog } from "./features/chat/Chat";
 import { logEvent } from "./features/chat/sessions";
@@ -13,7 +13,7 @@ import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
 import { isTabId, TABS, type TabId } from "./shell/tabs";
 import { shortcutAction } from "./shell/shortcuts";
-import { pausePanelToggle } from "./ipc/desktop";
+import { pauseOpenBrowser, pausePanelToggle } from "./ipc/desktop";
 import type { Command } from "./shell/palette";
 import { FocusTimer } from "./features/focus/FocusTimer";
 import { useFocus } from "./features/focus/useFocus";
@@ -110,6 +110,12 @@ export default function App() {
       () => setNotice(open ? "Impossible d'ouvrir Instagram." : "Impossible de fermer Instagram."),
     );
   };
+  const openInstagramInBrowser = () => {
+    pauseOpenBrowser().then(
+      () => showInstagram(false),
+      () => setNotice("Impossible d'ouvrir le navigateur."),
+    );
+  };
   const toggleInstagram = () => showInstagram(!instagram);
   const openMusic = () => {
     if (instagram) showInstagram(false);
@@ -143,6 +149,7 @@ export default function App() {
     { id: "interrupt", label: "Interrompre", group: "Actions", run: () => controls.current?.interrupt() },
     { id: "focus", label: inFocus ? "Quitter le mode Focus" : "Activer le mode Focus", group: "Actions", shortcut: "Ctrl+Maj+F", run: toggleFocus },
     ...(inFocus ? [] : [{ id: "instagram", label: instagram ? "Fermer Instagram" : "Ouvrir Instagram", group: "Actions", run: toggleInstagram }]),
+    ...(inFocus || !instagram ? [] : [{ id: "instagram-browser", label: "Ouvrir Instagram dans le navigateur", group: "Actions", run: openInstagramInBrowser }]),
     ...(inFocus ? [] : [{ id: "music", label: musicShown ? "Fermer le panneau Musique" : "Ouvrir le panneau Musique", group: "Actions", run: () => (musicShown ? closeMusic() : openMusic()) }]),
     { id: "theme", label: "Basculer le thème", group: "Actions", run: toggleTheme },
     { id: "panel", label: "Replier ou ouvrir le panneau droit", group: "Actions", run: togglePanel },
@@ -192,6 +199,11 @@ export default function App() {
         {import.meta.env.DEV && (
           <button type="button" className="btn btn--ghost" onClick={() => setDemo(!demo)}>
             {demo ? "Retour au chat" : "Démo des composants"}
+          </button>
+        )}
+        {instagram && (
+          <button type="button" className="btn btn--ghost" onClick={openInstagramInBrowser} aria-label="Ouvrir Instagram dans le navigateur" title="Ouvrir dans le navigateur (lecture plus fluide)">
+            <ArrowSquareOut size="var(--icon-sm)" aria-hidden="true" /> Navigateur
           </button>
         )}
         <button type="button" className="btn btn--ghost" onClick={() => setPalette(true)} title="Palette de commandes (Ctrl+K)">

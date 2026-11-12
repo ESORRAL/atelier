@@ -9,3 +9,6 @@ export const pauseWindowClose = () => invoke<null>("pause_window_close");
 
 /** Opens or closes the Instagram panel; "window" when the separate window was used instead (contracts/ipc.md §15). */
 export const pausePanelToggle = (open: boolean) => invoke<"panel" | "window">("pause_panel_toggle", { open });
+
+/** Opens Instagram Reels in the system browser (contracts/ipc.md §16). */
+export const pauseOpenBrowser = () => invoke<null>("pause_open_browser");

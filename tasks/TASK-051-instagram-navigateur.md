@@ -35,8 +35,8 @@ npm run build:bridge && cd src-tauri && cargo fmt --check && cargo clippy -- -D 
 ```
 
 ## Rapport (rempli par l'agent, 150 mots max)
-- Fait :
-- Fichiers touchés :
-- Vérification (sortie résumée) :
-- Raccourcis pris (`shortcut:`) :
-- À remonter à l'architecte :
+- Fait : commande `pause_open_browser` (adresse fixe), appel `pauseOpenBrowser`, bouton « Navigateur » dans la barre du haut (visible panneau ouvert) et commande de palette ; ouvre le navigateur puis ferme le panneau.
+- Fichiers touchés : windows/commands.rs, lib.rs, src/App.tsx, src/ipc/desktop.ts.
+- Vérification : lint, 115 tests UI, build, fmt, clippy, cargo test OK. Aucun test ajouté (pas d'ouverture de navigateur).
+- Raccourcis pris (`shortcut:`) : aucun.
+- À remonter à l'architecte : rien.
