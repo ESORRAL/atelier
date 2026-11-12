@@ -1,5 +1,5 @@
-//! Isolated Instagram "pause" window (ADR-0003, contracts/ipc.md §13).
-//! No capability, no `remote` entry, no injected script: the page cannot reach the app.
+//! Isolated "pause" pages (ADR-0003): the Instagram window (contracts/ipc.md §13) and the YouTube Shorts
+//! panel (§15). No capability, no `remote` entry, no injected script: the pages cannot reach the app.
 pub mod commands;
 mod panel;
 
@@ -20,11 +20,27 @@ const ALLOWED_DOMAINS: &[&str] = &[
     "gstatic.com",
     "recaptcha.net",
 ];
+// YouTube Shorts panel (§15): the site, its image/video hosts, Google sign-in and consent.
+pub(crate) const SHORTS_DOMAINS: &[&str] = &[
+    "youtube.com",
+    "youtu.be",
+    "youtube-nocookie.com",
+    "ytimg.com",
+    "googlevideo.com",
+    "ggpht.com",
+    "google.com",
+    "gstatic.com",
+];
 // Open redirector: its target is arbitrary, so it leaves the window.
 const EXTERNAL_HOSTS: &[&str] = &["l.facebook.com"];
 
-/// Whether the window may load `url` itself.
+/// Whether the Instagram window may load `url` itself.
 pub fn allowed(url: &Url) -> bool {
+    allowed_in(url, ALLOWED_DOMAINS)
+}
+
+/// Whether `url` is about:blank or an https page on one of `domains` (or a subdomain).
+pub(crate) fn allowed_in(url: &Url, domains: &[&str]) -> bool {
     if url.as_str() == "about:blank" {
         return true;
     }
@@ -33,7 +49,7 @@ pub fn allowed(url: &Url) -> bool {
     };
     url.scheme() == "https"
         && !EXTERNAL_HOSTS.contains(&host)
-        && ALLOWED_DOMAINS
+        && domains
             .iter()
             .any(|d| host == *d || host.ends_with(&format!(".{d}")))
 }
@@ -94,6 +110,22 @@ mod tests {
     }
 
     #[test]
+    fn shorts_allowlist_is_separate() {
+        let ok = |s: &str| allowed_in(&s.parse().unwrap(), SHORTS_DOMAINS);
+        assert!(ok("https://www.youtube.com/shorts/abc"));
+        assert!(ok("https://consent.youtube.com/m"));
+        assert!(ok("https://accounts.google.com/ServiceLogin"));
+        assert!(ok("https://i.ytimg.com/vi/x/hq.jpg"));
+        assert!(ok("about:blank"));
+        assert!(!ok("http://www.youtube.com/"));
+        assert!(!ok("https://youtube.com.evil.example/"));
+        assert!(!ok("https://googleads.g.doubleclick.net/x"));
+        assert!(!ok("https://www.instagram.com/"));
+        // And YouTube stays out of the Instagram window.
+        assert!(!allowed(&"https://www.youtube.com/shorts".parse().unwrap()));
+    }
+
+    #[test]
     fn handoff_rate_limit() {
         let t0 = Instant::now();
         let mut last = None;
@@ -112,6 +144,7 @@ mod tests {
             if path.extension().is_some_and(|e| e == "json") {
                 let text = std::fs::read_to_string(&path).unwrap();
                 assert!(!text.contains(LABEL), "{path:?} cites {LABEL}");
+                assert!(!text.contains("shorts"), "{path:?} cites the Shorts panel");
                 assert!(!text.contains("remote"), "{path:?} has a remote entry");
                 // A window target would also cover the panel webview living in `main` (§15).
                 let cap: serde_json::Value = serde_json::from_str(&text).unwrap();

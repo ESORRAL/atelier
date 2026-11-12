@@ -39,18 +39,14 @@ pub fn pause_window_close(app: AppHandle) -> Result<(), String> {
     }
 }
 
-/// contracts/ipc.md §15: returns `"panel"` or `"window"`.
+/// contracts/ipc.md §15: returns `"panel"`, or `"browser"` when the panel could not be installed.
 #[tauri::command]
 pub async fn pause_panel_toggle(app: AppHandle, open: bool) -> Result<String, String> {
-    let mode = app
-        .state::<crate::claude::Claude>()
-        .settings_get()?
-        .instagram_mode;
-    super::panel::toggle(app, mode, open).await.map(Into::into)
+    super::panel::toggle(app, open).await.map(Into::into)
 }
 
 /// contracts/ipc.md §16: fixed address, the panel's own address is never read.
-const BROWSER_URL: &str = "https://www.instagram.com/reels/";
+pub(crate) const BROWSER_URL: &str = "https://www.youtube.com/shorts";
 
 #[tauri::command]
 pub fn pause_open_browser() -> Result<(), String> {

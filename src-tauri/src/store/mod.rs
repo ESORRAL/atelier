@@ -13,15 +13,6 @@ pub enum PermissionMode {
     Plan,
 }
 
-/// Where Instagram opens (contracts/ipc.md §15).
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Default)]
-#[serde(rename_all = "camelCase")]
-pub enum InstagramMode {
-    #[default]
-    Panel,
-    Window,
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionEntry {
@@ -46,8 +37,6 @@ pub struct Settings {
     pub vault_path: Option<String>,
     #[serde(default = "default_vault_project")]
     pub vault_project: String,
-    #[serde(default)]
-    pub instagram_mode: InstagramMode,
 }
 
 fn default_vault_path() -> Option<String> {
@@ -69,7 +58,6 @@ impl Default for Settings {
             recent_cwds: Vec::new(),
             vault_path: default_vault_path(),
             vault_project: default_vault_project(),
-            instagram_mode: InstagramMode::Panel,
         }
     }
 }
@@ -224,13 +212,11 @@ mod tests {
             recent_cwds: vec!["/a".into()],
             vault_path: Some("/v".into()),
             vault_project: "P".into(),
-            instagram_mode: InstagramMode::Window,
         };
         s.save_settings(&v).unwrap();
         assert_eq!(s.load_settings().unwrap(), v);
         let json = fs::read_to_string(s.base.join("settings.json")).unwrap();
         assert!(json.contains("\"defaultPermissionMode\": \"acceptEdits\""));
-        assert!(json.contains("\"instagramMode\": \"window\""));
     }
 
     #[test]
@@ -238,14 +224,14 @@ mod tests {
         let s = store("oldsettings");
         fs::write(
             s.base.join("settings.json"),
-            br#"{"claudePath":null,"defaultModel":null,"defaultPermissionMode":"default","recentCwds":["/a"]}"#,
+            // instagramMode: removed setting (v2.5), still ignored when an old file has it.
+        br#"{"claudePath":null,"defaultModel":null,"defaultPermissionMode":"default","recentCwds":["/a"],"instagramMode":"window"}"#,
         )
         .unwrap();
         let v = s.load_settings().unwrap();
         assert_eq!(v.recent_cwds, ["/a"]);
         assert_eq!(v.vault_project, "01 - Projets/Atelier");
         assert_eq!(v.vault_path, default_vault_path());
-        assert_eq!(v.instagram_mode, InstagramMode::Panel);
     }
 
     #[test]

@@ -13,7 +13,7 @@ import { Palette } from "./shell/Palette";
 import { Rail } from "./shell/Rail";
 import { isTabId, TABS, type TabId } from "./shell/tabs";
 import { shortcutAction } from "./shell/shortcuts";
-import { pauseOpenBrowser, pausePanelToggle } from "./ipc/desktop";
+import { pauseOpenBrowser, pausePanelToggle, pauseWindowOpen } from "./ipc/desktop";
 import type { Command } from "./shell/palette";
 import { FocusTimer } from "./features/focus/FocusTimer";
 import { useFocus } from "./features/focus/useFocus";
@@ -55,7 +55,7 @@ export default function App() {
   const [drawer, setDrawer] = usePersisted("atelier.drawer", "closed", isOpenClosed);
   const [palette, setPalette] = useState(false);
   const [music, setMusic] = useState(false);
-  const [instagram, setInstagram] = useState(false); // native panel open (contracts/ipc.md §15)
+  const [shorts, setShorts] = useState(false); // native YouTube Shorts panel open (contracts/ipc.md §15)
   const [notice, setNotice] = useState<string | null>(null);
   const [info, setInfo] = useState<ChatInfo>(EMPTY_INFO);
   const controls = useRef<ChatControls | null>(null);
@@ -101,30 +101,34 @@ export default function App() {
     setMusic(false);
     document.getElementById("rail-music")?.focus();
   };
-  // The native panel sits above the page, so Music and Instagram are never open together.
-  const showInstagram = (open: boolean) => {
+  // The native panel sits above the page, so Music and Shorts are never open together.
+  const showShorts = (open: boolean) => {
     setNotice(null);
     if (open) setMusic(false);
     pausePanelToggle(open).then(
-      (where) => setInstagram(open && where === "panel"),
-      () => setNotice(open ? "Impossible d'ouvrir Instagram." : "Impossible de fermer Instagram."),
+      (where) => setShorts(open && where === "panel"),
+      () => setNotice(open ? "Impossible d'ouvrir YouTube Shorts." : "Impossible de fermer YouTube Shorts."),
     );
   };
-  const openInstagramInBrowser = () => {
+  const openShortsInBrowser = () => {
     pauseOpenBrowser().then(
-      () => showInstagram(false),
+      () => showShorts(false),
       () => setNotice("Impossible d'ouvrir le navigateur."),
     );
   };
-  const toggleInstagram = () => showInstagram(!instagram);
+  const toggleShorts = () => showShorts(!shorts);
+  // Instagram keeps its separate window, for messages (contracts/ipc.md §13).
+  const openInstagram = () => {
+    pauseWindowOpen().catch(() => setNotice("Impossible d'ouvrir Instagram."));
+  };
   const openMusic = () => {
-    if (instagram) showInstagram(false);
+    if (shorts) showShorts(false);
     setMusic(true);
   };
   const toggleDrawer = () => setDrawer(flip);
   const toggleFocus = () => {
     if (!inFocus) {
-      if (instagram) showInstagram(false); // Focus hides media
+      if (shorts) showShorts(false); // Focus hides media
       focus.enter();
     } else if (window.confirm("Quitter le Focus avant la fin ?")) focus.leave();
   };
@@ -148,8 +152,9 @@ export default function App() {
     { id: "new", label: "Nouvelle session", group: "Actions", run: () => { goTo("chat"); controls.current?.newSession(); } },
     { id: "interrupt", label: "Interrompre", group: "Actions", run: () => controls.current?.interrupt() },
     { id: "focus", label: inFocus ? "Quitter le mode Focus" : "Activer le mode Focus", group: "Actions", shortcut: "Ctrl+Maj+F", run: toggleFocus },
-    ...(inFocus ? [] : [{ id: "instagram", label: instagram ? "Fermer Instagram" : "Ouvrir Instagram", group: "Actions", run: toggleInstagram }]),
-    ...(inFocus || !instagram ? [] : [{ id: "instagram-browser", label: "Ouvrir Instagram dans le navigateur", group: "Actions", run: openInstagramInBrowser }]),
+    ...(inFocus ? [] : [{ id: "shorts", label: shorts ? "Fermer YouTube Shorts" : "Ouvrir YouTube Shorts", group: "Actions", run: toggleShorts }]),
+    ...(inFocus || !shorts ? [] : [{ id: "shorts-browser", label: "Ouvrir YouTube Shorts dans le navigateur", group: "Actions", run: openShortsInBrowser }]),
+    ...(inFocus ? [] : [{ id: "instagram", label: "Ouvrir Instagram (fenêtre)", group: "Actions", run: openInstagram }]),
     ...(inFocus ? [] : [{ id: "music", label: musicShown ? "Fermer le panneau Musique" : "Ouvrir le panneau Musique", group: "Actions", run: () => (musicShown ? closeMusic() : openMusic()) }]),
     { id: "theme", label: "Basculer le thème", group: "Actions", run: toggleTheme },
     { id: "panel", label: "Replier ou ouvrir le panneau droit", group: "Actions", run: togglePanel },
@@ -159,9 +164,9 @@ export default function App() {
   // Always-fresh handler for the single window listener.
   const onKey = useRef<(e: KeyboardEvent) => void>(() => {});
   onKey.current = (e) => {
-    if (e.key === "Escape" && instagram && !palette) {
+    if (e.key === "Escape" && shorts && !palette) {
       e.preventDefault();
-      showInstagram(false);
+      showShorts(false);
       return;
     }
     const a = shortcutAction(e);
@@ -201,8 +206,8 @@ export default function App() {
             {demo ? "Retour au chat" : "Démo des composants"}
           </button>
         )}
-        {instagram && (
-          <button type="button" className="btn btn--ghost" onClick={openInstagramInBrowser} aria-label="Ouvrir Instagram dans le navigateur" title="Ouvrir dans le navigateur (lecture plus fluide)">
+        {shorts && (
+          <button type="button" className="btn btn--ghost" onClick={openShortsInBrowser} aria-label="Ouvrir YouTube Shorts dans le navigateur" title="Ouvrir dans le navigateur">
             <ArrowSquareOut size="var(--icon-sm)" aria-hidden="true" /> Navigateur
           </button>
         )}
@@ -218,7 +223,7 @@ export default function App() {
           <Terminal size="var(--icon-sm)" aria-hidden="true" /> Journal
         </button>
       </header>
-      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} musicOpen={musicShown} mediaHidden={inFocus} onMusic={() => (musicShown ? closeMusic() : openMusic())} instagramOpen={instagram} onInstagram={toggleInstagram} />
+      <Rail active={demo ? null : tab} onSelect={goTo} hidden={hidden} musicOpen={musicShown} mediaHidden={inFocus} onMusic={() => (musicShown ? closeMusic() : openMusic())} shortsOpen={shorts} onShorts={toggleShorts} onInstagram={openInstagram} />
       <div className="shell__center">
         {notice && (
           <p className="shell__notice" role="alert">
@@ -227,7 +232,7 @@ export default function App() {
         )}
         <div className="app__eclipse" aria-hidden="true">
           <div className="app__eclipse-disc">
-            <BeamsBackground intensity="subtle" paused={instagram} className="h-full min-h-0" />
+            <BeamsBackground intensity="subtle" paused={shorts} className="h-full min-h-0" />
           </div>
         </div>
         <main className="app__main shell__views">
