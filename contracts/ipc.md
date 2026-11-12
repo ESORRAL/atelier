@@ -378,7 +378,7 @@ WebKitGTK lit les Reels d'Instagram à ~10 images/s, les Shorts de YouTube de fa
   isolation), départ `https://www.youtube.com/shorts`, données `shorts-panel`. S'il ne peut pas être installé,
   les Shorts s'ouvrent dans le navigateur du système (`"browser"`).
 - Navigation du panneau : liste blanche propre (youtube.com, youtu.be, youtube-nocookie.com, ytimg.com,
-  googlevideo.com, ggpht.com, google.com, gstatic.com). Hors liste : bloqué **sans** ouverture du navigateur
+  googlevideo.com, ggpht.com, google.com, google.fr, gstatic.com). Hors liste : bloqué **sans** ouverture du navigateur
   (les cadres publicitaires de YouTube ouvriraient des onglets). Pages et popups refusées.
 - `pause_open_browser` ouvre `https://www.youtube.com/shorts`.
 - Instagram : uniquement la fenêtre séparée du §13 (`pause_window_open`), pour les messages ; sa liste blanche

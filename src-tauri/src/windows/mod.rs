@@ -29,6 +29,9 @@ pub(crate) const SHORTS_DOMAINS: &[&str] = &[
     "googlevideo.com",
     "ggpht.com",
     "google.com",
+    // Sign-in hops through the country Google domain to set its cookies.
+    // shortcut: France only, add the domain logged as blocked if another country's sign-in stalls.
+    "google.fr",
     "gstatic.com",
 ];
 // Open redirector: its target is arbitrary, so it leaves the window.
@@ -115,6 +118,7 @@ mod tests {
         assert!(ok("https://www.youtube.com/shorts/abc"));
         assert!(ok("https://consent.youtube.com/m"));
         assert!(ok("https://accounts.google.com/ServiceLogin"));
+        assert!(ok("https://accounts.google.fr/accounts/SetSID"));
         assert!(ok("https://i.ytimg.com/vi/x/hq.jpg"));
         assert!(ok("about:blank"));
         assert!(!ok("http://www.youtube.com/"));
