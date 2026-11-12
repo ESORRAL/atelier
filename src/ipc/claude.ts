@@ -41,6 +41,8 @@ export type Settings = {
   defaultModel: string | null;
   defaultPermissionMode: PermissionMode;
   recentCwds: string[];
+  vaultPath: string | null;
+  vaultProject: string;
 };
 
 export const sessionStart = (

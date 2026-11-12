@@ -1,0 +1,21 @@
+.proj { max-width: 960px; margin: 0 auto; padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+.proj h1 { font-size: var(--text-xl); line-height: var(--lh-xl); margin: 0; }
+.proj h2 { font-size: var(--text-lg); line-height: var(--lh-lg); margin: 0 0 var(--space-3); }
+.proj__head { display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap; }
+.proj__pick { display: flex; gap: var(--space-2); min-width: 0; }
+.proj select, .proj button {
+  font: inherit; font-size: var(--text-sm); color: var(--color-text-primary); background: var(--color-bg-raised);
+  border: var(--border-w) solid var(--color-border-strong); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-4); cursor: pointer; max-width: 100%;
+}
+.proj button:disabled { cursor: not-allowed; color: var(--color-text-secondary); }
+.proj select:focus-visible, .proj button:focus-visible { outline: var(--focus-ring-w) solid var(--color-focus-ring); outline-offset: var(--focus-ring-offset); }
+.proj__card { background: var(--color-bg-raised); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-card); font-size: var(--text-sm); }
+.proj__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.proj__mono { font-family: var(--font-mono); color: var(--color-text-secondary); }
+.proj__muted { color: var(--color-text-secondary); margin: 0; }
+.proj__board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-4); }
+.proj__col h3 { font-size: var(--text-sm); margin: 0 0 var(--space-3); color: var(--color-text-secondary); }
+.proj__task { background: var(--color-bg-raised); border: var(--border-w) solid var(--color-border-subtle); border-radius: var(--radius-sm); padding: var(--space-3); font-size: var(--text-sm); }
+.proj__task + .proj__task { margin-top: var(--space-3); }
+.proj__badge { display: inline-block; font-size: var(--text-sm); padding: var(--space-1) var(--space-3); border-radius: var(--radius-sm); border: var(--border-w) solid var(--color-border-strong); }
+.proj__stats { display: flex; gap: var(--space-5); flex-wrap: wrap; align-items: center; }

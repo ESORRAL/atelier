@@ -5,7 +5,7 @@
 pub mod commands;
 mod session;
 
-pub use session::{Claude, Sink, StartArgs, bridge_path};
+pub use session::{Claude, Sink, StartArgs, bridge_path, validate_cwd};
 
 use std::collections::BTreeSet;
 
