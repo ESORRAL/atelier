@@ -1,7 +1,7 @@
 ---
 id: TASK-013
 title: Boîte de dialogue de permission
-status: todo
+status: done
 phase: 2
 agent: ui
 model: opus

@@ -1,7 +1,7 @@
 ---
 id: TASK-043
 title: Composer épuré (bloc unique, menus texte sous le champ) et accueil intégré
-status: todo
+status: done
 phase: 5
 agent: ui
 model: sonnet

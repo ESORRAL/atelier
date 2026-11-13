@@ -1,7 +1,7 @@
 ---
 id: TASK-045
 title: Spike — panneau Instagram qui glisse, par re-parentage GTK
-status: todo
+status: done
 phase: 5
 agent: core
 model: opus

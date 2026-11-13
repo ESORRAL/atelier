@@ -1,7 +1,7 @@
 ---
 id: TASK-012
 title: Onglet Chat — conversation en streaming
-status: todo
+status: done
 phase: 2
 agent: ui
 model: sonnet

@@ -1,7 +1,7 @@
 ---
 id: TASK-024
 title: Onglet Musique et mini-lecteur persistant
-status: todo
+status: done
 phase: 4
 agent: ui
 model: sonnet

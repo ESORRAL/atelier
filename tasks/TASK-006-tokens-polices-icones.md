@@ -1,7 +1,7 @@
 ---
 id: TASK-006
 title: Brancher les tokens de design, les polices, les icônes et le thème dans l'app
-status: todo
+status: done
 phase: 1
 agent: ui
 model: sonnet

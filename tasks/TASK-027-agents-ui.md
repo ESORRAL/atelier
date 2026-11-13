@@ -1,7 +1,7 @@
 ---
 id: TASK-027
 title: Onglet Agents — salle de contrôle des sous-agents
-status: todo
+status: done
 phase: 4
 agent: ui
 model: sonnet

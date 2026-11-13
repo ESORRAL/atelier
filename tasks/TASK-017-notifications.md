@@ -1,7 +1,7 @@
 ---
 id: TASK-017
 title: Notifications desktop — permission en attente, tour terminé
-status: todo
+status: done
 phase: 3
 agent: core
 model: sonnet

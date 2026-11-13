@@ -1,7 +1,7 @@
 ---
 id: TASK-028
 title: Mode Focus et minuteur Pomodoro
-status: todo
+status: done
 phase: 4
 agent: ui
 model: sonnet

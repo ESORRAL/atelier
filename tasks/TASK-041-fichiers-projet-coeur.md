@@ -1,7 +1,7 @@
 ---
 id: TASK-041
 title: Commande project_files pour les mentions @
-status: todo
+status: done
 phase: 5
 agent: core
 model: sonnet

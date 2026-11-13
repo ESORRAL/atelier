@@ -1,7 +1,7 @@
 ---
 id: TASK-031
 title: Commandes pick_folder et music_open
-status: todo
+status: done
 phase: 4
 agent: core
 model: sonnet

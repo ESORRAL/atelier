@@ -1,7 +1,7 @@
 ---
 id: TASK-032
 title: Musique en panneau latéral, recherche Apple Music, bouton « Parcourir… »
-status: todo
+status: done
 phase: 4
 agent: ui
 model: sonnet

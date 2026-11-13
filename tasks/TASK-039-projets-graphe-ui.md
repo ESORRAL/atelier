@@ -1,7 +1,7 @@
 ---
 id: TASK-039
 title: Onglets Projets et Graphe
-status: todo
+status: done
 phase: 5
 agent: ui
 model: sonnet

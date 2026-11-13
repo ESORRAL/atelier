@@ -51,18 +51,22 @@ agents, avec ses outils personnels autour.
 - Mode Focus : onglets média masqués, minuteur Pomodoro.
 - Plusieurs sessions en parallèle.
 
-### v0.3 — Second cerveau et pauses
-- Second cerveau : notes Obsidian du projet, recherche, ouverture dans Obsidian.
-- Graphe : rapport Graphify, nœuds clés, communautés, requêtes.
+### v0.3 — Second cerveau et pauses (réalisé, phase 5)
+- Second cerveau : tout le vault Obsidian (arborescence, récents, projet), recherche, liens `[[…]]`, ouverture dans Obsidian.
+- Graphe : le graphe Graphify dessiné (canvas, couleurs par communauté, zoom, fiche au clic).
 - Projets : branches, worktrees, tableau des tâches lu depuis `tasks/`.
-- Instagram : fenêtre isolée, connexion manuelle (ADR-0003).
+- Pauses : panneaux intégrés YouTube Shorts et Instagram (re-parentage GTK, isolés, déchargés après 2 min,
+  son coupé quand ils sont cachés) ; fenêtre Instagram séparée en repli. Les panneaux poussent la page.
+  Les Reels d'Instagram saccadent dans WebKitGTK (~10 i/s) : Chromium embarqué essayé et écarté
+  (`spikes/instagram-cef/FINDINGS.md`), les Shorts sont fluides une fois les décodeurs Intel VA-API écartés.
 - Récap de fin de journée écrit dans le journal Obsidian.
+- Aussi livrés : composer en un bloc avec `@` et `/`, panneau Musique à gauche (MPRIS, ouverture dans le navigateur).
 
 ### v0.4 et après — idées, à trier ensemble
 | Idée | Intérêt |
 |---|---|
 | Lecteur local et exposition MPRIS (touches multimédia) | musique sans autre appli |
-| Fenêtres « pause » configurables (YouTube, etc.) sur le modèle Instagram | même isolation, plus de choix |
+| Fenêtres « pause » configurables (autres sites que YouTube Shorts et Instagram) | même isolation, plus de choix |
 | Sons d'ambiance locaux pour le mode Focus | pluie, café, bruit brun |
 | Panneau de sécurité : plugins, skills, MCP installés, version, source, mise à jour auto | répond au risque des plugins malveillants |
 | Éditeur de `.claude/` avec diff obligatoire avant enregistrement | « relire `.claude/` comme du code » |
@@ -78,12 +82,12 @@ agents, avec ses outils personnels autour.
 
 | Phase | Contenu | Sortie |
 |---|---|---|
-| **0 — Architecture** (en cours) | faisabilité, stack, ADR, système d'agents, design | ce plan |
-| **1 — Fondations** | installations validées, 3 spikes (pont SDK, Instagram, orphelins), échafaudage, contrats, premier graphe | app vide qui démarre, contrats figés |
-| **2 — Chat** | modules `supervisor`, `claude`, `store` ; onglet Chat ; permissions | conversation complète |
-| **3 — Cadre et finitions** | shell, réglages, notifications, thèmes, paquet `.deb` | **v0.1** |
-| **4 — Cockpit** | Agents, Usage, Musique, palette, Focus | **v0.2** |
-| **5 — Cerveau et pauses** | Obsidian, Graphe, Projets, Instagram, récap | **v0.3** |
+| **0 — Architecture** (fait) | faisabilité, stack, ADR, système d'agents, design | ce plan |
+| **1 — Fondations** (fait) | installations validées, 3 spikes (pont SDK, Instagram, orphelins), échafaudage, contrats, premier graphe | app vide qui démarre, contrats figés |
+| **2 — Chat** (fait) | modules `supervisor`, `claude`, `store` ; onglet Chat ; permissions | conversation complète |
+| **3 — Cadre et finitions** (fait) | shell, réglages, notifications, thèmes, paquet `.deb` | **v0.1** |
+| **4 — Cockpit** (fait) | Agents, Usage, Musique, palette, Focus | **v0.2** |
+| **5 — Cerveau et pauses** (réalisé, en recette) | Obsidian, Graphe, Projets, Instagram, récap | **v0.3** |
 | **6 — Extras** | idées retenues de la v0.4 | à définir |
 
 Chaque phase se termine par un point (fait, reste, risques, décisions) et attend un GO.

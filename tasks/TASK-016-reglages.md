@@ -1,7 +1,7 @@
 ---
 id: TASK-016
 title: Écran Réglages
-status: todo
+status: done
 phase: 3
 agent: ui
 model: sonnet

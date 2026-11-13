@@ -1,7 +1,7 @@
 ---
 id: TASK-038
 title: Onglet Second cerveau, réglages du vault et récap de fin de journée
-status: todo
+status: done
 phase: 5
 agent: ui
 model: sonnet

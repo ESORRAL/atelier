@@ -1,7 +1,7 @@
 ---
 id: TASK-030
 title: Onglet Agents — cartes fiables et ouverture de la session d'origine
-status: todo
+status: done
 phase: 4
 agent: ui
 model: sonnet

@@ -1,7 +1,7 @@
 ---
 id: TASK-040
 title: Bouton Instagram du rail — ouvre ou ramène la fenêtre isolée
-status: todo
+status: done
 phase: 5
 agent: ui
 model: sonnet

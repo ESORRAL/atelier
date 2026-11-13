@@ -1,7 +1,7 @@
 ---
 id: TASK-018
 title: Paquet .deb installable, pont embarqué
-status: todo
+status: done
 phase: 3
 agent: core
 model: opus
