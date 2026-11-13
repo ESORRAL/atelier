@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { forceLink, forceManyBody, forceSimulation, forceX, forceY, type Simulation } from "d3-force";
-import { PALETTE_SIZE, type PLink, type PNode, type Prepared } from "./prepare";
+import { PALETTE_SIZE, type PNode, type Prepared } from "./prepare";
 
 type View = { x: number; y: number; k: number }; // screen = world * k + (x, y), CSS px
 const K_MIN = 0.05;
@@ -8,9 +7,18 @@ const K_MAX = 8;
 const CLICK_SLOP = 4; // px of movement under which a press is a click, not a pan
 
 const cssVar = (el: Element, name: string) => getComputedStyle(el).getPropertyValue(name).trim();
-const end = (v: PNode | string) => v as PNode; // after forceLink init, link ends are node objects
 
-/** Draws the graph on a canvas; d3-force lays it out, then stops. Wheel zooms, drag pans, click selects. */
+type Colors = { palette: string[]; other: string; surface: string; link: string; strong: string; accent: string };
+const readColors = (el: Element): Colors => ({
+  palette: Array.from({ length: PALETTE_SIZE }, (_, i) => cssVar(el, `--color-graph-${i + 1}`)),
+  other: cssVar(el, "--color-text-muted"),
+  surface: cssVar(el, "--color-bg-surface"),
+  link: cssVar(el, "--color-chart-grid"),
+  strong: cssVar(el, "--color-text-secondary"),
+  accent: cssVar(el, "--color-focus-ring"),
+});
+
+/** Draws the graph on a canvas; a worker lays it out (d3-force), then stops. Wheel zooms, drag pans, click selects. */
 export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
   p: Prepared;
   selected: string | null;
@@ -19,14 +27,15 @@ export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
   centerOn: { id: string } | null; // new object = recenter request
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const sim = useRef<Simulation<PNode> | null>(null);
   const view = useRef<View>({ x: 0, y: 0, k: 1 });
   const moved = useRef(false); // the user took control of the view: stop auto-fitting
   const hoverRef = useRef<PNode | null>(null);
   const selRef = useRef(selected);
   const frame = useRef(0);
-  const [hover, setHover] = useState<{ label: string; x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<string | null>(null); // label of the hovered node
+  const tip = useRef<HTMLDivElement>(null);
   const byId = useRef(new Map<string, PNode>());
+  const colors = useRef<Colors | null>(null); // read once, not 14 getComputedStyle calls per frame
 
   const draw = () => {
     frame.current = 0;
@@ -40,13 +49,9 @@ export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
       c.width = Math.round(w * dpr);
       c.height = Math.round(h * dpr);
     }
-    // Colors come from the tokens, read at draw time so a theme switch applies on the next frame.
-    const palette = Array.from({ length: PALETTE_SIZE }, (_, i) => cssVar(c, `--color-graph-${i + 1}`));
-    const other = cssVar(c, "--color-text-muted");
-    const surface = cssVar(c, "--color-bg-surface");
-    const linkColor = cssVar(c, "--color-chart-grid");
-    const strong = cssVar(c, "--color-text-secondary");
-    const accent = cssVar(c, "--color-focus-ring");
+    // Colors come from the tokens; the cache is dropped when the theme changes (see the effect below).
+    colors.current ??= readColors(c);
+    const { palette, other, surface, link: linkColor, strong, accent } = colors.current;
     const { x, y, k } = view.current;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, c.width, c.height);
@@ -61,8 +66,8 @@ export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
     ctx.globalAlpha = sel ? 0.35 : 1;
     ctx.beginPath();
     for (const l of p.links) {
-      const s = end(l.source);
-      const t = end(l.target);
+      const s = p.nodes[l.source];
+      const t = p.nodes[l.target];
       ctx.moveTo(s.x!, s.y!);
       ctx.lineTo(t.x!, t.y!);
     }
@@ -75,8 +80,8 @@ export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
       ctx.lineWidth = 1.5 / k;
       ctx.beginPath();
       for (const l of p.links) {
-        const s = end(l.source);
-        const t = end(l.target);
+        const s = p.nodes[l.source];
+        const t = p.nodes[l.target];
         if (s === focus || t === focus) {
           ctx.moveTo(s.x!, s.y!);
           ctx.lineTo(t.x!, t.y!);
@@ -129,33 +134,37 @@ export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
     view.current = { k, x: c.clientWidth / 2 - ((x0 + x1) / 2) * k, y: c.clientHeight / 2 - ((y0 + y1) / 2) * k };
   };
 
-  // Layout: runs once per data set, settles (alpha decays) then stops by itself.
+  // Layout: runs in a worker, once per data set; it settles (alpha decays) then stops by itself.
+  // The main thread only copies positions and draws.
   useEffect(() => {
     byId.current = new Map(p.nodes.map((n) => [n.id, n]));
     moved.current = false;
-    const s = forceSimulation(p.nodes)
-      .force("link", forceLink<PNode, PLink>(p.links).id((n) => n.id).distance(24).strength(0.4))
-      .force("charge", forceManyBody().strength(-40).distanceMax(400))
-      .force("x", forceX(0).strength(0.04))
-      .force("y", forceY(0).strength(0.04))
-      .alphaDecay(0.03)
-      .on("tick", () => {
-        if (!moved.current) fit();
-        schedule();
-      });
-    sim.current = s;
-    // Pause while the window is hidden or inactive; resume only if the layout had not settled yet.
-    const pause = () => s.stop();
-    const resume = () => {
-      if (document.visibilityState === "visible" && s.alpha() > s.alphaMin()) s.restart();
+    const worker = new Worker(new URL("./layout.worker.ts", import.meta.url), { type: "module" });
+    worker.onmessage = (e: MessageEvent<{ pos: Float32Array }>) => {
+      const pos = e.data.pos;
+      for (let i = 0; i < p.nodes.length; i++) {
+        p.nodes[i].x = pos[2 * i];
+        p.nodes[i].y = pos[2 * i + 1];
+      }
+      if (!moved.current) fit();
+      schedule();
     };
+    const links = new Uint32Array(2 * p.links.length);
+    p.links.forEach((l, i) => {
+      links[2 * i] = l.source;
+      links[2 * i + 1] = l.target;
+    });
+    worker.postMessage({ type: "init", n: p.nodes.length, links });
+    // Pause while the window is hidden or inactive; the worker resumes only if the layout had not settled.
+    const pause = () => worker.postMessage({ type: "pause" });
+    const resume = () => document.visibilityState === "visible" && worker.postMessage({ type: "resume" });
     const onVis = () => (document.visibilityState === "hidden" ? pause() : resume());
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("blur", pause);
     window.addEventListener("focus", resume);
-    if (!document.hasFocus()) s.stop();
+    if (!document.hasFocus()) pause();
     return () => {
-      s.stop();
+      worker.terminate();
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("blur", pause);
       window.removeEventListener("focus", resume);
@@ -181,6 +190,23 @@ export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
     schedule();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centerOn]);
+
+  // Theme change: re-read the token colors on the next frame.
+  useEffect(() => {
+    const drop = () => {
+      colors.current = null;
+      schedule();
+    };
+    const mo = new MutationObserver(drop);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"] });
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", drop);
+    return () => {
+      mo.disconnect();
+      mq.removeEventListener("change", drop);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Redraw on resize; wheel needs a non-passive listener to keep the page from scrolling.
   useEffect(() => {
@@ -208,6 +234,7 @@ export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
     const k = Math.min(K_MAX, Math.max(K_MIN, v.k * f));
     view.current = { k, x: sx - ((sx - v.x) * k) / v.k, y: sy - ((sy - v.y) * k) / v.k };
     moved.current = true;
+    hoverRef.current = null;
     setHover(null);
     schedule();
   };
@@ -218,8 +245,18 @@ export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
   };
   const nodeAt = (sx: number, sy: number) => {
     const { x, y, k } = view.current;
-    const n = sim.current?.find((sx - x) / k, (sy - y) / k, 14 / k);
-    return n && Math.hypot(n.x! * k + x - sx, n.y! * k + y - sy) <= Math.max(n.r * k, 6) + 2 ? n : undefined;
+    // Nearest node within its (screen) hit radius; a plain scan is ~1 ms for 3 000 nodes.
+    let best: PNode | undefined;
+    let bestD = Infinity;
+    for (const n of p.nodes) {
+      if (n.x === undefined) continue;
+      const d = Math.hypot(n.x * k + x - sx, n.y! * k + y - sy);
+      if (d <= Math.max(n.r * k, 6) + 2 && d < bestD) {
+        best = n;
+        bestD = d;
+      }
+    }
+    return best;
   };
 
   const drag = useRef<{ x: number; y: number; dist: number } | null>(null);
@@ -254,9 +291,11 @@ export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
           const n = nodeAt(sx, sy) ?? null;
           if (n !== hoverRef.current) {
             hoverRef.current = n;
+            setHover(n ? n.label : null); // re-render only when the hovered node changes
             schedule();
           }
-          setHover(n ? { label: n.label, x: sx, y: sy } : null);
+          // The tooltip follows the pointer straight in the DOM, no re-render per move.
+          if (tip.current) tip.current.style.transform = `translate(${sx}px, ${sy}px)`;
         }}
         onPointerUp={(e) => {
           const d = drag.current;
@@ -302,8 +341,8 @@ export function GraphCanvas({ p, selected, onSelect, label, centerOn }: {
         }}
       />
       {hover && (
-        <div className="graph__tip" style={{ transform: `translate(${hover.x}px, ${hover.y}px)` }} aria-hidden="true">
-          {hover.label}
+        <div ref={tip} className="graph__tip" aria-hidden="true">
+          {hover}
         </div>
       )}
     </div>
