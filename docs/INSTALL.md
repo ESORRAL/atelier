@@ -26,3 +26,17 @@ sudo apt remove atelier
 ```
 Tes sessions et réglages restent dans `~/.local/share/dev.atelier.app/` : supprime ce dossier
 pour tout effacer.
+
+## Installer chez un collègue
+1. Clone le dépôt.
+2. Installe Rust (rustup), Node.js 18 ou plus, et les bibliothèques système de Tauri 2 pour Linux
+   (WebKitGTK 4.1, GTK 3 ; liste dans la doc Tauri, « prerequisites »).
+3. Installe `claude` et connecte-toi avec **ton propre compte** (`claude` puis `/login`). Atelier ne lit,
+   ne stocke ni ne transmet jamais de jeton Claude.
+4. Ne copie pas `~/.local/share/dev.atelier.app/` (sessions et cookies) ni `~/.claude/` depuis une autre machine.
+5. Règle `ATELIER_VAULT` sur ton propre vault (`export ATELIER_VAULT=/chemin/vers/ton/vault`).
+6. Construis le paquet ou lance l'app comme ci-dessus. Les panneaux Instagram et YouTube Shorts utilisent
+   leurs propres connexions, saisies dans l'app.
+
+Linux seulement aujourd'hui. Mac et Windows demandent du travail : supervision des process, musique via
+MPRIS, panneaux GTK.

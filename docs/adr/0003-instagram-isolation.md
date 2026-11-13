@@ -1,6 +1,8 @@
 # ADR-0003 — Onglet Instagram : fenêtre séparée, sans aucun accès à l'app
 
-- **Statut** : proposé
+> Voir ADR-0005 : les panneaux intégrés (Instagram, YouTube Shorts) remplacent la fenêtre séparée comme mode principal ; les règles d'isolation ci-dessous restent valables.
+
+- **Statut** : partiellement remplacé par ADR-0005
 - **Date** : 2026-11-10
 
 ## Contexte
