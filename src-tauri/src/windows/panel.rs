@@ -277,6 +277,11 @@ fn schedule_unload(app: AppHandle, site: Site) {
     let generation = state.generation.fetch_add(1, Ordering::Relaxed) + 1;
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(UNLOAD_AFTER).await;
+        // The lock makes check + navigate + save one step against `resume`, which bumps the
+        // generation first and then waits on this lock: a reopen can never be blanked afterwards.
+        let Ok(mut saved) = state.unloaded.lock() else {
+            return;
+        };
         if state.generation.load(Ordering::Relaxed) != generation {
             return;
         }
@@ -286,10 +291,7 @@ fn schedule_unload(app: AppHandle, site: Site) {
         let (Ok(url), Ok(blank)) = (w.url(), BLANK.parse()) else {
             return;
         };
-        if url.as_str() != BLANK
-            && w.navigate(blank).is_ok()
-            && let Ok(mut saved) = state.unloaded.lock()
-        {
+        if url.as_str() != BLANK && w.navigate(blank).is_ok() {
             *saved = Some(url);
         }
     });
@@ -329,6 +331,11 @@ pub(crate) async fn toggle(app: AppHandle, site: Site, open: bool) -> Result<&'s
                 } else {
                     schedule_unload(app, site);
                 }
+                return Ok("panel");
+            }
+            // A failed close is not a failed install: keep the panel mode for the next open.
+            Err(e) if !open => {
+                eprintln!("[windows] fermeture du panneau {} : {e}", site.label());
                 return Ok("panel");
             }
             Err(e) => {
