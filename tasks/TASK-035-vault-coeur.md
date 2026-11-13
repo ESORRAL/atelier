@@ -1,7 +1,7 @@
 ---
 id: TASK-035
 title: Module vault — lecture des notes Obsidian et ajout au journal
-status: todo
+status: done
 phase: 5
 agent: core
 model: sonnet

@@ -1,7 +1,7 @@
 ---
 id: TASK-048
 title: Refonte des onglets Second cerveau, Graphe et Projets
-status: todo
+status: done
 phase: 5
 agent: ui
 model: opus

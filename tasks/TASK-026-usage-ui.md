@@ -1,7 +1,7 @@
 ---
 id: TASK-026
 title: Onglet Usage — coût et tokens par jour et par modèle
-status: todo
+status: done
 phase: 4
 agent: ui
 model: sonnet

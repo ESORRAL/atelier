@@ -1,7 +1,7 @@
 ---
 id: TASK-036
 title: Module project — infos git, fiches de tâches, résumé du graphe Graphify
-status: todo
+status: done
 phase: 5
 agent: core
 model: sonnet

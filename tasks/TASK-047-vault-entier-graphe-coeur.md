@@ -1,7 +1,7 @@
 ---
 id: TASK-047
 title: Second cerveau sur tout le vault, et données du graphe à dessiner
-status: todo
+status: done
 phase: 5
 agent: core
 model: sonnet

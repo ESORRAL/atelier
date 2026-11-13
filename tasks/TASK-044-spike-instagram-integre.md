@@ -1,7 +1,7 @@
 ---
 id: TASK-044
 title: Spike — Instagram intégré dans la fenêtre principale (webview enfant)
-status: todo
+status: done
 phase: 5
 agent: core
 model: opus

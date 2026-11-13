@@ -1,7 +1,7 @@
 ---
 id: TASK-050
 title: Spike — Instagram dans Chromium embarqué (CEF) à la place de WebKitGTK
-status: todo
+status: done
 phase: 5
 agent: core
 model: opus

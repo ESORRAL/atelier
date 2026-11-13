@@ -1,7 +1,7 @@
 ---
 id: TASK-020
 title: Corrections d'audit — onglet Chat et cadre
-status: todo
+status: done
 phase: 3
 agent: ui
 model: sonnet

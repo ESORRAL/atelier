@@ -1,7 +1,7 @@
 ---
 id: TASK-023
 title: Module music — télécommande MPRIS
-status: todo
+status: done
 phase: 4
 agent: core
 model: sonnet

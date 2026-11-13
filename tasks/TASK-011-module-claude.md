@@ -1,7 +1,7 @@
 ---
 id: TASK-011
 title: Module claude — brancher pont, superviseur et store sur les commandes Tauri
-status: todo
+status: done
 phase: 2
 agent: core
 model: opus

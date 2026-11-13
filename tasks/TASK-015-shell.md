@@ -1,7 +1,7 @@
 ---
 id: TASK-015
 title: Cadre de l'app — rail, barre du haut, panneau droit, tiroir du bas, palette de commandes
-status: todo
+status: done
 phase: 3
 agent: ui
 model: sonnet

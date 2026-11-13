@@ -1,7 +1,7 @@
 ---
 id: TASK-034
 title: Panneau Musique — résultats de recherche, navigation artiste → albums → morceaux, aperçus
-status: todo
+status: done
 phase: 4
 agent: ui
 model: sonnet

@@ -1,7 +1,7 @@
 ---
 id: TASK-029
 title: Plusieurs sessions ouvertes en parallèle dans le Chat
-status: todo
+status: done
 phase: 4
 agent: ui
 model: opus

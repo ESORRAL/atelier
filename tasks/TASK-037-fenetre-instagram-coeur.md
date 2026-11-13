@@ -1,7 +1,7 @@
 ---
 id: TASK-037
 title: Module windows — fenêtre Instagram isolée
-status: todo
+status: done
 phase: 5
 agent: core
 model: opus

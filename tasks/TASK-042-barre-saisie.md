@@ -1,7 +1,7 @@
 ---
 id: TASK-042
 title: Barre du haut allégée, modèle et mode en bas, autocomplétion @ et /
-status: todo
+status: done
 phase: 5
 agent: ui
 model: sonnet

@@ -1,7 +1,7 @@
 ---
 id: TASK-008
 title: Module supervisor — lancer des process sans jamais laisser d'orphelin
-status: todo
+status: done
 phase: 2
 agent: core
 model: opus

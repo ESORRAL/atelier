@@ -1,7 +1,7 @@
 ---
 id: TASK-033
 title: Recherche dans le catalogue Apple — music_search, music_lookup, music_open_url
-status: todo
+status: done
 phase: 4
 agent: core
 model: opus

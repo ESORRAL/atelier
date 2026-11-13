@@ -1,7 +1,7 @@
 ---
 id: TASK-003
 title: Spike — fenêtre Instagram isolée, sans aucun accès à l'app
-status: todo
+status: done
 phase: 1
 agent: core
 model: opus

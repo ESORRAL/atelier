@@ -1,7 +1,7 @@
 ---
 id: TASK-046
 title: Panneau Instagram intégré dans l'app (re-parentage GTK), fenêtre séparée en repli
-status: todo
+status: done
 phase: 5
 agent: core
 model: opus

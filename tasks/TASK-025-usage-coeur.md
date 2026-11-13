@@ -1,7 +1,7 @@
 ---
 id: TASK-025
 title: Commande usage_summary — coût et tokens par jour et par modèle
-status: todo
+status: done
 phase: 4
 agent: core
 model: sonnet

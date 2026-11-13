@@ -1,7 +1,7 @@
 ---
 id: TASK-051
 title: Bouton « Ouvrir dans le navigateur » pour Instagram
-status: todo
+status: done
 phase: 5
 agent: core
 model: sonnet
