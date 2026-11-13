@@ -5,7 +5,7 @@ export const PALETTE_SIZE = 8; // --color-graph-1..8; smaller communities share 
 
 export type Community = { id: number; name: string; size: number; color: number }; // color: 0..7, or -1 = Autres
 export type PNode = { id: string; label: string; file: string | null; community: number; degree: number; r: number; color: number; x?: number; y?: number; vx?: number; vy?: number; fx?: number | null; fy?: number | null; index?: number };
-export type PLink = { source: PNode | string; target: PNode | string };
+export type PLink = { source: number; target: number }; // node indexes (they cross to the layout worker as integers)
 export type Prepared = { nodes: PNode[]; links: PLink[]; communities: Community[]; neighbors: Map<string, string[]> };
 
 /** Radius in CSS px from the degree: sqrt so hubs stand out without swallowing the view. */
@@ -35,7 +35,8 @@ export function prepare(data: GraphData, max = MAX_NODES): Prepared {
     neighbors.get(l.target)!.push(l.source);
   }
   const nodes = kept.map((n) => ({ id: n.id, label: n.label, file: n.file, community: n.community, degree: n.degree, r: radius(n.degree), color: colorOf.get(n.community)! }));
-  return { nodes, links: links.map((l) => ({ ...l })), communities, neighbors };
+  const index = new Map(nodes.map((n, i) => [n.id, i]));
+  return { nodes, links: links.map((l) => ({ source: index.get(l.source)!, target: index.get(l.target)! })), communities, neighbors };
 }
 
 const fmt = (n: number) => n.toLocaleString("fr-FR");

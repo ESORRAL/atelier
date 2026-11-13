@@ -20,7 +20,8 @@ describe("prepare", () => {
     };
     const p = prepare(data, 2);
     expect(p.nodes.map((n) => n.id).sort()).toEqual(["a", "c"]);
-    expect(p.links).toEqual([{ source: "a", target: "c" }]);
+    // Links hold node indexes, they cross to the layout worker as integers.
+    expect(p.links.map((l) => [p.nodes[l.source].id, p.nodes[l.target].id])).toEqual([["a", "c"]]);
     expect(p.neighbors.get("a")).toEqual(["c"]);
     expect(p.neighbors.get("c")).toEqual(["a"]);
   });

@@ -5,12 +5,38 @@ import { graphData, graphSummary, graphUpdate, type GraphData, type GraphSummary
 import { FolderPicker, useProjectDir } from "../projects/folder";
 import { freshness } from "../projects/logic";
 import { GraphCanvas } from "./GraphCanvas";
-import { prepare, statusLine, type Community } from "./prepare";
+import { prepare, statusLine, type Community, type PNode } from "./prepare";
 import "../projects/projects.css";
 import "./graph.css";
 
 const swatch = (c: Community) => (c.color < 0 ? "var(--color-text-muted)" : `var(--color-graph-${c.color + 1})`);
 const TOP_PER_COMMUNITY = 15;
+
+/** One legend row; its list of nodes is only rendered once opened (a code graph has 100+ communities). */
+function CommunityRow({ c, top, selected, onPick }: { c: Community; top: PNode[]; selected: string | null; onPick: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li>
+      <details onToggle={(e) => setOpen(e.currentTarget.open)}>
+        <summary>
+          <CaretRight className="graph__caret" size="var(--icon-sm)" aria-hidden="true" />
+          <span className="graph__swatch" style={{ background: swatch(c) }} aria-hidden="true" />
+          <span className="graph__name">{c.name}</span>
+          <span className="graph__count">{c.size}</span>
+        </summary>
+        {open && (
+          <ul className="graph__nodes">
+            {top.map((n) => (
+              <li key={n.id}>
+                <button type="button" aria-current={n.id === selected} onClick={() => onPick(n.id)}>{n.label}</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+    </li>
+  );
+}
 
 export default function Graph() {
   const [dir, setDir] = useProjectDir();
@@ -53,6 +79,13 @@ export default function Graph() {
 
   const p = useMemo(() => (data ? prepare(data) : null), [data]);
   const byId = useMemo(() => new Map(p?.nodes.map((n) => [n.id, n])), [p]);
+  // Top nodes per community, one pass over the nodes (not a filter and sort per community per render).
+  const tops = useMemo(() => {
+    const m = new Map<number, PNode[]>();
+    for (const n of p?.nodes ?? []) (m.get(n.community) ?? m.set(n.community, []).get(n.community)!).push(n);
+    for (const list of m.values()) list.sort((a, b) => b.degree - a.degree).length = Math.min(list.length, TOP_PER_COMMUNITY);
+    return m;
+  }, [p]);
   const sel = selected ? byId.get(selected) : undefined;
   const status = p && statusLine(summary?.nodes ?? p.nodes.length, summary?.edges ?? p.links.length, summary ? freshness(summary) : "unknown", data!.truncated);
   const pick = (id: string) => {
@@ -88,28 +121,9 @@ export default function Graph() {
           <aside className="graph__legend" aria-label="Communautés">
             <h2>Communautés</h2>
             <ul>
-              {p.communities.map((c) => {
-                const top = p.nodes.filter((n) => n.community === c.id).sort((a, b) => b.degree - a.degree).slice(0, TOP_PER_COMMUNITY);
-                return (
-                  <li key={c.id}>
-                    <details>
-                      <summary>
-                        <CaretRight className="graph__caret" size="var(--icon-sm)" aria-hidden="true" />
-                        <span className="graph__swatch" style={{ background: swatch(c) }} aria-hidden="true" />
-                        <span className="graph__name">{c.name}</span>
-                        <span className="graph__count">{c.size}</span>
-                      </summary>
-                      <ul className="graph__nodes">
-                        {top.map((n) => (
-                          <li key={n.id}>
-                            <button type="button" aria-current={n.id === selected} onClick={() => pick(n.id)}>{n.label}</button>
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  </li>
-                );
-              })}
+              {p.communities.map((c) => (
+                <CommunityRow key={c.id} c={c} top={tops.get(c.id) ?? []} selected={selected} onPick={pick} />
+              ))}
             </ul>
           </aside>
 
