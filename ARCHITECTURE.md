@@ -141,7 +141,7 @@ Un contrat change par une tâche dédiée, fusionnée avant les tâches qui en d
 
 ## 8. Données locales
 
-Dossier `~/.local/share/atelier/` :
+Dossier `~/.local/share/dev.atelier.app/` :
 - `settings.json` — réglages.
 - `sessions.json` — index (id, projet, titre, modèle, date, coût).
 - `sessions/<id>.ndjson` — journal des événements reçus ; sert à réafficher une session et à calculer
