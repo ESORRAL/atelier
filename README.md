@@ -14,8 +14,9 @@ musique et petites pauses vidéo dans une seule fenêtre.
 
 | | |
 |---|---|
-| ![Chat](docs/images/chat.png) **Chat** : conversation, composer en un bloc, modèle et mode de permission | ![Graphe](docs/images/graphe.png) **Graphe** : le code du projet, coloré par communauté |
-| ![Projets](docs/images/projets.png) **Projets** : branche, tâches, worktrees, commits | ![YouTube Shorts](docs/images/youtube.png) **Panneau de pause** : YouTube Shorts à côté du chat |
+| ![Chat](docs/images/chat.png) **Chat** : conversation, composer en un bloc, modèle et mode de permission | ![Second cerveau](docs/images/cerveau.png) **Second cerveau** : tout le vault Obsidian, ici le vault d'exemple |
+| ![Graphe](docs/images/graphe.png) **Graphe** : le code du projet, coloré par communauté | ![Projets](docs/images/projets.png) **Projets** : branche, tâches, worktrees, commits |
+| ![YouTube Shorts](docs/images/youtube.png) **Panneau de pause** : YouTube Shorts à côté du chat | |
 
 ## Ce qu'il fait
 
