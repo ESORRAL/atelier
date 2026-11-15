@@ -38,7 +38,7 @@ Les commandes `vault_*` de `contracts/ipc.md §10`, et les deux nouveaux champs 
 - [ ] Tests : validation de chemin (`../x.md`, `/etc/passwd`, `a.txt`, lien symbolique sortant refusés),
       recherche avec accents, insertion dans le journal (avec et sans titre, fichier absent), ancien
       `settings.json` sans les nouveaux champs.
-- [ ] Essai réel en lecture sur `/home/thomas/Documents/Obsidian Vault` (test ignoré ou commande) ; **aucune
+- [ ] Essai réel en lecture sur le vault de l'utilisateur (`ATELIER_VAULT`) (test ignoré ou commande) ; **aucune
       écriture** dans le vrai vault pendant les tests.
 
 ## Vérification

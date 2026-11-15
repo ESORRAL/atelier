@@ -103,6 +103,10 @@ Le projet est un banc d'essai du travail multi-agents :
   orphelin, panneau GTK, essais Instagram et Chromium, mesures de performance.
 - Une branche et une pull request par tâche. Graphify limite le contexte lu par chaque agent.
 
+## Licence
+
+[MIT](LICENSE).
+
 ## Pour aller plus loin
 
 | | |
