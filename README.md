@@ -10,6 +10,13 @@ musique et petites pauses vidéo dans une seule fenêtre.
 
 **Statut** : v0.3 (phases 0 à 5 terminées), Linux uniquement, usage personnel.
 
+## Aperçu
+
+| | |
+|---|---|
+| ![Chat](docs/images/chat.png) **Chat** : conversation, composer en un bloc, modèle et mode de permission | ![Graphe](docs/images/graphe.png) **Graphe** : le code du projet, coloré par communauté |
+| ![Projets](docs/images/projets.png) **Projets** : branche, tâches, worktrees, commits | ![YouTube Shorts](docs/images/youtube.png) **Panneau de pause** : YouTube Shorts à côté du chat |
+
 ## Ce qu'il fait
 
 | Onglet | Rôle |
@@ -69,7 +76,8 @@ sudo apt install ./src-tauri/target/release/bundle/deb/Atelier_0.1.0_amd64.deb
 ```
 
 Détails, et installation chez quelqu'un d'autre : [`docs/INSTALL.md`](docs/INSTALL.md). Variable
-optionnelle `ATELIER_VAULT` (chemin du vault Obsidian).
+optionnelle `ATELIER_VAULT` (chemin du vault Obsidian). Pour essayer le Second cerveau sans toucher à tes notes,
+pointe-la sur le vault d'exemple : `ATELIER_VAULT="$PWD/examples/vault-demo" npm run tauri dev`.
 
 Vérifications :
 
