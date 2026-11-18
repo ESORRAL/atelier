@@ -4,9 +4,31 @@ import { realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
-const COMMANDS = new Set(['cat', 'grep', 'ls', 'find', 'head', 'tail', 'cd']);
+const COMMANDS = new Set(['cat', 'grep', 'ls', 'find', 'head', 'tail', 'cd', 'git']);
 const FIND_WRITES = new Set(['-exec', '-execdir', '-ok', '-okdir', '-delete', '-fprint', '-fprint0', '-fprintf', '-fls']);
 const FOLLOW = /^(-[A-Za-z0-9]*[fF][A-Za-z0-9]*|--follow.*)$/; // `tail -f` never ends
+// git: only subcommands that read. Global options (-C, -c, --git-dir…) and anything that writes, fetches or runs a
+// program (--output, --ext-diff, -O) are left to the user. `--no-pager` is the one global option tolerated.
+const GIT_READ = new Set(['status', 'diff', 'log', 'show', 'blame', 'ls-files', 'ls-tree', 'rev-parse', 'rev-list', 'describe', 'shortlog', 'show-ref', 'grep', 'merge-base']);
+const GIT_BAD_FLAG = /^(--output|--ext-diff|--open-files-in-pager|--exec|-O)/;
+const GIT_BRANCH_FLAG = /^(-a|-r|-v|-vv|--all|--remotes|--verbose|--list|-l|--show-current|--contains|--no-contains|--merged|--no-merged|--points-at|--sort=[\w:-]+|--format=\S+|--color|--no-color|--column|--no-column)$/;
+const GIT_TAG_FLAG = /^(-l|--list|-n\d*|--sort=[\w:-]+|--contains|--no-contains|--merged|--no-merged|--points-at|--format=\S+)$/;
+const GIT_LISTS = /^(--list|-l|--contains|--no-contains|--merged|--no-merged|--points-at)/; // flags that take a positional argument
+
+function gitReads(args) {
+  const [sub, ...a] = args[0] === '--no-pager' ? args.slice(1) : args;
+  if (!sub || sub.startsWith('-') || a.some((x) => GIT_BAD_FLAG.test(x))) return false;
+  if (GIT_READ.has(sub)) return true;
+  const flags = a.filter((x) => x.startsWith('-'));
+  const listing = flags.some((f) => GIT_LISTS.test(f)) || !a.some((x) => !x.startsWith('-'));
+  if (sub === 'branch') return listing && flags.every((f) => GIT_BRANCH_FLAG.test(f));
+  if (sub === 'tag') return listing && flags.every((f) => GIT_TAG_FLAG.test(f));
+  if (sub === 'remote') return a.every((x) => x === '-v' || x === '--verbose');
+  if (sub === 'stash') return a[0] === 'list' || a[0] === 'show';
+  if (sub === 'worktree') return a[0] === 'list';
+  return false;
+}
+
 const SECRET = /(^|\/)(\.ssh|\.gnupg|\.aws)(\/|$)|(^|\/)\.credentials\.json$/; // never auto-read credentials
 const PLAIN = /[A-Za-z0-9_\-.\/,:=+@%~*?[\]]/;
 
@@ -67,6 +89,7 @@ export function isReadOnlyBash(command, { cwd, roots }) {
     if (!COMMANDS.has(name)) return false;
     if (name === 'find' && args.some((a) => FIND_WRITES.has(a))) return false;
     if (name === 'tail' && args.some((a) => FOLLOW.test(a))) return false;
+    if (name === 'git' && !gitReads(args)) return false;
     if (name === 'cd' && (args.length > 1 || args.some((a) => a.startsWith('-')))) return false;
     const paths = name === 'cd' && !args.length ? ['~'] : args.filter((a) => !a.startsWith('-'));
     if (args.some((a) => a.startsWith('-') && /[\/~]/.test(a))) return false; // `--file=/etc/x`, `-f/etc/x`

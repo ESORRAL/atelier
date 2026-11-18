@@ -32,6 +32,25 @@ test('plain reads in cwd and in the vault are allowed, alone and combined', () =
   ok('ls 2>&1; cat README.md 2>/dev/null && ls src 2>&1');
 });
 
+test('git: reads are allowed like in the terminal, anything that changes something is not', () => {
+  for (const c of [
+    'git status', 'git status -sb', 'git diff', 'git diff HEAD~1 --stat', 'git log --oneline -5', 'git --no-pager log -3 2>&1',
+    'git show HEAD:README.md', 'git show abc123 --stat', 'git branch', 'git branch -a', 'git branch -vv', 'git branch --show-current',
+    'git branch --list "feat/*"', 'git branch --contains abc123', 'git tag', 'git tag -l "v1*"', 'git remote', 'git remote -v',
+    'git stash list', 'git worktree list', 'git blame README.md', 'git ls-files | head', 'git rev-parse HEAD', 'git log --since="2 days ago" --author=ESORRAL',
+    `cd ${vault} && git log --oneline | head -5`, 'git diff -- src', 'git grep -n foo', 'git merge-base main HEAD',
+  ]) ok(c);
+  for (const c of [
+    'git', 'git commit -m x', 'git add .', 'git push', 'git pull', 'git fetch', 'git checkout main', 'git switch x', 'git reset --hard',
+    'git clean -fd', 'git rm x', 'git mv a b', 'git restore a', 'git merge x', 'git rebase main', 'git cherry-pick abc', 'git apply p.diff',
+    'git branch -D x', 'git branch -d x', 'git branch newbranch', 'git branch -m a b', 'git tag v1', 'git tag -d v1', 'git remote add x y',
+    'git remote show origin', 'git remote remove x', 'git stash', 'git stash pop', 'git stash drop', 'git worktree add x', 'git worktree remove x',
+    'git config user.name x', 'git reflog expire --all', 'git diff --output=out', 'git log --output out', 'git diff --ext-diff',
+    'git grep -O less x', 'git grep --open-files-in-pager=less x', 'git -C /tmp status', 'git -c core.pager=x log', 'git --git-dir=x log',
+    'git status > f', 'git log --format=%h/%s', 'git diff /etc/passwd', 'git log ; rm a', 'git status && git push',
+  ]) no(c);
+});
+
 test('writes, deletes and anything unknown are refused', () => {
   for (const c of [
     'rm a', 'touch a', 'git push', 'mv a b', 'cp a b', 'sed -i s/a/b/ f', 'echo hi', 'sort -o f g', 'tee f',
