@@ -53,6 +53,28 @@ function ask(fake, { suggestions = BASH_SUGGESTIONS, requestId = 'r1', signal } 
   });
 }
 
+test('read-only Bash inside the session folders is allowed without asking; the rest still asks', async () => {
+  const t = setup();
+  t.start({ cwd: '/w', readRoots: ['/v', 'relative', 7] });
+  const opts = { signal: new AbortController().signal, suggestions: [], toolUseID: 'tu', displayName: 'Bash' };
+  const bash = (command, extra = {}) => t.fake.options.canUseTool('Bash', { command, ...extra }, { ...opts, requestId: `r-${command}` });
+  assert.deepEqual(await bash('cd /v ; cat a.md | head -3'), { behavior: 'allow', updatedInput: { command: 'cd /v ; cat a.md | head -3' } });
+  assert.equal(t.out.some((m) => m.type === 'permission_request'), false);
+  const asked = bash('cat /v/a.md > /w/x'); // a write: a permission_request goes to the UI
+  const elsewhere = bash('cat /etc/passwd');
+  const unsandboxed = bash('ls', { dangerouslyDisableSandbox: true });
+  await tick();
+  assert.deepEqual(t.out.filter((m) => m.type === 'permission_request').map((m) => m.input.command), ['cat /v/a.md > /w/x', 'cat /etc/passwd', 'ls']);
+  for (const id of ['r-cat /v/a.md > /w/x', 'r-cat /etc/passwd', 'r-ls']) t.send({ type: 'permission_response', requestId: id, decision: 'deny' });
+  assert.equal((await Promise.all([asked, elsewhere, unsandboxed])).every((r) => r.behavior === 'deny'), true);
+  // Other tools are never auto-allowed by this rule.
+  const write = t.fake.options.canUseTool('Write', { file_path: '/v/a.md', content: 'x' }, { ...opts, requestId: 'w1' });
+  await tick();
+  assert.equal(t.last('permission_request').toolName, 'Write');
+  t.send({ type: 'permission_response', requestId: 'w1', decision: 'deny' });
+  await write;
+});
+
 test('ready, start options, sdk passthrough, user turn', async () => {
   const t = setup();
   assert.deepEqual(t.out[0], { type: 'ready', sdkVersion: '0.3.322' });

@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
+import { isReadOnlyBash } from './readonly.mjs';
 
 const MODES = new Set(['default', 'acceptEdits', 'plan']);
 const DEFAULT_DENY = "Refusé par l'utilisateur";
@@ -31,6 +32,7 @@ function inputStream() {
 export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) {
   let session = null; // { q, input }
   let stopping = false;
+  let readScope = null; // { cwd, roots } of the session: where read-only Bash may run unasked
   const pending = new Map(); // requestId -> { input, suggestions, canAlways, resolve }
 
   const error = (message, fatal = false) => send({ type: 'error', message, fatal });
@@ -51,6 +53,10 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
     const { signal, suggestions = [], requestId = crypto.randomUUID() } = opts;
     const canAlways = suggestions.some((s) => s.type === 'addRules');
     if (signal?.aborted) return { behavior: 'deny', message: DEFAULT_DENY };
+    // Plain reads (cat, grep, ls, find without -exec/-delete…) inside the session's folders need no popup.
+    if (toolName === 'Bash' && readScope && !input?.dangerouslyDisableSandbox && isReadOnlyBash(input?.command, readScope)) {
+      return { behavior: 'allow', updatedInput: input };
+    }
     if (pending.has(requestId)) {
       error(`duplicate requestId refused: ${requestId}`);
       return { behavior: 'deny', message: DEFAULT_DENY };
@@ -94,6 +100,8 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
       if (typeof m.cwd !== 'string' || typeof m.claudePath !== 'string') return error('start requires cwd and claudePath');
       if (!MODES.has(m.permissionMode)) return error(`invalid permissionMode: ${m.permissionMode}`);
       const input = inputStream();
+      const extra = Array.isArray(m.readRoots) ? m.readRoots.filter((r) => typeof r === 'string' && r.startsWith('/')).slice(0, 8) : [];
+      readScope = { cwd: m.cwd, roots: [m.cwd, ...extra] };
       let q;
       try {
         q = query({

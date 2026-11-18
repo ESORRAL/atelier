@@ -444,6 +444,14 @@ impl Claude {
         if let Some(r) = args.resume {
             start["resume"] = r.into();
         }
+        // The Obsidian vault is read-only ground for the bridge's no-popup Bash reads (bridge-protocol.md §2).
+        if let Some(v) = settings
+            .vault_path
+            .as_deref()
+            .filter(|v| Path::new(v).is_absolute() && Path::new(v).is_dir())
+        {
+            start["readRoots"] = json!([v]);
+        }
         let written = {
             let _turn = session.turn.lock().await;
             let res = session.write(start).await;

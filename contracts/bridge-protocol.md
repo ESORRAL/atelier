@@ -23,7 +23,7 @@ Le pont n'accepte aucun argument. Son premier message attendu est `start`. Il es
 
 | `type` | Champs | Effet |
 |---|---|---|
-| `start` | `cwd`, `claudePath`, `model?`, `permissionMode`, `resume?` | ouvre la session en mode flux. `permissionMode` ∈ `default`, `acceptEdits`, `plan`. `resume` = identifiant de session à reprendre |
+| `start` | `cwd`, `claudePath`, `model?`, `permissionMode`, `resume?`, `readRoots?` | ouvre la session en mode flux. `permissionMode` ∈ `default`, `acceptEdits`, `plan`. `resume` = identifiant de session à reprendre. `readRoots` = dossiers absolus (8 au plus) où les lectures Bash sans effet s'exécutent sans demande, en plus de `cwd` (le cœur y met le vault Obsidian) |
 | `user` | `text` | envoie un tour utilisateur |
 | `interrupt` | — | interrompt la réponse en cours ; la session reste utilisable |
 | `set_model` | `model` | change de modèle pour les tours suivants |
@@ -100,3 +100,12 @@ Ces noms sont ceux utilisés dans les scripts de `spikes/bridge/`, sauf `setting
 Le cœur Rust journalise chaque événement dans `sessions/<clé de session>.ndjson` (clé locale, voir `contracts/ipc.md §4`) (voir
 `ARCHITECTURE.md §8`). La reprise ne rejoue pas l'historique dans le flux : ce journal est la seule
 source pour réafficher une conversation.
+
+## Lectures Bash sans demande (v1.2)
+
+Le pont répond `allow` sans `permission_request` à un outil `Bash` dont la commande est une suite de
+`cat`, `grep`, `ls`, `find`, `head`, `tail`, `cd` reliées par `;`, `&&`, `||`, `|` ou un saut de ligne, et dont tous les
+chemins restent dans `cwd` ou `readRoots` (liens symboliques résolus). Tout le reste est demandé comme avant :
+redirections (`>`, `<`), `$`, accents graves, `\`, sous-shell, `&`, `find -exec/-delete/-fprint…`, `tail -f`, `..`
+qui sortirait des dossiers, `~/.ssh`, `~/.gnupg`, `~/.aws`, `.credentials.json`, `dangerouslyDisableSandbox`. Code :
+`bridge/readonly.mjs`, tests : `bridge/readonly.test.mjs`. `Write`, `Edit` et les autres outils ne sont jamais concernés.
