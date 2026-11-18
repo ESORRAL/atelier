@@ -106,6 +106,6 @@ source pour réafficher une conversation.
 Le pont répond `allow` sans `permission_request` à un outil `Bash` dont la commande est une suite de
 `cat`, `grep`, `ls`, `find`, `head`, `tail`, `cd` reliées par `;`, `&&`, `||`, `|` ou un saut de ligne, et dont tous les
 chemins restent dans `cwd` ou `readRoots` (liens symboliques résolus). Tout le reste est demandé comme avant :
-redirections (`>`, `<`), `$`, accents graves, `\`, sous-shell, `&`, `find -exec/-delete/-fprint…`, `tail -f`, `..`
+redirections (`>`, `<`, sauf `2>&1` et `2>/dev/null`, qui ne déplacent que les messages d'erreur), `$`, accents graves, `\`, sous-shell, `&`, `find -exec/-delete/-fprint…`, `tail -f`, `..`
 qui sortirait des dossiers, `~/.ssh`, `~/.gnupg`, `~/.aws`, `.credentials.json`, `dangerouslyDisableSandbox`. Code :
 `bridge/readonly.mjs`, tests : `bridge/readonly.test.mjs`. `Write`, `Edit` et les autres outils ne sont jamais concernés.

@@ -11,7 +11,8 @@ const SECRET = /(^|\/)(\.ssh|\.gnupg|\.aws)(\/|$)|(^|\/)\.credentials\.json$/; /
 const PLAIN = /[A-Za-z0-9_\-.\/,:=+@%~*?[\]]/;
 
 /** Splits a command line into simple commands of tokens, or null if it holds any shell syntax beyond
- *  `;` `&&` `||` `|` newline and plain/quoted words (no `$`, backtick, `\`, redirection, subshell, `&`). */
+ *  `;` `&&` `||` `|` newline and plain/quoted words (no `$`, backtick, `\`, redirection but 2>&1 and 2>/dev/null,
+ *  subshell, `&`). */
 function parse(cmd) {
   const cmds = [[]];
   let tok = null;
@@ -19,7 +20,10 @@ function parse(cmd) {
   const endCmd = () => { endTok(); if (!cmds.at(-1).length) return false; cmds.push([]); return true; };
   for (let i = 0; i < cmd.length; i++) {
     const c = cmd[i];
-    if (c === "'" || c === '"') {
+    // `2>&1` and `2>/dev/null` only move error messages: the one redirection tolerated, as a whole word.
+    const sink = tok === null && c === '2' ? /^2>(?:&1|\/dev\/null)(?=$|[\s;|&])/.exec(cmd.slice(i)) : null;
+    if (sink) i += sink[0].length - 1;
+    else if (c === "'" || c === '"') {
       const j = cmd.indexOf(c, i + 1);
       if (j < 0) return null;
       const s = cmd.slice(i + 1, j);

@@ -27,6 +27,9 @@ test('plain reads in cwd and in the vault are allowed, alone and combined', () =
   ok(`grep -r --include=*.md 'a;b|c' src`);
   ok('head -n 5 src/a.ts\nls\n');
   ok('ls ;');
+  ok('grep -r a src 2>/dev/null');
+  ok('find . -name "*.md" 2>&1 | head -5');
+  ok('ls 2>&1; cat README.md 2>/dev/null && ls src 2>&1');
 });
 
 test('writes, deletes and anything unknown are refused', () => {
@@ -34,6 +37,8 @@ test('writes, deletes and anything unknown are refused', () => {
     'rm a', 'touch a', 'git push', 'mv a b', 'cp a b', 'sed -i s/a/b/ f', 'echo hi', 'sort -o f g', 'tee f',
     'cat a > b', 'cat a >> b', 'cat < a', 'ls | tee f', 'find . -delete', 'find . -exec rm {} ;', 'find . -execdir ls ;',
     'find . -ok rm', 'find . -fprint out', 'tail -f log', 'tail -F log', 'tail --follow log',
+    'ls 2>file', 'ls 2>>/dev/null', 'ls 2> /dev/null', 'ls >&2', 'ls &>/dev/null', 'cat a 1>&2', 'ls 2>&1x', 'ls2>&1', 'ls 2>/dev/null2',
+    'node --test a.test.mjs 2>&1 | tail -12', 'ls 2>/dev/null > out',
   ]) no(c);
 });
 
