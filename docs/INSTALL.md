@@ -16,7 +16,7 @@ Le paquet sort dans `src-tauri/target/release/bundle/deb/`.
 
 ## Installer
 ```bash
-sudo apt install ./src-tauri/target/release/bundle/deb/Atelier_0.1.0_amd64.deb
+sudo apt install ./src-tauri/target/release/bundle/deb/Atelier_0.3.0_amd64.deb
 ```
 Puis lance « Atelier » depuis le menu, ou `atelier` dans un terminal.
 
@@ -40,3 +40,8 @@ pour tout effacer.
 
 Linux seulement aujourd'hui. Mac et Windows demandent du travail : supervision des process, musique via
 MPRIS, panneaux GTK.
+
+## Mettre à jour
+Un paquet de même numéro de version n'est **pas** remplacé par `apt install` (« déjà la plus récente version »).
+Monte la version dans `package.json`, `src-tauri/tauri.conf.json` et `src-tauri/Cargo.toml` à chaque nouvelle
+compilation, ou réinstalle de force : `sudo apt install --reinstall ./…/Atelier_X.Y.Z_amd64.deb`.
