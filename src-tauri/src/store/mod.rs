@@ -11,6 +11,7 @@ pub enum PermissionMode {
     Default,
     AcceptEdits,
     Plan,
+    Auto,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -199,6 +200,15 @@ mod tests {
             updated_at,
             cost_usd: 0.5,
         }
+    }
+
+    #[test]
+    fn permission_modes_serialize_like_the_bridge_expects() {
+        let name = |m| serde_json::to_string(&m).unwrap();
+        assert_eq!(name(PermissionMode::AcceptEdits), "\"acceptEdits\"");
+        assert_eq!(name(PermissionMode::Auto), "\"auto\"");
+        let back: PermissionMode = serde_json::from_str("\"auto\"").unwrap();
+        assert_eq!(back, PermissionMode::Auto);
     }
 
     #[test]

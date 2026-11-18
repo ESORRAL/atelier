@@ -1,6 +1,6 @@
 import type { PermissionMode, Settings } from "../../ipc/claude";
 
-export const MODES: readonly PermissionMode[] = ["default", "acceptEdits", "plan"];
+export const MODES: readonly PermissionMode[] = ["default", "acceptEdits", "plan", "auto"];
 export const MODELS = ["opus", "sonnet", "haiku", "fable"] as const;
 
 /** Returns a French error message, or null when the settings are acceptable. */

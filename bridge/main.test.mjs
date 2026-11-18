@@ -118,13 +118,13 @@ test('list_models without requestId is a non-fatal error', async () => {
 
 test('invalid permissionMode is a non-fatal error and never reaches the SDK', async () => {
   const t = setup();
-  for (const mode of ['bypassPermissions', 'auto', 'dontAsk', undefined]) {
+  for (const mode of ['bypassPermissions', 'dontAsk', 'Auto', undefined]) {
     t.start({ permissionMode: mode });
     assert.equal(t.fake.options, null);
     assert.equal(t.last('error').fatal, false);
   }
   t.start();
-  for (const mode of ['bypassPermissions', 'auto']) t.send({ type: 'set_permission_mode', mode });
+  for (const mode of ['bypassPermissions', 'dontAsk']) t.send({ type: 'set_permission_mode', mode });
   await tick();
   assert.deepEqual(t.fake.calls, []);
   assert.equal(t.out.filter((m) => m.type === 'error').length, 6);

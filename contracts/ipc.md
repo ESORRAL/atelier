@@ -44,7 +44,7 @@ française. `settings_set` refuse un `claudePath` qui n'est pas un fichier exéc
 ## 2. Types partagés
 
 ```ts
-type PermissionMode = "default" | "acceptEdits" | "plan";
+type PermissionMode = "default" | "acceptEdits" | "plan" | "auto"; // auto = mode automatique de Claude Code (classifieur), v2.7
 type Decision = "allow_once" | "allow_always" | "deny";
 
 type SessionState =

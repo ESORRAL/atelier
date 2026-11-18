@@ -23,7 +23,7 @@ Le pont n'accepte aucun argument. Son premier message attendu est `start`. Il es
 
 | `type` | Champs | Effet |
 |---|---|---|
-| `start` | `cwd`, `claudePath`, `model?`, `permissionMode`, `resume?`, `readRoots?` | ouvre la session en mode flux. `permissionMode` ∈ `default`, `acceptEdits`, `plan`. `resume` = identifiant de session à reprendre. `readRoots` = dossiers absolus (8 au plus) où les lectures Bash sans effet s'exécutent sans demande, en plus de `cwd` (le cœur y met le vault Obsidian) |
+| `start` | `cwd`, `claudePath`, `model?`, `permissionMode`, `resume?`, `readRoots?` | ouvre la session en mode flux. `permissionMode` ∈ `default`, `acceptEdits`, `plan`, `auto` (le mode automatique de Claude Code : un modèle classifieur approuve ou bloque, mêmes réglages `autoMode` que le terminal ; `bypassPermissions` et `dontAsk` restent refusés). `resume` = identifiant de session à reprendre. `readRoots` = dossiers absolus (8 au plus) où les lectures Bash sans effet s'exécutent sans demande, en plus de `cwd` (le cœur y met le vault Obsidian) |
 | `user` | `text` | envoie un tour utilisateur |
 | `interrupt` | — | interrompt la réponse en cours ; la session reste utilisable |
 | `set_model` | `model` | change de modèle pour les tours suivants |

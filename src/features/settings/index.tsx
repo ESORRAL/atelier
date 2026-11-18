@@ -16,6 +16,7 @@ const MODE_LABELS: [PermissionMode, string][] = [
   ["default", "Demander à chaque fois"],
   ["acceptEdits", "Accepter les modifications de fichiers"],
   ["plan", "Plan seulement"],
+  ["auto", "Automatique (comme le terminal)"],
 ];
 const THEME_LABELS: [Theme, string][] = [
   ["system", "Système"],

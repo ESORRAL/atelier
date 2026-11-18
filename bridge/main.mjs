@@ -4,7 +4,9 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { isReadOnlyBash } from './readonly.mjs';
 
-const MODES = new Set(['default', 'acceptEdits', 'plan']);
+// 'auto' = Claude Code's own auto mode (a classifier model approves or blocks, same engine and settings as the terminal).
+// bypassPermissions and dontAsk stay refused.
+const MODES = new Set(['default', 'acceptEdits', 'plan', 'auto']);
 const DEFAULT_DENY = "Refusé par l'utilisateur";
 
 // Async-iterable prompt for streaming-input mode.

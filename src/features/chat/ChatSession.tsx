@@ -36,6 +36,7 @@ const MODES: [PermissionMode, string][] = [
   ["default", "Manuel"],
   ["acceptEdits", "Accepter les modifs"],
   ["plan", "Plan"],
+  ["auto", "Automatique"],
 ];
 export const errText = (e: unknown) => (typeof e === "string" ? e : "Une erreur est survenue.");
 

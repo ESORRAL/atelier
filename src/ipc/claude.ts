@@ -1,7 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 
 // Exact types of contracts/ipc.md §2.
-export type PermissionMode = "default" | "acceptEdits" | "plan";
+export type PermissionMode = "default" | "acceptEdits" | "plan" | "auto";
 export type Decision = "allow_once" | "allow_always" | "deny";
 export type SessionState = "starting" | "idle" | "running" | "waiting_permission" | "closed" | "crashed";
 
