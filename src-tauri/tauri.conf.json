@@ -27,6 +27,7 @@
     "targets": ["deb", "rpm", "appimage"],
     "resources": {
       "../bridge/main.mjs": "bridge/main.mjs",
+      "../bridge/readonly.mjs": "bridge/readonly.mjs",
       "../bridge/package.json": "bridge/package.json",
       "../bridge/node_modules/": "bridge/node_modules/"
     },
