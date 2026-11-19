@@ -73,7 +73,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 npm ci && npm run build:bridge
 npm run tauri dev                          # lancer en développement
 npm run tauri build -- --bundles deb       # paquet .deb
-sudo apt install ./src-tauri/target/release/bundle/deb/Atelier_0.3.0_amd64.deb
+sudo apt install ./src-tauri/target/release/bundle/deb/Atelier_0.3.1_amd64.deb
 ```
 
 Détails, et installation chez quelqu'un d'autre : [`docs/INSTALL.md`](docs/INSTALL.md). Variable

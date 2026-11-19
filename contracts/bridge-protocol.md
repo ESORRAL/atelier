@@ -104,7 +104,7 @@ source pour réafficher une conversation.
 ## Lectures Bash sans demande (v1.2)
 
 Le pont répond `allow` sans `permission_request` à un outil `Bash` dont la commande est une suite de
-`cat`, `grep`, `ls`, `find`, `head`, `tail`, `cd` et `git` en lecture (`status`, `diff`, `log`, `show`, `blame`, `ls-files`, `rev-parse`, `branch`/`tag` en liste, `remote -v`, `stash list`, `worktree list`…, jamais `commit`, `add`, `push`, `checkout`, `reset`, `-C`, `-c`, `--output`) reliées par `;`, `&&`, `||`, `|` ou un saut de ligne, et dont tous les
+`cat`, `grep`, `ls`, `find`, `head`, `tail`, `cd`, `pwd`, `echo`, `wc`, `which`, `du`, `stat`, une demande de version d'un outil (`php -v`, `node --version`, `python3 -V`… : un seul drapeau, rien d'autre) et `git` en lecture (`status`, `diff`, `log`, `show`, `blame`, `ls-files`, `rev-parse`, `branch`/`tag` en liste, `remote -v`, `stash list`, `worktree list`…, jamais `commit`, `add`, `push`, `checkout`, `reset`, `-C`, `-c`, `--output`) reliées par `;`, `&&`, `||`, `|` ou un saut de ligne, et dont tous les
 chemins restent dans `cwd` ou `readRoots` (liens symboliques résolus). Tout le reste est demandé comme avant :
 redirections (`>`, `<`, sauf `2>&1` et `2>/dev/null`, qui ne déplacent que les messages d'erreur), `$`, accents graves, `\`, sous-shell, `&`, `find -exec/-delete/-fprint…`, `tail -f`, `..`
 qui sortirait des dossiers, `~/.ssh`, `~/.gnupg`, `~/.aws`, `.credentials.json`, `dangerouslyDisableSandbox`. Code :

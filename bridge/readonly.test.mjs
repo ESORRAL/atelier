@@ -32,6 +32,19 @@ test('plain reads in cwd and in the vault are allowed, alone and combined', () =
   ok('ls 2>&1; cat README.md 2>/dev/null && ls src 2>&1');
 });
 
+test('version queries and harmless helpers (which, pwd, echo, wc, du, stat)', () => {
+  for (const c of [
+    'php -v', 'node --version', 'python3 -V', 'java -version', 'cargo --version | head -1', 'git --version', 'mysql -V 2>/dev/null',
+    'which php symfony mysql mariadb', 'pwd', 'echo "--- fin ---"', 'wc -l README.md', 'ls src | wc -l', 'du -sh .', 'stat README.md',
+    "cd /x 2>/dev/null; php -v | head -1",
+  ].filter((c) => !c.startsWith('cd /x'))) ok(c);
+  for (const c of [
+    'php -r "system(1)"', 'php index.php', 'php -v x', 'php -v -r 1', 'node -e 1', 'node script.js', 'node', 'npm run build', 'npm install', 'python3 a.py',
+    'make', 'make -v clean', 'docker run x', 'cargo build', 'cargo --version --foo', 'java -jar a.jar',
+    'echo hi > f', 'echo $HOME', 'which ../x', 'which /usr/bin/php', 'du /etc', 'stat /etc/passwd', 'wc /etc/passwd', 'pwd x ; rm a',
+  ]) no(c);
+});
+
 test('git: reads are allowed like in the terminal, anything that changes something is not', () => {
   for (const c of [
     'git status', 'git status -sb', 'git diff', 'git diff HEAD~1 --stat', 'git log --oneline -5', 'git --no-pager log -3 2>&1',
@@ -53,7 +66,7 @@ test('git: reads are allowed like in the terminal, anything that changes somethi
 
 test('writes, deletes and anything unknown are refused', () => {
   for (const c of [
-    'rm a', 'touch a', 'git push', 'mv a b', 'cp a b', 'sed -i s/a/b/ f', 'echo hi', 'sort -o f g', 'tee f',
+    'rm a', 'touch a', 'git push', 'mv a b', 'cp a b', 'sed -i s/a/b/ f', 'sort -o f g', 'tee f',
     'cat a > b', 'cat a >> b', 'cat < a', 'ls | tee f', 'find . -delete', 'find . -exec rm {} ;', 'find . -execdir ls ;',
     'find . -ok rm', 'find . -fprint out', 'tail -f log', 'tail -F log', 'tail --follow log',
     'ls 2>file', 'ls 2>>/dev/null', 'ls 2> /dev/null', 'ls >&2', 'ls &>/dev/null', 'cat a 1>&2', 'ls 2>&1x', 'ls2>&1', 'ls 2>/dev/null2',

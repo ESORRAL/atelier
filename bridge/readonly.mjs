@@ -4,7 +4,11 @@ import { realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
-const COMMANDS = new Set(['cat', 'grep', 'ls', 'find', 'head', 'tail', 'cd', 'git']);
+const COMMANDS = new Set(['cat', 'grep', 'ls', 'find', 'head', 'tail', 'cd', 'git', 'pwd', 'echo', 'wc', 'which', 'du', 'stat']);
+// `php -v`, `node --version`…: asking a tool for its version runs nothing of the user's. Exactly one flag, nothing else.
+const VERSION_TOOLS = new Set(['php', 'node', 'npm', 'npx', 'pnpm', 'yarn', 'python', 'python3', 'pip', 'pip3', 'cargo', 'rustc', 'composer', 'symfony',
+  'mysql', 'mariadb', 'psql', 'java', 'javac', 'ruby', 'gcc', 'make', 'docker']);
+const VERSION_FLAG = /^(-v|-V|-version|--version)$/;
 const FIND_WRITES = new Set(['-exec', '-execdir', '-ok', '-okdir', '-delete', '-fprint', '-fprint0', '-fprintf', '-fls']);
 const FOLLOW = /^(-[A-Za-z0-9]*[fF][A-Za-z0-9]*|--follow.*)$/; // `tail -f` never ends
 // git: only subcommands that read. Global options (-C, -c, --git-dir…) and anything that writes, fetches or runs a
@@ -17,6 +21,7 @@ const GIT_LISTS = /^(--list|-l|--contains|--no-contains|--merged|--no-merged|--p
 
 function gitReads(args) {
   const [sub, ...a] = args[0] === '--no-pager' ? args.slice(1) : args;
+  if (sub === '--version' && !a.length) return true;
   if (!sub || sub.startsWith('-') || a.some((x) => GIT_BAD_FLAG.test(x))) return false;
   if (GIT_READ.has(sub)) return true;
   const flags = a.filter((x) => x.startsWith('-'));
@@ -86,7 +91,7 @@ export function isReadOnlyBash(command, { cwd, roots }) {
   // earlier call moved into a subdirectory; lift it by having the core send the shell's real directory.
   let dir = null;
   for (const [name, ...args] of cmds) {
-    if (!COMMANDS.has(name)) return false;
+    if (!COMMANDS.has(name) && !(VERSION_TOOLS.has(name) && args.length === 1 && VERSION_FLAG.test(args[0]))) return false;
     if (name === 'find' && args.some((a) => FIND_WRITES.has(a))) return false;
     if (name === 'tail' && args.some((a) => FOLLOW.test(a))) return false;
     if (name === 'git' && !gitReads(args)) return false;

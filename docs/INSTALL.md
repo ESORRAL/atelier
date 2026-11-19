@@ -16,7 +16,7 @@ Le paquet sort dans `src-tauri/target/release/bundle/deb/`.
 
 ## Installer
 ```bash
-sudo apt install ./src-tauri/target/release/bundle/deb/Atelier_0.3.0_amd64.deb
+sudo apt install ./src-tauri/target/release/bundle/deb/Atelier_0.3.1_amd64.deb
 ```
 Puis lance « Atelier » depuis le menu, ou `atelier` dans un terminal.
 
