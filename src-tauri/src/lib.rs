@@ -41,6 +41,7 @@ pub fn run() {
             session_interrupt,
             session_set_model,
             session_set_permission_mode,
+            session_set_effort,
             session_models,
             permission_respond,
             session_close,

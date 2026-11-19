@@ -6,10 +6,12 @@ import {
   sessionInterrupt,
   sessionModels,
   sessionSend,
+  sessionSetEffort,
   sessionSetModel,
   sessionSetPermissionMode,
   sessionStart,
   settingsGet,
+  type ImageIn,
   type ModelInfo,
   type SessionEntry,
   type SessionEvent,
@@ -21,7 +23,8 @@ import { matchModel } from "./logic";
 import { Composer } from "./Composer";
 import { Menu } from "./Menu";
 import { initialState, reduce } from "./reduce";
-import { pendingCount, type SessionTab } from "./sessions";
+import { pendingCount, type Launch, type SessionTab } from "./sessions";
+import { EFFORTS } from "./models";
 import type { ChatInfo } from "./Chat";
 
 const STATE_LABEL: Record<string, string> = {
@@ -32,7 +35,7 @@ const STATE_LABEL: Record<string, string> = {
   closed: "Session terminée",
   crashed: "Session interrompue",
 };
-const MODES: [PermissionMode, string][] = [
+export const MODES: [PermissionMode, string][] = [
   ["default", "Manuel"],
   ["acceptEdits", "Accepter les modifs"],
   ["plan", "Plan"],
@@ -45,6 +48,7 @@ type Props = {
   cwd: string;
   resume: SessionEntry | null;
   firstMessage: string | null; // typed on the welcome screen: sent as soon as the session is ready
+  launch: Launch | null; // model, effort, mode and pictures chosen next to it
   active: boolean; // shown: owns the top-bar slot, the right panel and the permission dialog
   onStatus: (id: number, patch: Partial<Pick<SessionTab, "key" | "title" | "state" | "pending">>) => void;
   onStartError: (id: number, message: string) => void;
@@ -54,13 +58,14 @@ type Props = {
 };
 
 /** One Claude session: its own reducer, channel and permission queue. Stays mounted while hidden. */
-export function ChatSession({ id, cwd, resume, firstMessage, active, onStatus, onStartError, onInfo, onEvent, interruptRef }: Props) {
+export function ChatSession({ id, cwd, resume, firstMessage, launch, active, onStatus, onStartError, onInfo, onEvent, interruptRef }: Props) {
   const [s, dispatch] = useReducer(reduce, initialState);
   const [key, setKey] = useState<string | null>(null);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [chosenModel, setChosenModel] = useState<string | null>(null); // local choice wins over s.model
   const costBase = resume?.costUsd ?? 0; // index cost at resume; the SDK total restarts at 0
-  const [mode, setMode] = useState<PermissionMode>("default");
+  const [mode, setMode] = useState<PermissionMode>(launch?.mode ?? "default");
+  const [effort, setEffort] = useState<string>(launch?.effort ?? ""); // "" = the model's own default
   const [localError, setLocalError] = useState<string | null>(null);
   const keyRef = useRef<string | null>(null);
   const early = useRef<SessionEvent[]>([]); // events received before the key is known
@@ -98,9 +103,10 @@ export function ChatSession({ id, cwd, resume, firstMessage, active, onStatus, o
         past.filter((e) => e.kind === "sdk" || e.kind === "user").forEach(dispatch);
         dispatch({ kind: "zero_cost" });
       }
-      const pm = settings?.defaultPermissionMode ?? "default";
+      const pm = launch?.mode ?? settings?.defaultPermissionMode ?? "default";
       setMode(pm);
-      const k = await sessionStart(cwd, resume?.model ?? settings?.defaultModel ?? null, pm, resume?.claudeSessionId ?? null, handle);
+      const model = resume?.model ?? launch?.model ?? settings?.defaultModel ?? null;
+      const k = await sessionStart(cwd, model, pm, resume?.claudeSessionId ?? null, handle, launch?.effort ?? null);
       if (!alive.current) {
         sessionClose(k).catch(() => {}); // the tab was closed while starting
         return;
@@ -153,11 +159,11 @@ export function ChatSession({ id, cwd, resume, firstMessage, active, onStatus, o
     onStatus(id, { key, state: s.sessionState, pending, ...(title ? { title } : {}) });
   }, [onStatus, id, key, s.sessionState, pending, title]);
 
-  const sendText = (text: string) => {
+  const sendText = (text: string, images: ImageIn[] = []) => {
     if (!key) return;
     setLocalError(null);
     follow.current = true;
-    sessionSend(key, text).catch((e) => setLocalError(errText(e)));
+    sessionSend(key, text, images).catch((e) => setLocalError(errText(e)));
   };
   const pendingFirst = useRef(firstMessage);
   // The message typed on the welcome screen goes out once, when the bridge first reports idle.
@@ -165,7 +171,7 @@ export function ChatSession({ id, cwd, resume, firstMessage, active, onStatus, o
     if (pendingFirst.current && key && s.sessionState === "idle") {
       const text = pendingFirst.current;
       pendingFirst.current = null;
-      sendText(text);
+      sendText(text, launch?.images);
     }
   }, [key, s.sessionState]);
   const interrupt = () => key && sessionInterrupt(key).catch((e) => setLocalError(errText(e)));
@@ -207,6 +213,22 @@ export function ChatSession({ id, cwd, resume, firstMessage, active, onStatus, o
               setChosenModel(v);
               sessionSetModel(key, v).catch((x) => {
                 setChosenModel(prev);
+                setLocalError(errText(x));
+              });
+            }}
+          />
+        )}
+        {key && (
+          <Menu
+            label="Effort de réflexion"
+            text={EFFORTS.find(([v]) => v === effort)?.[1] ?? ""}
+            items={EFFORTS.map(([value, label]) => ({ value, label }))}
+            value={effort}
+            onSelect={(v) => {
+              const prev = effort;
+              setEffort(v);
+              sessionSetEffort(key, v || null).catch((x) => {
+                setEffort(prev);
                 setLocalError(errText(x));
               });
             }}

@@ -59,6 +59,7 @@ fn args(cwd: &Path) -> StartArgs {
     StartArgs {
         cwd: cwd.to_str().unwrap().into(),
         model: None,
+        effort: None,
         permission_mode: PermissionMode::Default,
         resume: None,
     }

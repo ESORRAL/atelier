@@ -1,5 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
+Version 2.7 (phase 5). 2.7 : mode `auto` ; `session_send` accepte des images ; `effort` (`session_start`, `session_set_effort`).
 Version 2.6 (phase 5). 2.6 : deux panneaux intégrés, YouTube Shorts et Instagram (§15 ter).
 Version 2.5 (phase 5). 2.5 : le panneau §15 affiche YouTube Shorts ; Instagram garde la fenêtre §13 ; `instagramMode` retiré.
 Version 2.4 (phase 5). 2.4 : `pause_open_browser` (§16).
@@ -22,11 +23,12 @@ Tauri). Toute erreur est rejetée avec une chaîne lisible en français.
 
 | Commande | Arguments | Retour | Effet |
 |---|---|---|---|
-| `session_start` | `cwd: string`, `model: string \| null`, `permissionMode: PermissionMode`, `resume: string \| null`, `onEvent: Channel<SessionEvent>` | `string` (clé de session) | lance un pont, envoie `start` ; les événements arrivent sur `onEvent` |
-| `session_send` | `key`, `text: string` | `null` | un tour utilisateur |
+| `session_start` | `cwd: string`, `model: string \| null`, `permissionMode: PermissionMode`, `resume: string \| null`, `onEvent: Channel<SessionEvent>`, `effort?: string \| null` (`low`, `medium`, `high`, `xhigh`, `max` ; absent = celui de Claude Code) | `string` (clé de session) | lance un pont, envoie `start` ; les événements arrivent sur `onEvent` |
+| `session_send` | `key`, `text: string`, `images?: { mediaType, data }[]` | `null` | un tour utilisateur ; `images` : 5 au plus, PNG, JPEG, GIF ou WebP en base64, 5 Mo au plus chacune (le journal garde « [N images jointes] », jamais les images) |
 | `session_interrupt` | `key` | `null` | interrompt la réponse en cours |
 | `session_set_model` | `key`, `model: string` | `null` | modèle des tours suivants |
 | `session_set_permission_mode` | `key`, `mode: PermissionMode` | `null` | |
+| `session_set_effort` | `key`, `effort: string \| null` | `null` | niveau de réflexion de la session (`null` = celui du modèle) ; rien n'est écrit dans les réglages |
 | `session_models` | `key` | `ModelInfo[]` | liste des modèles (réponse `models` du pont) |
 | `permission_respond` | `key`, `requestId: string`, `decision: Decision`, `message: string \| null` | `null` | répond à une demande en attente |
 | `session_close` | `key` | `null` | `close` au pont, puis arrêt du groupe de process |

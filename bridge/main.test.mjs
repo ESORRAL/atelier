@@ -29,6 +29,7 @@ function setup() {
       interrupt: async () => { fake.calls.push(['interrupt']); return { still_queued: [] }; },
       setModel: async (m) => { fake.calls.push(['setModel', m]); },
       setPermissionMode: async (m) => { fake.calls.push(['setPermissionMode', m]); },
+      applyFlagSettings: async (s) => { fake.calls.push(['applyFlagSettings', s]); },
       supportedModels: async () => [{ value: 'haiku' }],
       close: () => { fake.calls.push(['close']); fake.finish(); },
     };
@@ -52,6 +53,47 @@ function ask(fake, { suggestions = BASH_SUGGESTIONS, requestId = 'r1', signal } 
     toolUseID: 'tu1', displayName: 'Bash', description: 'touch', blockedPath: '/w/a',
   });
 }
+
+test('effort: start option, set_effort at runtime, null resets, anything else is refused', async () => {
+  const t = setup();
+  t.start({ effort: 'xhigh' });
+  assert.equal(t.fake.options.effort, 'xhigh');
+  t.send({ type: 'set_effort', effort: 'low' });
+  t.send({ type: 'set_effort', effort: null });
+  await tick();
+  assert.deepEqual(t.fake.calls.filter((c) => c[0] === 'applyFlagSettings'), [['applyFlagSettings', { effortLevel: 'low' }], ['applyFlagSettings', { effortLevel: null }]]);
+  for (const effort of ['ultra', '', 5, undefined]) {
+    t.send({ type: 'set_effort', effort });
+    assert.match(t.last('error').message, /invalid effort/);
+  }
+  const bad = setup();
+  bad.start({ effort: 'ultra' });
+  assert.equal(bad.fake.options, null);
+  assert.match(bad.last('error').message, /invalid effort/);
+  const none = setup();
+  none.start();
+  assert.equal('effort' in none.fake.options, false);
+});
+
+test('user turn with pictures: image blocks first, then the text; bad pictures never reach the SDK', async () => {
+  const t = setup();
+  t.start();
+  const it = t.fake.prompt[Symbol.asyncIterator]();
+  t.send({ type: 'user', text: 'regarde', images: [{ mediaType: 'image/png', data: 'iVBORw0KGgo=' }, { mediaType: 'image/jpeg', data: 'AAAA' }] });
+  const { value } = await it.next();
+  assert.deepEqual(value.message.content, [
+    { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'iVBORw0KGgo=' } },
+    { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'AAAA' } },
+    { type: 'text', text: 'regarde' },
+  ]);
+  for (const images of [[{ mediaType: 'image/svg+xml', data: 'AAAA' }], [{ mediaType: 'image/png', data: 'A A' }], [{ mediaType: 'image/png' }], 'x',
+    Array.from({ length: 6 }, () => ({ mediaType: 'image/png', data: 'AAAA' }))]) {
+    t.send({ type: 'user', text: 'x', images });
+    assert.equal(t.last('error').message, 'invalid images');
+  }
+  t.send({ type: 'user', text: 'plain' });
+  assert.equal((await it.next()).value.message.content, 'plain');
+});
 
 test('read-only Bash inside the session folders is allowed without asking; the rest still asks', async () => {
   const t = setup();

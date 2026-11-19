@@ -1,6 +1,8 @@
-import { useEffect, useState, type ReactNode, type RefObject } from "react";
-import { Plus, Stop, PaperPlaneRight } from "@phosphor-icons/react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Image as ImageIcon, Plus, Stop, PaperPlaneRight, X } from "@phosphor-icons/react";
+import type { ImageIn } from "../../ipc/claude";
 import { projectFiles } from "../../ipc/project";
+import { MAX_IMAGES, pickImages, sizeLabel, toAttachment, type Attachment } from "./images";
 import { applyMention, filterCommands, findTrigger } from "./mention";
 import { insertAt } from "./menu";
 
@@ -10,7 +12,7 @@ type Props = {
   commands: string[];
   ready: boolean; // a message may be sent right now (state and project known)
   busy: boolean; // a reply is running: show « Arrêter »
-  onSend: (text: string) => void;
+  onSend: (text: string, images: ImageIn[]) => void;
   onInterrupt: () => void;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   bar: ReactNode; // plain-text menus under the block
@@ -23,6 +25,9 @@ export function Composer({ id, cwd, commands, ready, busy, onSend, onInterrupt, 
   const [files, setFiles] = useState<string[]>([]);
   const [pick, setPick] = useState(0);
   const [dismissed, setDismissed] = useState<string | null>(null); // draft text for which Échap closed the list
+  const [images, setImages] = useState<Attachment[]>([]); // pictures pasted for the next message
+  const [note, setNote] = useState<string | null>(null);
+  const lastId = useRef(0);
 
   const trigger = findTrigger(draft, caret);
   const fileQuery = trigger?.kind === "file" && cwd ? trigger.query : null;
@@ -57,12 +62,23 @@ export function Composer({ id, cwd, commands, ready, busy, onSend, onInterrupt, 
     const r = applyMention(draft, trigger, value);
     setText(r.text, r.caret);
   };
+  // Pasted pictures join the next message; a refused one says why. shortcut: no downscaling, 5 MB each (the core refuses more).
+  const attach = (files: File[]) => {
+    const { ok, problem } = pickImages(files, images.length);
+    setNote(problem);
+    Promise.all(ok.map((f) => toAttachment(f, ++lastId.current))).then(
+      (added) => setImages((cur) => [...cur, ...added].slice(0, MAX_IMAGES)),
+      () => setNote("Image illisible."),
+    );
+  };
   const send = () => {
     const text = draft.trim();
     if (!ready || !text) return;
     setDraft("");
     setCaret(0);
-    onSend(text);
+    onSend(text, images.map(({ mediaType, data }) => ({ mediaType, data })));
+    setImages([]);
+    setNote(null);
   };
 
   return (
@@ -88,6 +104,21 @@ export function Composer({ id, cwd, commands, ready, busy, onSend, onInterrupt, 
             </ul>
           )
         )}
+        {images.length > 0 && (
+          <ul className="composer__images" aria-label="Images jointes">
+            {images.map((a, i) => (
+              <li key={a.id} className="composer__image">
+                <ImageIcon size="var(--icon-sm)" aria-hidden="true" />
+                <span>Image {i + 1}</span>
+                <span className="composer__image-size">{sizeLabel(a.bytes)}</span>
+                <button type="button" aria-label={`Retirer l'image ${i + 1}`} onClick={() => setImages((cur) => cur.filter((x) => x.id !== a.id))}>
+                  <X size="var(--icon-sm)" aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {note && <p className="composer__note" role="status">{note}</p>}
         <textarea
           ref={inputRef}
           aria-label="Message à Claude"
@@ -105,6 +136,13 @@ export function Composer({ id, cwd, commands, ready, busy, onSend, onInterrupt, 
             setPick(0);
           }}
           onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+          onPaste={(e) => {
+            const files = [...e.clipboardData.files];
+            // Text wins: a copied cell or web page keeps pasting as text. A picture alone (a screenshot) is attached.
+            if (!files.some((f) => f.type.startsWith("image/")) || e.clipboardData.getData("text/plain")) return;
+            e.preventDefault();
+            attach(files);
+          }}
           onKeyDown={(e) => {
             if (listOpen && !e.nativeEvent.isComposing) {
               const n = items.length;

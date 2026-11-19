@@ -1,8 +1,11 @@
-import type { SessionEntry, SessionEvent, SessionState } from "../../ipc/claude";
+import type { ImageIn, PermissionMode, SessionEntry, SessionEvent, SessionState } from "../../ipc/claude";
 import type { TallyState } from "../../ui/Tally";
 
 export const MAX_TABS = 8;
 export const TOO_MANY_TABS = `${MAX_TABS} sessions au plus peuvent rester ouvertes. Ferme un onglet pour en ouvrir une autre.`;
+
+/** What the welcome screen chose for a new session: model and mode (null model = the default), pictures of the first message. */
+export type Launch = { model: string | null; effort: string | null; mode: PermissionMode; images: ImageIn[] };
 
 /** One open session in the Chat tab bar. `id` is local; `key` arrives once `session_start` resolves. */
 export type SessionTab = {
@@ -10,6 +13,7 @@ export type SessionTab = {
   cwd: string;
   resume: SessionEntry | null;
   first: string | null; // first message typed on the welcome screen
+  launch: Launch | null; // what was chosen next to it
   key: string | null;
   title: string;
   state: SessionState | null;
@@ -23,11 +27,17 @@ export const folderName = (cwd: string) => cwd.replace(/\/+$/, "").split("/").po
 const keyOf = (t: SessionTab) => t.key ?? t.resume?.key ?? null;
 
 /** Opens and selects a tab; resuming a session already open selects its tab. `null` when the bar is full. */
-export function openTab(t: SessionTabs, cwd: string, resume: SessionEntry | null = null, first: string | null = null): SessionTabs | null {
+export function openTab(
+  t: SessionTabs,
+  cwd: string,
+  resume: SessionEntry | null = null,
+  first: string | null = null,
+  launch: Launch | null = null,
+): SessionTabs | null {
   const open = resume && t.list.find((x) => keyOf(x) === resume.key);
   if (open) return { ...t, active: open.id };
   if (t.list.length >= MAX_TABS) return null;
-  const tab: SessionTab = { id: t.next, cwd, resume, first, key: null, title: resume?.title || folderName(cwd), state: null, pending: 0 };
+  const tab: SessionTab = { id: t.next, cwd, resume, first, launch, key: null, title: resume?.title || folderName(cwd), state: null, pending: 0 };
   return { list: [...t.list, tab], active: tab.id, next: t.next + 1 };
 }
 

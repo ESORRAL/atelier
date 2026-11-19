@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { Plus, X } from "@phosphor-icons/react";
-import { sessionsList, settingsGet, type SessionEntry, type SessionEvent } from "../../ipc/claude";
+import { sessionsList, settingsGet, type PermissionMode, type SessionEntry, type SessionEvent } from "../../ipc/claude";
 import { pickFolder } from "../../ipc/desktop";
 import { Tally } from "../../ui/Tally";
-import { ChatSession } from "./ChatSession";
+import { ChatSession, MODES } from "./ChatSession";
+import { EFFORTS, START_MODELS } from "./models";
 import { Composer } from "./Composer";
 import { Menu } from "./Menu";
 import { Logo } from "../../ui/Logo";
@@ -18,6 +19,7 @@ import {
   selectTab,
   tallyOf,
   TOO_MANY_TABS,
+  type Launch,
 } from "./sessions";
 import "./chat.css";
 
@@ -42,6 +44,10 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
   const [recent, setRecent] = useState<string[]>([]);
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // What the next new session starts with: the defaults of Réglages until the user picks something here.
+  const [model, setModel] = useState("");
+  const [effort, setEffort] = useState("");
+  const [mode, setMode] = useState<PermissionMode>("default");
   const root = useRef<HTMLElement>(null);
   const interruptRef = useRef<(() => void) | null>(null);
   const composerInput = useRef<HTMLTextAreaElement>(null);
@@ -50,6 +56,8 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
     settingsGet().then((st) => {
       setRecent(st.recentCwds);
       if (st.recentCwds[0]) setCwd((c) => c || st.recentCwds[0]);
+      setModel(st.defaultModel ?? "");
+      setMode(st.defaultPermissionMode);
     }, () => {});
   }, []);
 
@@ -66,8 +74,8 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
     if (welcome && document.activeElement === document.body) composerInput.current?.focus();
   }, [welcome]);
 
-  const open = (dir: string, resume: SessionEntry | null = null, first: string | null = null) => {
-    const next = openTab(tabs, dir, resume, first);
+  const open = (dir: string, resume: SessionEntry | null = null, first: string | null = null, launch: Launch | null = null) => {
+    const next = openTab(tabs, dir, resume, first, launch);
     if (!next) return setError(TOO_MANY_TABS);
     setError(null);
     setTabs(next);
@@ -153,19 +161,42 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
             commands={[]}
             ready={!!cwd}
             busy={false}
-            onSend={(text) => open(cwd, null, text)}
+            onSend={(text, images) => open(cwd, null, text, { model: model || null, effort: effort || null, mode, images })}
             onInterrupt={() => {}}
             inputRef={composerInput}
             bar={
-              <Menu
-                label="Projet"
-                text={cwd ? folderName(cwd) : "Choisir un dossier"}
-                title={cwd || "Choisir un dossier"}
-                items={[...new Set([cwd, ...recent].filter(Boolean))].map((r) => ({ value: r, label: folderName(r), title: r }))}
-                value={cwd}
-                onSelect={setCwd}
-                action={{ label: "Parcourir…", run: () => pickFolder().then((d) => d && setCwd(d), () => {}) }}
-              />
+              <span className="tmenu__group">
+                <Menu
+                  label="Projet"
+                  text={cwd ? folderName(cwd) : "Choisir un dossier"}
+                  title={cwd || "Choisir un dossier"}
+                  items={[...new Set([cwd, ...recent].filter(Boolean))].map((r) => ({ value: r, label: folderName(r), title: r }))}
+                  value={cwd}
+                  onSelect={setCwd}
+                  action={{ label: "Parcourir…", run: () => pickFolder().then((d) => d && setCwd(d), () => {}) }}
+                />
+                <Menu
+                  label="Modèle"
+                  text={START_MODELS.find(([v]) => v === model)?.[1] ?? model}
+                  items={START_MODELS.map(([value, label]) => ({ value, label }))}
+                  value={model}
+                  onSelect={setModel}
+                />
+                <Menu
+                  label="Effort de réflexion"
+                  text={EFFORTS.find(([v]) => v === effort)?.[1] ?? ""}
+                  items={EFFORTS.map(([value, label]) => ({ value, label }))}
+                  value={effort}
+                  onSelect={setEffort}
+                />
+                <Menu
+                  label="Mode de permission"
+                  text={MODES.find(([v]) => v === mode)?.[1] ?? ""}
+                  items={MODES.map(([value, label]) => ({ value, label }))}
+                  value={mode}
+                  onSelect={(v) => setMode(v as PermissionMode)}
+                />
+              </span>
             }
           />
           {error && <p className="chat__error" role="alert">{error}</p>}
@@ -194,6 +225,7 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
           cwd={t.cwd}
           resume={t.resume}
           firstMessage={t.first}
+          launch={t.launch}
           active={t.id === tabs.active}
           onStatus={onStatus}
           onStartError={onStartError}

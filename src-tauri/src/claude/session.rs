@@ -24,9 +24,55 @@ const MODELS_TIMEOUT: Duration = Duration::from_secs(15);
 /// Longest bridge line accepted; a longer one is skipped with a non-fatal `error`.
 const MAX_LINE: usize = 16 * 1024 * 1024;
 
+/// A picture pasted in the composer (contracts/bridge-protocol.md §2, `user.images`): base64 of the file.
+#[derive(serde::Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Image {
+    pub media_type: String,
+    pub data: String,
+}
+
+const MAX_IMAGES: usize = 5;
+const MAX_IMAGE_B64: usize = 7 * 1024 * 1024; // about 5 MiB of picture
+
+/// Refuses what the API would refuse anyway, before it reaches the bridge.
+fn check_images(images: &[Image]) -> Result<(), String> {
+    if images.len() > MAX_IMAGES {
+        return Err(format!("{MAX_IMAGES} images au plus par message."));
+    }
+    for i in images {
+        if !matches!(
+            i.media_type.as_str(),
+            "image/png" | "image/jpeg" | "image/gif" | "image/webp"
+        ) {
+            return Err("Format d'image non pris en charge (PNG, JPEG, GIF ou WebP).".into());
+        }
+        if i.data.len() > MAX_IMAGE_B64 {
+            return Err("Image trop lourde (5 Mo au plus).".into());
+        }
+        if !i
+            .data
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'/' | b'='))
+        {
+            return Err("Image illisible.".into());
+        }
+    }
+    Ok(())
+}
+
+/// Claude Code's reasoning effort levels (contracts/bridge-protocol.md §2).
+fn check_effort(effort: &str) -> Result<(), String> {
+    match effort {
+        "low" | "medium" | "high" | "xhigh" | "max" => Ok(()),
+        _ => Err("Niveau d'effort inconnu.".into()),
+    }
+}
+
 pub struct StartArgs {
     pub cwd: String,
     pub model: Option<String>,
+    pub effort: Option<String>,
     pub permission_mode: PermissionMode,
     pub resume: Option<String>,
 }
@@ -444,6 +490,9 @@ impl Claude {
         if let Some(r) = args.resume {
             start["resume"] = r.into();
         }
+        if let Some(e) = args.effort {
+            start["effort"] = e.into();
+        }
         // The Obsidian vault is read-only ground for the bridge's no-popup Bash reads (bridge-protocol.md §2).
         if let Some(v) = settings
             .vault_path
@@ -472,10 +521,36 @@ impl Claude {
     }
 
     pub async fn send(&self, key: &str, text: String) -> Result<(), String> {
+        self.send_with_images(key, text, Vec::new()).await
+    }
+
+    pub async fn send_with_images(
+        &self,
+        key: &str,
+        text: String,
+        images: Vec<Image>,
+    ) -> Result<(), String> {
+        check_images(&images)?;
         let s = self.get(key)?;
         let _turn = s.turn.lock().await;
-        s.write(json!({"type": "user", "text": text})).await?;
-        s.apply(&self.store, |c| c.user(&text, now_ms()));
+        let mut msg = json!({"type": "user", "text": text});
+        if !images.is_empty() {
+            msg["images"] = images
+                .iter()
+                .map(|i| json!({"mediaType": i.media_type, "data": i.data}))
+                .collect();
+        }
+        s.write(msg).await?;
+        // The journal keeps the text and a count, never the pictures themselves.
+        let n = images.len();
+        let shown = match n {
+            0 => text,
+            _ => format!(
+                "{text}\n\n[{n} image{s} jointe{s}]",
+                s = if n > 1 { "s" } else { "" }
+            ),
+        };
+        s.apply(&self.store, |c| c.user(&shown, now_ms()));
         Ok(())
     }
 
@@ -486,6 +561,16 @@ impl Claude {
     pub async fn set_model(&self, key: &str, model: String) -> Result<(), String> {
         let s = self.get(key)?;
         s.write(json!({"type": "set_model", "model": model})).await
+    }
+
+    /// `None` goes back to the model's own effort.
+    pub async fn set_effort(&self, key: &str, effort: Option<String>) -> Result<(), String> {
+        if let Some(e) = &effort {
+            check_effort(e)?;
+        }
+        self.get(key)?
+            .write(json!({"type": "set_effort", "effort": effort}))
+            .await
     }
 
     pub async fn set_permission_mode(&self, key: &str, mode: PermissionMode) -> Result<(), String> {
@@ -615,6 +700,51 @@ fn handle_line(s: &Session, store: &Mutex<Store>, line: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn effort_levels_are_the_five_known_ones() {
+        for e in ["low", "medium", "high", "xhigh", "max"] {
+            assert!(check_effort(e).is_ok());
+        }
+        for e in ["", "ultra", "HIGH", "high "] {
+            assert!(check_effort(e).is_err(), "{e}");
+        }
+    }
+
+    #[test]
+    fn images_are_checked_before_the_bridge() {
+        let img = |t: &str, d: &str| Image {
+            media_type: t.into(),
+            data: d.into(),
+        };
+        assert!(check_images(&[]).is_ok());
+        assert!(
+            check_images(&[img("image/png", "iVBORw0KGgo="), img("image/webp", "AAAA")]).is_ok()
+        );
+        assert!(
+            check_images(&vec![img("image/png", "AAAA"); 6])
+                .unwrap_err()
+                .contains("5 images")
+        );
+        assert!(
+            check_images(&[img("image/svg+xml", "AAAA")])
+                .unwrap_err()
+                .contains("Format")
+        );
+        assert!(check_images(&[img("text/html", "AAAA")]).is_err());
+        assert!(
+            check_images(&[img("image/png", "AA AA")])
+                .unwrap_err()
+                .contains("illisible")
+        );
+        assert!(check_images(&[img("image/png", "AA\n")]).is_err());
+        let big = "A".repeat(MAX_IMAGE_B64 + 1);
+        assert!(
+            check_images(&[img("image/png", &big)])
+                .unwrap_err()
+                .contains("lourde")
+        );
+    }
 
     #[test]
     fn cwd_expands_home() {

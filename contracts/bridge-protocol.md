@@ -23,10 +23,11 @@ Le pont n'accepte aucun argument. Son premier message attendu est `start`. Il es
 
 | `type` | Champs | Effet |
 |---|---|---|
-| `start` | `cwd`, `claudePath`, `model?`, `permissionMode`, `resume?`, `readRoots?` | ouvre la session en mode flux. `permissionMode` ∈ `default`, `acceptEdits`, `plan`, `auto` (le mode automatique de Claude Code : un modèle classifieur approuve ou bloque, mêmes réglages `autoMode` que le terminal ; `bypassPermissions` et `dontAsk` restent refusés). `resume` = identifiant de session à reprendre. `readRoots` = dossiers absolus (8 au plus) où les lectures Bash sans effet s'exécutent sans demande, en plus de `cwd` (le cœur y met le vault Obsidian) |
-| `user` | `text` | envoie un tour utilisateur |
+| `start` | `cwd`, `claudePath`, `model?`, `permissionMode`, `resume?`, `readRoots?`, `effort?` | ouvre la session en mode flux. `permissionMode` ∈ `default`, `acceptEdits`, `plan`, `auto` (le mode automatique de Claude Code : un modèle classifieur approuve ou bloque, mêmes réglages `autoMode` que le terminal ; `bypassPermissions` et `dontAsk` restent refusés). `resume` = identifiant de session à reprendre. `effort` ∈ `low`, `medium`, `high`, `xhigh`, `max` (niveau de réflexion ; absent = celui de Claude Code). `readRoots` = dossiers absolus (8 au plus) où les lectures Bash sans effet s'exécutent sans demande, en plus de `cwd` (le cœur y met le vault Obsidian) |
+| `user` | `text`, `images?` | envoie un tour utilisateur. `images` = 5 au plus, `{ mediaType, data }` (`image/png`, `image/jpeg`, `image/gif` ou `image/webp` ; `data` en base64) : le pont les passe au SDK en blocs `image` avant le texte. Le cœur refuse déjà plus de 5 Mo par image |
 | `interrupt` | — | interrompt la réponse en cours ; la session reste utilisable |
 | `set_model` | `model` | change de modèle pour les tours suivants |
+| `set_effort` | `effort` | change le niveau de réflexion (mêmes valeurs que `start.effort`, ou `null` pour revenir à celui du modèle) ; valable pour la session seulement, rien n'est écrit dans les réglages de l'utilisateur |
 | `set_permission_mode` | `mode` | mêmes valeurs que `start.permissionMode` |
 | `list_models` | `requestId` | demande la liste ; réponse `models` avec le même `requestId` |
 | `permission_response` | `requestId`, `decision`, `message?` | répond à une `permission_request` (§3) |
@@ -101,7 +102,7 @@ Le cœur Rust journalise chaque événement dans `sessions/<clé de session>.ndj
 `ARCHITECTURE.md §8`). La reprise ne rejoue pas l'historique dans le flux : ce journal est la seule
 source pour réafficher une conversation.
 
-## Lectures Bash sans demande (v1.2)
+## Lectures Bash sans demande (v1.4)
 
 Le pont répond `allow` sans `permission_request` à un outil `Bash` dont la commande est une suite de
 `cat`, `grep`, `ls`, `find`, `head`, `tail`, `cd`, `pwd`, `echo`, `wc`, `which`, `du`, `stat`, une demande de version d'un outil (`php -v`, `node --version`, `python3 -V`… : un seul drapeau, rien d'autre) et `git` en lecture (`status`, `diff`, `log`, `show`, `blame`, `ls-files`, `rev-parse`, `branch`/`tag` en liste, `remote -v`, `stash list`, `worktree list`…, jamais `commit`, `add`, `push`, `checkout`, `reset`, `-C`, `-c`, `--output`) reliées par `;`, `&&`, `||`, `|` ou un saut de ligne, et dont tous les

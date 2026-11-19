@@ -51,14 +51,20 @@ export const sessionStart = (
   permissionMode: PermissionMode,
   resume: string | null,
   onEvent: (e: SessionEvent) => void,
+  effort: string | null = null,
 ) => {
   const channel = new Channel<SessionEvent>();
   channel.onmessage = onEvent;
-  return invoke<string>("session_start", { cwd, model, permissionMode, resume, onEvent: channel });
+  return invoke<string>("session_start", { cwd, model, permissionMode, resume, onEvent: channel, effort });
 };
-export const sessionSend = (key: string, text: string) => invoke<null>("session_send", { key, text });
+/** A picture for a user turn: base64 of the file, no `data:` prefix (contracts/ipc.md §1). */
+export type ImageIn = { mediaType: string; data: string };
+export const sessionSend = (key: string, text: string, images: ImageIn[] = []) =>
+  invoke<null>("session_send", { key, text, images: images.length ? images : null });
 export const sessionInterrupt = (key: string) => invoke<null>("session_interrupt", { key });
 export const sessionSetModel = (key: string, model: string) => invoke<null>("session_set_model", { key, model });
+/** Reasoning effort of the session (low, medium, high, xhigh, max); null = the model's own default. */
+export const sessionSetEffort = (key: string, effort: string | null) => invoke<null>("session_set_effort", { key, effort });
 export const sessionSetPermissionMode = (key: string, mode: PermissionMode) =>
   invoke<null>("session_set_permission_mode", { key, mode });
 export const sessionModels = (key: string) => invoke<ModelInfo[]>("session_models", { key });

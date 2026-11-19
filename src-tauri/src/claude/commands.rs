@@ -6,12 +6,14 @@ use serde_json::Value;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 
-use super::{Claude, SessionEvent, StartArgs, bridge_path};
+use super::{Claude, Image, SessionEvent, StartArgs, bridge_path};
 use crate::store::usage::{self, UsageSummary};
 use crate::store::{PermissionMode, SessionEntry, Settings};
 
 type Res<T> = Result<T, String>;
 
+// shortcut: a Tauri command takes its arguments one by one (ipc.md §1), a struct would change the contract; group them if one more is added.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn session_start(
     app: AppHandle,
@@ -21,6 +23,7 @@ pub async fn session_start(
     permission_mode: PermissionMode,
     resume: Option<String>,
     on_event: Channel<SessionEvent>,
+    effort: Option<String>,
 ) -> Res<String> {
     let bridge = bridge_path(app.path().resource_dir().ok())?;
     eprintln!("[claude] bridge: {}", bridge.display());
@@ -36,6 +39,7 @@ pub async fn session_start(
     let args = StartArgs {
         cwd,
         model,
+        effort,
         permission_mode,
         resume,
     };
@@ -45,13 +49,29 @@ pub async fn session_start(
 }
 
 #[tauri::command]
-pub async fn session_send(claude: State<'_, Claude>, key: String, text: String) -> Res<()> {
-    claude.send(&key, text).await
+pub async fn session_send(
+    claude: State<'_, Claude>,
+    key: String,
+    text: String,
+    images: Option<Vec<Image>>,
+) -> Res<()> {
+    claude
+        .send_with_images(&key, text, images.unwrap_or_default())
+        .await
 }
 
 #[tauri::command]
 pub async fn session_interrupt(claude: State<'_, Claude>, key: String) -> Res<()> {
     claude.interrupt(&key).await
+}
+
+#[tauri::command]
+pub async fn session_set_effort(
+    claude: State<'_, Claude>,
+    key: String,
+    effort: Option<String>,
+) -> Res<()> {
+    claude.set_effort(&key, effort).await
 }
 
 #[tauri::command]

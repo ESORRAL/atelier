@@ -8,6 +8,9 @@ import { isReadOnlyBash } from './readonly.mjs';
 // bypassPermissions and dontAsk stay refused.
 const MODES = new Set(['default', 'acceptEdits', 'plan', 'auto']);
 const DEFAULT_DENY = "Refusé par l'utilisateur";
+const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']); // Claude Code's reasoning effort levels
+const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+const MAX_IMAGES = 5;
 
 // Async-iterable prompt for streaming-input mode.
 function inputStream() {
@@ -15,8 +18,12 @@ function inputStream() {
   let wake;
   let done = false;
   return {
-    push(text) {
-      queue.push({ type: 'user', message: { role: 'user', content: text }, parent_tool_use_id: null });
+    push(text, images = []) {
+      // With pictures the content is a list of blocks: the pictures first, then the text.
+      const content = images.length
+        ? [...images.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.mediaType, data: i.data } })), { type: 'text', text }]
+        : text;
+      queue.push({ type: 'user', message: { role: 'user', content }, parent_tool_use_id: null });
       wake?.();
     },
     end() { done = true; wake?.(); },
@@ -101,6 +108,7 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
       if (session) return error('session already started');
       if (typeof m.cwd !== 'string' || typeof m.claudePath !== 'string') return error('start requires cwd and claudePath');
       if (!MODES.has(m.permissionMode)) return error(`invalid permissionMode: ${m.permissionMode}`);
+      if (m.effort != null && !EFFORTS.has(m.effort)) return error(`invalid effort: ${m.effort}`);
       const input = inputStream();
       const extra = Array.isArray(m.readRoots) ? m.readRoots.filter((r) => typeof r === 'string' && r.startsWith('/')).slice(0, 8) : [];
       readScope = { cwd: m.cwd, roots: [m.cwd, ...extra] };
@@ -113,6 +121,7 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
             pathToClaudeCodeExecutable: m.claudePath,
             permissionMode: m.permissionMode,
             ...(m.model && { model: m.model }),
+            ...(m.effort && { effort: m.effort }),
             ...(m.resume && { resume: m.resume }),
             includePartialMessages: true,
             forwardSubagentText: true,
@@ -127,7 +136,12 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
     },
     user(m) {
       if (typeof m.text !== 'string') return error('user requires text');
-      session.input.push(m.text);
+      const images = m.images ?? [];
+      if (!Array.isArray(images) || images.length > MAX_IMAGES
+        || !images.every((i) => IMAGE_TYPES.has(i?.mediaType) && typeof i.data === 'string' && /^[A-Za-z0-9+/=]+$/.test(i.data))) {
+        return error('invalid images');
+      }
+      session.input.push(m.text, images);
     },
     interrupt() {
       cancelAll();
@@ -139,6 +153,11 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
     set_permission_mode(m) {
       if (!MODES.has(m.mode)) return error(`invalid permission mode: ${m.mode}`);
       return control('set_permission_mode', () => session.q.setPermissionMode(m.mode));
+    },
+    // `effort: null` goes back to the model's own default. Session-only, nothing is written to the user's settings.
+    set_effort(m) {
+      if (m.effort !== null && !EFFORTS.has(m.effort)) return error(`invalid effort: ${m.effort}`);
+      return control('set_effort', () => session.q.applyFlagSettings({ effortLevel: m.effort }));
     },
     list_models(m) {
       if (typeof m.requestId !== 'string') return error('list_models requires requestId');
