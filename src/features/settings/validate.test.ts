@@ -14,7 +14,9 @@ describe("validateSettings", () => {
     expect(validateSettings({ ...ok, claudePath: "bin/claude" })).not.toBeNull();
   });
   it("rejects modes outside the allowed list", () => {
-    expect(validateSettings({ ...ok, defaultPermissionMode: "bypassPermissions" as never })).not.toBeNull();
+    expect(validateSettings({ ...ok, defaultPermissionMode: "dontAsk" as never })).not.toBeNull();
+    // "Aucune confirmation" is the user's own opt-in (ADR-0002): it is an allowed value.
+    expect(validateSettings({ ...ok, defaultPermissionMode: "bypassPermissions" })).toBeNull();
   });
   it("rejects unknown models", () => {
     expect(validateSettings({ ...ok, defaultModel: "gpt" })).not.toBeNull();

@@ -23,7 +23,7 @@ Le pont n'accepte aucun argument. Son premier message attendu est `start`. Il es
 
 | `type` | Champs | Effet |
 |---|---|---|
-| `start` | `cwd`, `claudePath`, `model?`, `permissionMode`, `resume?`, `readRoots?`, `effort?` | ouvre la session en mode flux. `permissionMode` ∈ `default`, `acceptEdits`, `plan`, `auto` (le mode automatique de Claude Code : un modèle classifieur approuve ou bloque, mêmes réglages `autoMode` que le terminal ; `bypassPermissions` et `dontAsk` restent refusés). `resume` = identifiant de session à reprendre. `effort` ∈ `low`, `medium`, `high`, `xhigh`, `max` (niveau de réflexion ; absent = celui de Claude Code). `readRoots` = dossiers absolus (8 au plus) où les lectures Bash sans effet s'exécutent sans demande, en plus de `cwd` (le cœur y met le vault Obsidian) |
+| `start` | `cwd`, `claudePath`, `model?`, `permissionMode`, `resume?`, `readRoots?`, `effort?` | ouvre la session en mode flux. `permissionMode` ∈ `default`, `acceptEdits`, `plan`, `auto` (le mode automatique de Claude Code : un modèle classifieur approuve ou bloque, mêmes réglages `autoMode` que le terminal), `bypassPermissions` (« Aucune confirmation » : le SDK n'entre dans ce mode que parce que le pont démarre toujours avec `allowDangerouslySkipPermissions` ; seul le cœur le demande, sur ordre de l'utilisateur). `dontAsk` reste refusé. `resume` = identifiant de session à reprendre. `effort` ∈ `low`, `medium`, `high`, `xhigh`, `max` (niveau de réflexion ; absent = celui de Claude Code). `readRoots` = dossiers absolus (8 au plus) où les lectures Bash sans effet s'exécutent sans demande, en plus de `cwd` (le cœur y met le vault Obsidian) |
 | `user` | `text`, `images?` | envoie un tour utilisateur. `images` = 5 au plus, `{ mediaType, data }` (`image/png`, `image/jpeg`, `image/gif` ou `image/webp` ; `data` en base64) : le pont les passe au SDK en blocs `image` avant le texte. Le cœur refuse déjà plus de 5 Mo par image |
 | `interrupt` | — | interrompt la réponse en cours ; la session reste utilisable |
 | `set_model` | `model` | change de modèle pour les tours suivants |
@@ -33,7 +33,7 @@ Le pont n'accepte aucun argument. Son premier message attendu est `start`. Il es
 | `permission_response` | `requestId`, `decision`, `message?` | répond à une `permission_request` (§3) |
 | `close` | — | termine proprement ; le pont répond `closed` puis sort avec le code 0 |
 
-Le pont refuse toute autre valeur de `permissionMode` (dont `bypassPermissions`, `auto`, `dontAsk`) par
+Le pont refuse toute autre valeur de `permissionMode` (dont `dontAsk`) par
 un `error` non fatal. `permissionMode` est toujours passé explicitement au SDK : sans lui, le CLI peut
 démarrer en `auto`.
 

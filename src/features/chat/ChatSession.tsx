@@ -24,7 +24,7 @@ import { Composer } from "./Composer";
 import { Menu } from "./Menu";
 import { initialState, reduce } from "./reduce";
 import { pendingCount, type Launch, type SessionTab } from "./sessions";
-import { EFFORTS } from "./models";
+import { BYPASS, EFFORTS, confirmBypass } from "./models";
 import type { ChatInfo } from "./Chat";
 
 const STATE_LABEL: Record<string, string> = {
@@ -40,6 +40,7 @@ export const MODES: [PermissionMode, string][] = [
   ["acceptEdits", "Accepter les modifs"],
   ["plan", "Plan"],
   ["auto", "Automatique"],
+  ["bypassPermissions", "Aucune confirmation"],
 ];
 export const errText = (e: unknown) => (typeof e === "string" ? e : "Une erreur est survenue.");
 
@@ -241,6 +242,7 @@ export function ChatSession({ id, cwd, resume, firstMessage, launch, active, onS
             items={MODES.map(([value, label]) => ({ value, label }))}
             value={mode}
             onSelect={(v) => {
+              if (v === BYPASS && !confirmBypass()) return;
               const prev = mode;
               setMode(v as PermissionMode);
               sessionSetPermissionMode(key, v as PermissionMode).catch((x) => {

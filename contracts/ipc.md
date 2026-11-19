@@ -1,6 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
-Version 2.7 (phase 5). 2.7 : mode `auto` ; `session_send` accepte des images ; `effort` (`session_start`, `session_set_effort`).
+Version 2.7 (phase 5). 2.7 : mode `auto` ; `session_send` accepte des images ; `bypassPermissions` (« Aucune confirmation », opt-in) ; `effort` (`session_start`, `session_set_effort`).
 Version 2.6 (phase 5). 2.6 : deux panneaux intégrés, YouTube Shorts et Instagram (§15 ter).
 Version 2.5 (phase 5). 2.5 : le panneau §15 affiche YouTube Shorts ; Instagram garde la fenêtre §13 ; `instagramMode` retiré.
 Version 2.4 (phase 5). 2.4 : `pause_open_browser` (§16).
@@ -46,7 +46,8 @@ française. `settings_set` refuse un `claudePath` qui n'est pas un fichier exéc
 ## 2. Types partagés
 
 ```ts
-type PermissionMode = "default" | "acceptEdits" | "plan" | "auto"; // auto = mode automatique de Claude Code (classifieur), v2.7
+type PermissionMode = "default" | "acceptEdits" | "plan" | "auto" | "bypassPermissions";
+// auto = mode automatique de Claude Code (classifieur) ; bypassPermissions = « Aucune confirmation », activé par l'utilisateur seul (ADR-0002)
 type Decision = "allow_once" | "allow_always" | "deny";
 
 type SessionState =

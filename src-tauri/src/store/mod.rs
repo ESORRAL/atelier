@@ -12,6 +12,9 @@ pub enum PermissionMode {
     AcceptEdits,
     Plan,
     Auto,
+    /// No confirmation at all: opt-in only, never the default (docs/adr/0002).
+    #[serde(rename = "bypassPermissions")]
+    Bypass,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -207,6 +210,7 @@ mod tests {
         let name = |m| serde_json::to_string(&m).unwrap();
         assert_eq!(name(PermissionMode::AcceptEdits), "\"acceptEdits\"");
         assert_eq!(name(PermissionMode::Auto), "\"auto\"");
+        assert_eq!(name(PermissionMode::Bypass), "\"bypassPermissions\"");
         let back: PermissionMode = serde_json::from_str("\"auto\"").unwrap();
         assert_eq!(back, PermissionMode::Auto);
     }

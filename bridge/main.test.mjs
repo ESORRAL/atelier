@@ -54,6 +54,18 @@ function ask(fake, { suggestions = BASH_SUGGESTIONS, requestId = 'r1', signal } 
   });
 }
 
+test('bypassPermissions (no confirmation) is accepted at start and at runtime, and the SDK is allowed to enter it', async () => {
+  const t = setup();
+  t.start({ permissionMode: 'bypassPermissions' });
+  assert.equal(t.fake.options.permissionMode, 'bypassPermissions');
+  assert.equal(t.fake.options.allowDangerouslySkipPermissions, true);
+  const u = setup();
+  u.start();
+  u.send({ type: 'set_permission_mode', mode: 'bypassPermissions' });
+  await tick();
+  assert.deepEqual(u.fake.calls.filter((c) => c[0] === 'setPermissionMode'), [['setPermissionMode', 'bypassPermissions']]);
+});
+
 test('effort: start option, set_effort at runtime, null resets, anything else is refused', async () => {
   const t = setup();
   t.start({ effort: 'xhigh' });
@@ -124,7 +136,7 @@ test('ready, start options, sdk passthrough, user turn', async () => {
   const { canUseTool, ...opts } = t.fake.options;
   assert.equal(typeof canUseTool, 'function');
   assert.deepEqual(opts, {
-    cwd: '/w', pathToClaudeCodeExecutable: '/bin/claude', permissionMode: 'default', model: 'haiku',
+    cwd: '/w', pathToClaudeCodeExecutable: '/bin/claude', permissionMode: 'default', allowDangerouslySkipPermissions: true, model: 'haiku',
     resume: 's1', includePartialMessages: true, forwardSubagentText: true,
   });
   const msg = { type: 'system', subtype: 'init', session_id: 's1', uuid: 'u', extra: { a: 1 } };
@@ -160,13 +172,13 @@ test('list_models without requestId is a non-fatal error', async () => {
 
 test('invalid permissionMode is a non-fatal error and never reaches the SDK', async () => {
   const t = setup();
-  for (const mode of ['bypassPermissions', 'dontAsk', 'Auto', undefined]) {
+  for (const mode of ['dontAsk', 'Auto', 'bypass', undefined]) {
     t.start({ permissionMode: mode });
     assert.equal(t.fake.options, null);
     assert.equal(t.last('error').fatal, false);
   }
   t.start();
-  for (const mode of ['bypassPermissions', 'dontAsk']) t.send({ type: 'set_permission_mode', mode });
+  for (const mode of ['dontAsk', 'bypass']) t.send({ type: 'set_permission_mode', mode });
   await tick();
   assert.deepEqual(t.fake.calls, []);
   assert.equal(t.out.filter((m) => m.type === 'error').length, 6);

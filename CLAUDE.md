@@ -18,7 +18,7 @@ Stack : Tauri 2 + Rust (`src-tauri/`), React + TypeScript (`src/`), pont Node ve
 
 ## Interdits
 - Installer un plugin, un skill, un serveur MCP ou un outil système.
-- `--dangerously-skip-permissions`, le mode `bypassPermissions`, un secret dans le code ou les logs.
+- `--dangerously-skip-permissions` en dur, le mode `bypassPermissions` par défaut (seul l'utilisateur l'active, via « Aucune confirmation », ADR-0002), un secret dans le code ou les logs.
 - Lire, stocker ou transmettre un jeton d'authentification Claude.
 - Donner à la fenêtre Instagram un accès à l'app, y injecter un script, automatiser ou extraire son contenu.
 - Afficher du HTML non fiable (dont `graphify-out/graph.html`).

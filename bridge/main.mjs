@@ -5,8 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { isReadOnlyBash } from './readonly.mjs';
 
 // 'auto' = Claude Code's own auto mode (a classifier model approves or blocks, same engine and settings as the terminal).
-// bypassPermissions and dontAsk stay refused.
-const MODES = new Set(['default', 'acceptEdits', 'plan', 'auto']);
+// dontAsk stays refused. The SDK only lets a session enter bypassPermissions when started with allowDangerouslySkipPermissions;
+// it changes nothing until the core asks for that mode, and only the user's own UI can.
+// 'bypassPermissions' = no confirmation at all: the user's explicit opt-in (Réglages, or the mode menu after a warning).
+const MODES = new Set(['default', 'acceptEdits', 'plan', 'auto', 'bypassPermissions']);
 const DEFAULT_DENY = "Refusé par l'utilisateur";
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']); // Claude Code's reasoning effort levels
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
@@ -120,6 +122,7 @@ export function createBridge({ query, sdkVersion, send, log = () => {}, exit }) 
             cwd: m.cwd,
             pathToClaudeCodeExecutable: m.claudePath,
             permissionMode: m.permissionMode,
+            allowDangerouslySkipPermissions: true,
             ...(m.model && { model: m.model }),
             ...(m.effort && { effort: m.effort }),
             ...(m.resume && { resume: m.resume }),

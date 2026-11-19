@@ -4,7 +4,7 @@ import { sessionsList, settingsGet, type PermissionMode, type SessionEntry, type
 import { pickFolder } from "../../ipc/desktop";
 import { Tally } from "../../ui/Tally";
 import { ChatSession, MODES } from "./ChatSession";
-import { EFFORTS, START_MODELS } from "./models";
+import { BYPASS, EFFORTS, START_MODELS, confirmBypass } from "./models";
 import { Composer } from "./Composer";
 import { Menu } from "./Menu";
 import { Logo } from "../../ui/Logo";
@@ -194,7 +194,7 @@ export default function Chat({ onInfo, onEvent, controlsRef }: ChatProps) {
                   text={MODES.find(([v]) => v === mode)?.[1] ?? ""}
                   items={MODES.map(([value, label]) => ({ value, label }))}
                   value={mode}
-                  onSelect={(v) => setMode(v as PermissionMode)}
+                  onSelect={(v) => (v !== BYPASS || confirmBypass()) && setMode(v as PermissionMode)}
                 />
               </span>
             }

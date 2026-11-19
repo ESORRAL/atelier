@@ -39,8 +39,12 @@ Faits vérifiés dans la doc :
 Le cœur Rust supervise le pont (groupe de process + `PR_SET_PDEATHSIG` + `killpg` à la fermeture), donc
 le `claude` enfant meurt avec lui.
 
-Jamais de `bypassPermissions` ni de `--dangerously-skip-permissions` : le mode par défaut de l'app est
-`manual`, `acceptEdits`, `plan` et `auto` (le mode automatique de Claude Code, décidé par un classifieur, comme dans le terminal) sont proposés dans l'UI, `bypassPermissions` n'est pas proposé.
+Le mode par défaut de l'app est `manual`. `acceptEdits`, `plan` et `auto` (le mode automatique de Claude Code, décidé
+par un classifieur, comme dans le terminal) sont proposés dans l'UI. `bypassPermissions`, présenté comme « Aucune
+confirmation », n'est jamais le défaut : l'utilisateur l'active lui-même, dans Réglages ou dans le menu des modes,
+après un avertissement (décision du 2026-11-19, à sa demande expresse : il ne veut valider aucune action). Le SDK n'entre
+dans ce mode que si la session a démarré avec `allowDangerouslySkipPermissions`, que le pont passe toujours ; seule
+l'interface de l'utilisateur peut demander ce mode, jamais le contenu d'une page, d'une note ou d'une réponse.
 
 ## Facturation (vérifiée le 2026-11-10)
 - La séparation « usage programmatique facturé au tarif API », annoncée pour le 15 juin 2026, a été

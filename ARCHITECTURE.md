@@ -129,7 +129,7 @@ Un contrat change par une tâche dédiée, fusionnée avant les tâches qui en d
 
 | Sujet | Règle |
 |---|---|
-| Permissions Claude | mode `manual` par défaut ; `bypassPermissions` jamais proposé |
+| Permissions Claude | mode `manual` par défaut ; `bypassPermissions` (« Aucune confirmation ») seulement si l'utilisateur l'active, avec un avertissement |
 | Identifiants | l'app ne lit, ne stocke ni ne transmet aucun jeton ; connexion par le flux d'Anthropic |
 | Pages « pause » (panneaux Instagram et Shorts, fenêtre Instagram) | aucune capability (les capabilities ciblent `webviews: ["main"]`), aucun script injecté, cookies à part, test d'absence d'IPC (ADR-0003, ADR-0005) |
 | Commandes Tauri | liste blanche par fenêtre (`AppManifest::commands`) ; l'UI n'a pas le plugin shell |

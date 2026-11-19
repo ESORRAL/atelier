@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import { settingsGet, settingsSet, type PermissionMode, type Settings as Cfg } from "../../ipc/claude";
 import { pickFolder } from "../../ipc/desktop";
 import { getTheme, setTheme, type Theme } from "../../ui/theme";
+import { BYPASS, confirmBypass } from "../chat/models";
 import { normalize, validateSettings } from "./validate";
 import "./settings.css";
 
@@ -17,6 +18,7 @@ const MODE_LABELS: [PermissionMode, string][] = [
   ["acceptEdits", "Accepter les modifications de fichiers"],
   ["plan", "Plan seulement"],
   ["auto", "Automatique (comme le terminal)"],
+  ["bypassPermissions", "Aucune confirmation (à tes risques)"],
 ];
 const THEME_LABELS: [Theme, string][] = [
   ["system", "Système"],
@@ -86,7 +88,7 @@ export default function Settings() {
 
       <label className="settings__field">
         Mode de permission par défaut
-        <select value={cfg.defaultPermissionMode} onChange={(e) => patch({ defaultPermissionMode: e.target.value as PermissionMode })}>
+        <select value={cfg.defaultPermissionMode} onChange={(e) => (e.target.value !== BYPASS || confirmBypass()) && patch({ defaultPermissionMode: e.target.value as PermissionMode })}>
           {MODE_LABELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
       </label>
