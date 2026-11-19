@@ -55,6 +55,7 @@ pub fn run() {
             music::commands::music_control,
             music::commands::music_set_volume,
             desktop::pick_folder,
+            desktop::clipboard::clipboard_image,
             desktop::music_open,
             windows::commands::pause_window_open,
             windows::commands::pause_window_close,

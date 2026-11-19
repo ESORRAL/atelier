@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Image as ImageIcon, Plus, Stop, PaperPlaneRight, X } from "@phosphor-icons/react";
 import type { ImageIn } from "../../ipc/claude";
+import { clipboardImage } from "../../ipc/desktop";
 import { projectFiles } from "../../ipc/project";
 import { MAX_IMAGES, pickImages, sizeLabel, toAttachment, type Attachment } from "./images";
 import { applyMention, filterCommands, findTrigger } from "./mention";
@@ -28,6 +29,8 @@ export function Composer({ id, cwd, commands, ready, busy, onSend, onInterrupt, 
   const [images, setImages] = useState<Attachment[]>([]); // pictures pasted for the next message
   const [note, setNote] = useState<string | null>(null);
   const lastId = useRef(0);
+  const lastPaste = useRef(0); // time of the last native clipboard read: one Ctrl+V fires a keydown and a paste event
+  const readId = useRef(0); // a newer paste cancels the answer of an older native read
 
   const trigger = findTrigger(draft, caret);
   const fileQuery = trigger?.kind === "file" && cwd ? trigger.query : null;
@@ -69,6 +72,23 @@ export function Composer({ id, cwd, commands, ready, busy, onSend, onInterrupt, 
     Promise.all(ok.map((f) => toAttachment(f, ++lastId.current))).then(
       (added) => setImages((cur) => [...cur, ...added].slice(0, MAX_IMAGES)),
       () => setNote("Image illisible."),
+    );
+  };
+  // WebKitGTK does not give a copied screenshot to the paste event, so the core reads the clipboard (clipboard_image).
+  // It answers null when the clipboard holds text, which then pastes as usual.
+  const pasteNative = () => {
+    const now = Date.now();
+    if (now - lastPaste.current < 600) return;
+    lastPaste.current = now;
+    if (images.length >= MAX_IMAGES) return setNote(`${MAX_IMAGES} images au plus par message.`);
+    const mine = ++readId.current;
+    clipboardImage().then(
+      (img) => {
+        if (!img || mine !== readId.current) return;
+        setNote(null);
+        setImages((cur) => [...cur, { id: ++lastId.current, name: "", bytes: img.bytes, mediaType: img.mediaType, data: img.data }].slice(0, MAX_IMAGES));
+      },
+      (e) => setNote(typeof e === "string" ? e : "Image illisible."),
     );
   };
   const send = () => {
@@ -137,13 +157,18 @@ export function Composer({ id, cwd, commands, ready, busy, onSend, onInterrupt, 
           }}
           onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
           onPaste={(e) => {
-            const files = [...e.clipboardData.files];
             // Text wins: a copied cell or web page keeps pasting as text. A picture alone (a screenshot) is attached.
-            if (!files.some((f) => f.type.startsWith("image/")) || e.clipboardData.getData("text/plain")) return;
-            e.preventDefault();
-            attach(files);
+            if (e.clipboardData.getData("text/plain")) return;
+            const files = [...e.clipboardData.files];
+            if (files.some((f) => f.type.startsWith("image/"))) {
+              e.preventDefault();
+              readId.current++; // the page got the picture itself: drop a native read still running
+              lastPaste.current = Date.now();
+              attach(files);
+            } else pasteNative();
           }}
           onKeyDown={(e) => {
+            if (((e.ctrlKey || e.metaKey) && e.code === "KeyV") || (e.shiftKey && e.code === "Insert")) pasteNative();
             if (listOpen && !e.nativeEvent.isComposing) {
               const n = items.length;
               if (e.key === "ArrowDown" && n) { e.preventDefault(); setPick((pick + 1) % n); return; }

@@ -1,4 +1,5 @@
-//! Native desktop helpers: folder picker and Apple Music web launcher.
+//! Native desktop helpers: folder picker, Apple Music web launcher, clipboard pictures.
+pub mod clipboard;
 use std::os::unix::process::CommandExt;
 use std::process::{Command, Stdio};
 use tauri_plugin_dialog::DialogExt;

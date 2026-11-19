@@ -1,6 +1,6 @@
 # Contrat — IPC de l'app (UI ↔ cœur Rust) et interfaces internes du cœur
 
-Version 2.7 (phase 5). 2.7 : mode `auto` ; `session_send` accepte des images ; `bypassPermissions` (« Aucune confirmation », opt-in) ; `effort` (`session_start`, `session_set_effort`).
+Version 2.7 (phase 5). 2.7 : mode `auto` ; `session_send` accepte des images ; `bypassPermissions` (« Aucune confirmation », opt-in) ; `effort` (`session_start`, `session_set_effort`) ; `clipboard_image` (§8).
 Version 2.6 (phase 5). 2.6 : deux panneaux intégrés, YouTube Shorts et Instagram (§15 ter).
 Version 2.5 (phase 5). 2.5 : le panneau §15 affiche YouTube Shorts ; Instagram garde la fenêtre §13 ; `instagramMode` retiré.
 Version 2.4 (phase 5). 2.4 : `pause_open_browser` (§16).
@@ -218,6 +218,7 @@ comptée sur son dernier jour ; à affiner en journalisant l'heure de chaque `re
 |---|---|---|---|
 | `pick_folder` | — | `string \| null` | boîte native « Choisir un dossier » ; `null` si annulée |
 | `music_open` | `target: "home" \| "search" \| "library" \| "playlists"`, `query: string \| null` | `null` | ouvre Apple Music web dans le navigateur par défaut |
+| `clipboard_image` | — | `{ mediaType: "image/png", data: string, bytes: number } \| null` | lit le presse-papiers du système (GTK, thread principal) ; renvoie l'image en PNG base64 (5 Mo au plus) s'il en contient une **et aucun texte**, sinon `null`. WebKitGTK ne donne pas une capture copiée à l'événement de collage de la page |
 
 `music_open` construit l'URL **côté cœur** à partir de `target` ; l'UI ne fournit jamais d'URL :
 `home` → `https://music.apple.com/`, `search` → `https://music.apple.com/search?term=<query encodé>`
